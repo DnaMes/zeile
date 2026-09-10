@@ -1,41 +1,65 @@
-# mdview — Handoff
+# zeile — Handoff
 
-Created 2026-09-10.
+Created 2026-09-10. Renamed from `mdview` to `zeile` same day (name collision
+research: `mdview` clashes on PyPI, npm, crates.io, AUR and a 144★ GitHub
+project — see the full plan).
 
 ## Current Task
 
-Not a fresh scaffold: this is an existing, working tool ported in from a
-personal laptop repo (`e14/apps/mdview`), where it started life as a small
-GTK4 + WebKitGTK markdown viewer replacing a 121 MB Electron AppImage.
-Mermaid diagram support was added there the same day, then the whole thing
-was moved here to become a proper erdlabs product (own repo, GPL-3.0
-licence, brand-promise README).
+Executing the plan at `~/.claude/plans/hi-hier-wa-rein-humming-kahan.md`
+(security hardening, Mermaid pre-render rewrite, feature fixes, i18n,
+release docs — phased so `main` stays buildable after every commit).
+
+**Phase 1 (rename) done, this commit.** Phase 2 (security + Mermaid rewrite)
+is next.
 
 ## Files Changed
 
-Initial scaffold (README.md, LICENSE, HANDOFF.md, .gitignore,
-.obsidian-doc) replaced/filled in with the real project:
-
-- `mdview.py` — the app (SPDX header added)
-- `install.sh` — installer (launcher, desktop entry, mime association)
-- `assets/style.css`, `assets/mdview.svg`
-- `assets/mermaid.min.js` — vendored Mermaid 12.0.0 (MIT), inlined only
-  when a diagram is present in the rendered document
-- `README.md` — rewritten with the erdlabs template's required sections
-  (brand promise, Permissions, Licence) merged into the tool's real docs
+- `mdview.py` → `zeile.py`: `APP_ID` → `com.erdlabs.zeile`, internal
+  `MDVIEW-MERMAID-*` stash marker → `ZEILE-MERMAID-*`, `window.__mdviewScroll`
+  → `window.__zeileScroll`, `MdviewApp` class → `ZeileApp`, CLI error message
+  updated. No behavioural change — pure rename.
+- `assets/mdview.svg` → `assets/zeile.svg`
+- `install.sh`: launcher/desktop-entry/icon name, `StartupWMClass`, comment
+- `README.md`: title, paths, usage example, Files section
+- `HANDOFF.md`: this file
 
 ## Decisions Made
 
-- Application ID: `com.erdlabs.mdview` (matched what the app already used
-  before the move — not a coincidence, same author/convention)
-- Licence: GPL-3.0-or-later, copyright retained
-- No icons/splash/colour work: this is a desktop GTK app, not a mobile
-  app — the icon step in `docs/NEW-PROJECT.md` doesn't apply here, it
-  already ships its own `assets/mdview.svg`
+- Application ID: `com.erdlabs.zeile` (renamed from `com.erdlabs.mdview`)
+- Name `zeile`: verified clean across PyPI, npm, crates.io, AUR,
+  Debian/Ubuntu, Flathub, GitHub search, domains — see plan for full research.
+  One unresolved weak signal (an unclear Shenzhen `ZEILE` trademark) —
+  acceptable for a private repo, needs a real DPMA/EUIPO check before any
+  public listing.
+- Licence: GPL-3.0-or-later, copyright retained (unchanged)
+- GitHub remote already renamed `DnaMes/zeile` (private) before this session
 
 ## Next Steps
 
-1. `./install.sh` on any machine that wants it (sets `.md` as its default
-   handler)
-2. Decide on a GitHub remote (`DnaMes/mdview`, private, matching the other
-   apps) and push — not done yet, needs explicit go-ahead
+Per the plan's phasing (each step its own commit):
+
+1. ~~Rename (`mdview` → `zeile` everywhere)~~ — done, this commit
+2. **Security + Mermaid rewrite, together, one commit**: `nh3` HTML
+   sanitizer (with the explicit attribute allowlist — ammonia's default
+   strips `class`/`id`, breaking Pygments highlighting and TOC anchors),
+   `enable-javascript-markup = False` (kills document `<script>` execution
+   while keeping the app's own `evaluate_javascript()` for scroll-restore/
+   TOC-jump), CSP header, ephemeral `WebKit.NetworkSession` +
+   `decide-policy` scheme allowlist, HTML5 storage off, `enable_developer_extras`
+   behind `--debug`/`ZEILE_DEBUG`. Mermaid moves from live vendored-JS render
+   to `mmdc` subprocess pre-render to static SVG, cached by content hash,
+   gated behind `--enable-mermaid` (default off, keeps base install
+   Node-free). First thing in this phase: verify `nh3`'s attribute-allowlist
+   behaviour empirically (not yet runtime-tested) before building on it.
+3. Fix confirmed-broken renders: frontmatter leak, `pymdownx.tasklist`
+4. Split `render()` into `render_body`/`build_document` + I/O shell, add
+   `pytest` unit tests
+5. Ctrl+F find-in-page, local `.md` link navigation with back/forward history
+6. TOC overlay (Ctrl+T), Print/PDF export
+7. Theme: full Pygments token coverage, VSCode Dark+/Light+ heading palette
+8. i18n (gettext DE/EN), version-visible About dialog, CHANGELOG/PRIVACY/
+   RELEASE/ASSETS.md, `install.sh` uninstall + dependency check
+
+Full detail, rationale, and verification plan for every phase: the plan file
+above.

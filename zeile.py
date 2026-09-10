@@ -24,7 +24,7 @@ gi.require_version("WebKit", "6.0")
 import markdown  # noqa: E402
 from gi.repository import Gio, GLib, Gtk, WebKit  # noqa: E402
 
-APP_ID = "com.erdlabs.mdview"
+APP_ID = "com.erdlabs.zeile"
 MERMAID_FENCE = re.compile(r"^```mermaid[ \t]*\n(.*?)^```[ \t]*$", re.S | re.M)
 
 EXTENSIONS = [
@@ -60,7 +60,7 @@ def extract_mermaid(text: str) -> tuple[str, list[str]]:
 
     def stash(match: re.Match[str]) -> str:
         diagrams.append(match.group(1))
-        return f"\n\nMDVIEW-MERMAID-{len(diagrams) - 1}\n\n"
+        return f"\n\nZEILE-MERMAID-{len(diagrams) - 1}\n\n"
 
     return MERMAID_FENCE.sub(stash, text), diagrams
 
@@ -81,7 +81,7 @@ def render(path: Path) -> str:
         body = md.convert(text)
         for i, source in enumerate(diagrams):
             body = body.replace(
-                f"<p>MDVIEW-MERMAID-{i}</p>",
+                f"<p>ZEILE-MERMAID-{i}</p>",
                 f"<pre class='mermaid'>{html.escape(source)}</pre>",
             )
 
@@ -163,7 +163,7 @@ class Viewer(Gtk.ApplicationWindow):
     def reload(self) -> bool:
         """Re-render the file, preserving the current scroll position."""
         self.webview.evaluate_javascript(
-            "window.__mdviewScroll = window.scrollY;", -1, None, None, None, None, None
+            "window.__zeileScroll = window.scrollY;", -1, None, None, None, None, None
         )
         self.webview.load_html(render(self.path), self.path.as_uri())
         return True
@@ -190,7 +190,7 @@ class Viewer(Gtk.ApplicationWindow):
         return GLib.SOURCE_REMOVE
 
 
-class MdviewApp(Gtk.Application):
+class ZeileApp(Gtk.Application):
     def __init__(self, path: Path) -> None:
         super().__init__(application_id=APP_ID, flags=Gio.ApplicationFlags.NON_UNIQUE)
         self.path = path
@@ -205,10 +205,10 @@ def main() -> int:
     args = parser.parse_args()
 
     if not args.file.exists():
-        print(f"mdview: no such file: {args.file}", file=sys.stderr)
+        print(f"zeile: no such file: {args.file}", file=sys.stderr)
         return 1
 
-    return MdviewApp(args.file).run([])
+    return ZeileApp(args.file).run([])
 
 
 if __name__ == "__main__":

@@ -1,9 +1,0 @@
-[Desktop Entry]
-Name=mdview
-Exec=/home/dnames/bin/mdview %f
-Icon=/home/dnames/bin/mdview.svg
-Type=Application
-Categories=Utility;TextEditor;
-MimeType=text/markdown;text/x-markdown;
-Terminal=false
-Comment=Markdown viewer

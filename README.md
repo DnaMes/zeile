@@ -1,4 +1,4 @@
-# mdview
+# zeile
 
 A small GTK4 markdown viewer for Linux, with Mermaid diagram support.
 
@@ -23,9 +23,9 @@ Writes:
 
 | Path | What |
 |---|---|
-| `~/.local/bin/mdview` | launcher (pins `/usr/bin/python3`) |
-| `~/.local/share/applications/mdview.desktop` | desktop entry + mime association |
-| `~/.local/share/icons/hicolor/scalable/apps/mdview.svg` | icon |
+| `~/.local/bin/zeile` | launcher (pins `/usr/bin/python3`) |
+| `~/.local/share/applications/zeile.desktop` | desktop entry + mime association |
+| `~/.local/share/icons/hicolor/scalable/apps/zeile.svg` | icon |
 
 Then sets itself as the default handler for `text/markdown`, so double-clicking
 a `.md` file in the file manager opens it.
@@ -33,7 +33,7 @@ a `.md` file in the file manager opens it.
 ## Usage
 
 ```bash
-mdview README.md          # GUI window
+zeile README.md          # GUI window
 ```
 
 | Shortcut | Action |
@@ -77,16 +77,16 @@ No network access, no other files touched.
 ## Files
 
 ```
-mdview.py               the app
+zeile.py                the app
 assets/style.css        rendering stylesheet
-assets/mdview.svg       icon
+assets/zeile.svg        icon
 assets/mermaid.min.js   vendored mermaid.js (pinned 12.0.0, MIT)
 install.sh              installer
 ```
 
 ## Build
 
-Nothing to build — `mdview.py` runs as-is via the `/usr/bin/python3`
+Nothing to build — `zeile.py` runs as-is via the `/usr/bin/python3`
 interpreter the launcher pins.
 
 ## Licence
