@@ -6,13 +6,21 @@
 Renders a markdown file with python-markdown into a WebKitGTK view and
 reloads it whenever the file changes on disk. Symlinks are resolved so
 that watching a link follows its target.
+
+A .md file is untrusted content a user double-clicks (install.sh makes this
+the system default handler for text/markdown), so the rendered document runs
+with document JavaScript structurally disabled, its HTML run through an
+explicit sanitizer allowlist, no persistent storage, no network egress
+beyond the click-to-open-externally path, and developer tools off unless
+--debug/ZEILE_DEBUG is set. See docs in the repo's HANDOFF.md and its linked
+plan for the full threat model and what was measured, not assumed.
 """
 
 from __future__ import annotations
 
 import argparse
 import html
-import re
+import os
 import sys
 from pathlib import Path
 
@@ -22,13 +30,15 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("WebKit", "6.0")
 
 import markdown  # noqa: E402
+import nh3  # noqa: E402
 from gi.repository import Gio, GLib, Gtk, WebKit  # noqa: E402
 
+from markdown_ext import MermaidExtension  # noqa: E402
+
 APP_ID = "com.erdlabs.zeile"
-MERMAID_FENCE = re.compile(r"^```mermaid[ \t]*\n(.*?)^```[ \t]*$", re.S | re.M)
 
 EXTENSIONS = [
-    "extra",           # tables, fenced_code, footnotes, def_list, abbr, attr_list
+    "extra",  # tables, fenced_code, footnotes, def_list, abbr, attr_list
     "admonition",
     "codehilite",
     "sane_lists",
@@ -41,70 +51,95 @@ EXTENSION_CONFIGS = {
     "toc": {"permalink": False},
 }
 
+# No script-src entry: enable-javascript-markup=False (set on the WebView
+# below) already prevents any document <script> from running, and nh3 (see
+# sanitize_html()) strips <script> tags outright regardless. This CSP layer
+# exists for the non-script vector that needs no script at all -- an
+# `<img src=http://tracker/pixel>` beacon -- which img-src 'self' kills.
+# style-src allows inline <style> since we own all page styling ourselves
+# and inject it as a literal <style> block below.
+_CSP = (
+    "default-src 'none'; img-src 'self' data:; font-src 'self' data:; "
+    "style-src 'unsafe-inline'"
+)
+
+# nh3's own defaults strip `class`/`id` from most tags. Used as-is that
+# silently breaks codehilite's <span class="k"> (colourless syntax
+# highlighting), every heading id (kills TOC anchors), and footnote id/href
+# pairs -- confirmed empirically before wiring this in. Mermaid diagrams are
+# deliberately NOT special-cased here: they never reach the sanitizer as SVG
+# markup at all (see markdown_ext.MermaidExtension's nonce mechanism), so
+# this allowlist stays exactly as narrow as the plain-markdown features
+# above actually need.
+_ALLOWED_TAGS = nh3.ALLOWED_TAGS
+_ALLOWED_ATTRIBUTES = {
+    **nh3.ALLOWED_ATTRIBUTES,
+    "abbr": {"title"},
+    "h1": {"id"},
+    "h2": {"id"},
+    "h3": {"id"},
+    "h4": {"id"},
+    "h5": {"id"},
+    "h6": {"id"},
+    "span": {"class"},
+    "code": {"class"},
+    "pre": {"class"},
+    "div": {"class"},
+    "p": {"class"},
+    "li": {"id"},
+    "sup": {"id"},
+    "a": {"id", "href", "class", "name"},
+}
+
+
+def sanitize_html(body: str) -> str:
+    """Strip everything nh3.clean() doesn't explicitly allow.
+
+    Runs on markdown's converted output, which includes not just markdown
+    syntax but any raw HTML a .md source embeds directly (the `extra`
+    bundle's html passthrough) -- <script>, on* handlers, javascript:/data:
+    URLs, <iframe>/<object>/<embed>, meta-refresh and <style> blocks are all
+    removed here, verified empirically against nh3's actual default+override
+    behaviour rather than assumed from its docs.
+    """
+    return nh3.clean(body, tags=_ALLOWED_TAGS, attributes=_ALLOWED_ATTRIBUTES)
+
 
 def read_asset(name: str) -> str:
     """Return the contents of an asset shipped next to this script."""
     return (Path(__file__).resolve().parent / "assets" / name).read_text(encoding="utf-8")
 
 
-def extract_mermaid(text: str) -> tuple[str, list[str]]:
-    """Pull ```mermaid fences out of the source before markdown sees them.
-
-    codehilite has no pygments lexer for "mermaid", so it silently drops the
-    language tag on fallback and the rendered HTML has no way to tell a
-    mermaid block apart from any other unhighlighted code block. Extracting
-    the diagram source first and re-inserting it after conversion sidesteps
-    that entirely.
-    """
-    diagrams: list[str] = []
-
-    def stash(match: re.Match[str]) -> str:
-        diagrams.append(match.group(1))
-        return f"\n\nZEILE-MERMAID-{len(diagrams) - 1}\n\n"
-
-    return MERMAID_FENCE.sub(stash, text), diagrams
-
-
-def render(path: Path) -> str:
+def render(path: Path, *, enable_mermaid: bool, dark: bool) -> str:
     """Convert a markdown file to a full HTML document."""
     try:
         text = path.read_text(encoding="utf-8")
     except OSError as exc:
         body = f"<h1>Cannot read file</h1><pre>{html.escape(str(exc))}</pre>"
-        diagrams: list[str] = []
     else:
-        text, diagrams = extract_mermaid(text)
+        mermaid_ext = MermaidExtension(enable_mermaid=enable_mermaid, dark=dark)
         md = markdown.Markdown(
-            extensions=EXTENSIONS,
+            extensions=[*EXTENSIONS, mermaid_ext],
             extension_configs=EXTENSION_CONFIGS,
         )
         body = md.convert(text)
-        for i, source in enumerate(diagrams):
-            body = body.replace(
-                f"<p>ZEILE-MERMAID-{i}</p>",
-                f"<pre class='mermaid'>{html.escape(source)}</pre>",
-            )
-
-    mermaid_js = (
-        f"<script>{read_asset('mermaid.min.js')}</script>"
-        "<script>mermaid.initialize({startOnLoad: true, "
-        "theme: window.matchMedia('(prefers-color-scheme: dark)').matches "
-        "? 'dark' : 'default'});</script>"
-        if diagrams
-        else ""
-    )
+        body = sanitize_html(body)
+        body = mermaid_ext.resolve(body)
 
     return (
         "<!DOCTYPE html><html><head><meta charset='utf-8'>"
+        f"<meta http-equiv='Content-Security-Policy' content=\"{_CSP}\">"
         f"<title>{html.escape(path.name)}</title>"
         f"<style>{read_asset('style.css')}</style>"
-        f"</head><body><article class='markdown-body'>{body}</article>{mermaid_js}"
+        f"</head><body><article class='markdown-body'>{body}</article>"
         "</body></html>"
     )
 
 
 class Viewer(Gtk.ApplicationWindow):
-    def __init__(self, app: Gtk.Application, path: Path) -> None:
+    def __init__(
+        self, app: Gtk.Application, path: Path, *, enable_mermaid: bool, debug: bool
+    ) -> None:
         super().__init__(application=app, title=path.name)
         self.set_default_size(900, 1000)
 
@@ -112,12 +147,33 @@ class Viewer(Gtk.ApplicationWindow):
         # symlink itself never reports edits made to its target.
         self.display_name = path.name
         self.path = path.resolve()
+        self.enable_mermaid = enable_mermaid
         self.monitor: Gio.FileMonitor | None = None
         self._reload_source: int | None = None
 
-        self.webview = WebKit.WebView()
+        self.dark = Gtk.Settings.get_default().get_property(
+            "gtk-application-prefer-dark-theme"
+        )
+
+        # Ephemeral session: no cookie jar, no HTTP cache persisted to disk.
+        # decide-policy below is what actually stops any request from being
+        # made in the first place for anything but the local document tree.
+        session = WebKit.NetworkSession.new_ephemeral()
+        self.webview = WebKit.WebView(network_session=session)
         settings = self.webview.get_settings()
-        settings.set_enable_developer_extras(True)
+        settings.set_enable_javascript(True)
+        # False here, not set_enable_javascript(False): this is the setting
+        # that actually blocks a document's own <script>/onerror=, verified
+        # empirically (window.* set by an injected <script> stayed
+        # undefined). enable_javascript stays True so the app's own
+        # evaluate_javascript() calls (scroll position, future TOC-jump)
+        # keep working -- they never evaluate anything sourced from the
+        # document itself.
+        settings.set_enable_javascript_markup(False)
+        settings.set_enable_html5_local_storage(False)
+        settings.set_enable_html5_database(False)
+        settings.set_enable_developer_extras(debug)
+        self.webview.connect("decide-policy", self._on_decide_policy)
 
         header = Gtk.HeaderBar()
         header.set_title_widget(Gtk.Label(label=self.display_name))
@@ -134,6 +190,39 @@ class Viewer(Gtk.ApplicationWindow):
         self._add_shortcuts()
         self.reload()
         self._watch()
+
+    def _on_decide_policy(
+        self,
+        _webview: WebKit.WebView,
+        decision: WebKit.PolicyDecision,
+        decision_type: WebKit.PolicyDecisionType,
+    ) -> bool:
+        """Only allow file:// navigation under the open document's directory.
+
+        Everything else -- http(s), any other scheme, or a file:// path
+        outside that tree -- is handed to the system's default opener
+        instead of being loaded in this WebView. Combined with the ephemeral
+        NetworkSession above, this is what actually makes "no network
+        access" true rather than aspirational.
+        """
+        if decision_type != WebKit.PolicyDecisionType.NAVIGATION_ACTION:
+            decision.use()
+            return True
+
+        uri = decision.get_navigation_action().get_request().get_uri()
+        gfile = Gio.File.new_for_uri(uri)
+        local_path = gfile.get_path()
+        if (
+            gfile.get_uri_scheme() == "file"
+            and local_path is not None
+            and Path(local_path).resolve().is_relative_to(self.path.parent)
+        ):
+            decision.use()
+            return True
+
+        decision.ignore()
+        Gio.AppInfo.launch_default_for_uri(uri)
+        return True
 
     def _add_shortcuts(self) -> None:
         controller = Gtk.ShortcutController()
@@ -165,7 +254,8 @@ class Viewer(Gtk.ApplicationWindow):
         self.webview.evaluate_javascript(
             "window.__zeileScroll = window.scrollY;", -1, None, None, None, None, None
         )
-        self.webview.load_html(render(self.path), self.path.as_uri())
+        html_doc = render(self.path, enable_mermaid=self.enable_mermaid, dark=self.dark)
+        self.webview.load_html(html_doc, self.path.as_uri())
         return True
 
     def _watch(self) -> None:
@@ -191,24 +281,40 @@ class Viewer(Gtk.ApplicationWindow):
 
 
 class ZeileApp(Gtk.Application):
-    def __init__(self, path: Path) -> None:
+    def __init__(self, path: Path, *, enable_mermaid: bool, debug: bool) -> None:
         super().__init__(application_id=APP_ID, flags=Gio.ApplicationFlags.NON_UNIQUE)
         self.path = path
+        self.enable_mermaid = enable_mermaid
+        self.debug = debug
 
     def do_activate(self) -> None:
-        Viewer(self, self.path).present()
+        Viewer(
+            self, self.path, enable_mermaid=self.enable_mermaid, debug=self.debug
+        ).present()
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Minimal GTK4 markdown viewer.")
     parser.add_argument("file", type=Path, help="markdown file to display")
+    parser.add_argument(
+        "--enable-mermaid",
+        action="store_true",
+        help="render ```mermaid fences via mmdc (mermaid-cli); off by default "
+        "so the base install needs no Node.js",
+    )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="enable WebKit developer tools (same as setting ZEILE_DEBUG)",
+    )
     args = parser.parse_args()
 
     if not args.file.exists():
         print(f"zeile: no such file: {args.file}", file=sys.stderr)
         return 1
 
-    return ZeileApp(args.file).run([])
+    debug = args.debug or bool(os.environ.get("ZEILE_DEBUG"))
+    return ZeileApp(args.file, enable_mermaid=args.enable_mermaid, debug=debug).run([])
 
 
 if __name__ == "__main__":

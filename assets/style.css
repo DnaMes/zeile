@@ -147,6 +147,26 @@ img {
   max-width: 100%;
 }
 
+/* Mermaid: minimal fallback styling. Full theming is a later pass -- this
+   just keeps the disabled/error states from looking broken. */
+.mermaid-diagram svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.mermaid-disabled {
+  color: var(--muted);
+}
+
+.mermaid-error {
+  padding: 0.8em 1em;
+  margin: 0 0 1em;
+  border-left: 0.25em solid var(--danger);
+  border-radius: 0 6px 6px 0;
+  background: var(--code-bg);
+  color: var(--danger);
+}
+
 /* python-markdown admonition blocks */
 .admonition {
   padding: 0.8em 1em;
