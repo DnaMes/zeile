@@ -73,7 +73,7 @@ The file is watched, so edits in another editor re-render automatically
 Arch packages (`python-gobject` is usually already pulled in by the desktop):
 
 ```bash
-sudo pacman -S --needed python-gobject webkitgtk-6.0 python-markdown python-pygments python-nh3
+sudo pacman -S --needed python-gobject webkitgtk-6.0 python-markdown python-pygments python-nh3 python-pymdown-extensions
 ```
 
 The launcher hardcodes `/usr/bin/python3` on purpose: a `brew` or `mise`

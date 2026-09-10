@@ -16,7 +16,21 @@ usage limit mid-session — if this file says a phase is unfinished and the
 session has gone idle, that's why; git history is the source of truth for
 what actually landed.
 
-**Phases 1-2 done.** Phase 3 (frontmatter/tasklist fixes) is next.
+**Phases 1-3 done.** Phase 4 (module split + pytest) is next.
+
+## Files Changed (Phase 3)
+
+- `zeile.py`: `_strip_frontmatter()` (regex-strips a leading YAML frontmatter
+  block, anchored to document start, before markdown ever sees the text —
+  confirmed broken before this: rendered as a literal `<hr>` + raw
+  `key: value` paragraph). Added `pymdownx.tasklist` to `EXTENSIONS`
+  (confirmed broken before: `- [ ]`/`- [x]` rendered as literal bracket
+  text). Sanitizer allowlist extended: `input` tag (`type`/`disabled`/
+  `checked`, for the tasklist's read-only checkboxes), `ul`/`li` gained
+  `class` (tasklist's `task-list`/`task-list-item` classes).
+- System dependency installed: `python-pymdown-extensions` (pacman, `extra`
+  repo).
+- `README.md`: Requirements line.
 
 ## Files Changed (Phase 2)
 
@@ -120,8 +134,7 @@ Per the plan's phasing (each step its own commit):
 
 1. ~~Rename (`mdview` → `zeile` everywhere)~~ — done
 2. ~~Security + Mermaid rewrite~~ — done, see above
-3. Fix confirmed-broken renders: frontmatter leak, `pymdownx.tasklist`
-   (needs `python-pymdown-extensions`, not yet installed)
+3. ~~Fix confirmed-broken renders: frontmatter leak, `pymdownx.tasklist`~~ — done
 4. Split `render()` into `render_body`/`build_document` + I/O shell, add
    `pytest` unit tests (install `python-pytest`)
 5. Ctrl+F find-in-page, local `.md` link navigation with back/forward history

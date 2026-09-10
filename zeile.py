@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import html
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -44,12 +45,26 @@ EXTENSIONS = [
     "sane_lists",
     "smarty",
     "toc",
+    "pymdownx.tasklist",
 ]
 
 EXTENSION_CONFIGS = {
     "codehilite": {"guess_lang": False, "noclasses": False},
     "toc": {"permalink": False},
+    "pymdownx.tasklist": {"custom_checkbox": False},
 }
+
+# A YAML frontmatter block, stripped before conversion -- python-markdown has
+# no opinion on frontmatter, so left alone it renders as a literal <hr> plus
+# a paragraph of raw "key: value" text, confirmed broken. Anchored to the
+# very start of the document; the closing "---" must be alone on its own
+# line, same shape most static-site generators use.
+_FRONTMATTER_RE = re.compile(r"\A---\n.*?\n---\n?", re.DOTALL)
+
+
+def _strip_frontmatter(text: str) -> str:
+    return _FRONTMATTER_RE.sub("", text, count=1)
+
 
 # No script-src entry: enable-javascript-markup=False (set on the WebView
 # below) already prevents any document <script> from running, and nh3 (see
@@ -71,7 +86,7 @@ _CSP = (
 # markup at all (see markdown_ext.MermaidExtension's nonce mechanism), so
 # this allowlist stays exactly as narrow as the plain-markdown features
 # above actually need.
-_ALLOWED_TAGS = nh3.ALLOWED_TAGS
+_ALLOWED_TAGS = nh3.ALLOWED_TAGS | {"input"}
 _ALLOWED_ATTRIBUTES = {
     **nh3.ALLOWED_ATTRIBUTES,
     "abbr": {"title"},
@@ -86,9 +101,13 @@ _ALLOWED_ATTRIBUTES = {
     "pre": {"class"},
     "div": {"class"},
     "p": {"class"},
-    "li": {"id"},
+    "ul": {"class"},
+    "li": {"id", "class"},
     "sup": {"id"},
     "a": {"id", "href", "class", "name"},
+    # pymdownx.tasklist checkboxes -- read-only, `disabled` is load-bearing
+    # (without it a click would try to toggle state nothing persists).
+    "input": {"type", "disabled", "checked"},
 }
 
 
@@ -117,6 +136,7 @@ def render(path: Path, *, enable_mermaid: bool, dark: bool) -> str:
     except OSError as exc:
         body = f"<h1>Cannot read file</h1><pre>{html.escape(str(exc))}</pre>"
     else:
+        text = _strip_frontmatter(text)
         mermaid_ext = MermaidExtension(enable_mermaid=enable_mermaid, dark=dark)
         md = markdown.Markdown(
             extensions=[*EXTENSIONS, mermaid_ext],
