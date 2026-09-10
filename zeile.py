@@ -129,31 +129,44 @@ def read_asset(name: str) -> str:
     return (Path(__file__).resolve().parent / "assets" / name).read_text(encoding="utf-8")
 
 
+def render_body(text: str, *, enable_mermaid: bool, dark: bool) -> str:
+    """Convert markdown text to sanitized HTML body content.
+
+    Pure function -- no file I/O, no GTK -- so it's unit-testable directly.
+    """
+    text = _strip_frontmatter(text)
+    mermaid_ext = MermaidExtension(enable_mermaid=enable_mermaid, dark=dark)
+    md = markdown.Markdown(
+        extensions=[*EXTENSIONS, mermaid_ext],
+        extension_configs=EXTENSION_CONFIGS,
+    )
+    body = md.convert(text)
+    body = sanitize_html(body)
+    return mermaid_ext.resolve(body)
+
+
+def build_document(body: str, title: str) -> str:
+    """Wrap a sanitized HTML body in the full page shell (CSP, stylesheet)."""
+    return (
+        "<!DOCTYPE html><html><head><meta charset='utf-8'>"
+        f"<meta http-equiv='Content-Security-Policy' content=\"{_CSP}\">"
+        f"<title>{html.escape(title)}</title>"
+        f"<style>{read_asset('style.css')}</style>"
+        f"</head><body><article class='markdown-body'>{body}</article>"
+        "</body></html>"
+    )
+
+
 def render(path: Path, *, enable_mermaid: bool, dark: bool) -> str:
-    """Convert a markdown file to a full HTML document."""
+    """Read `path`, render and sanitize its markdown, return a full HTML doc."""
     try:
         text = path.read_text(encoding="utf-8")
     except OSError as exc:
         body = f"<h1>Cannot read file</h1><pre>{html.escape(str(exc))}</pre>"
     else:
-        text = _strip_frontmatter(text)
-        mermaid_ext = MermaidExtension(enable_mermaid=enable_mermaid, dark=dark)
-        md = markdown.Markdown(
-            extensions=[*EXTENSIONS, mermaid_ext],
-            extension_configs=EXTENSION_CONFIGS,
-        )
-        body = md.convert(text)
-        body = sanitize_html(body)
-        body = mermaid_ext.resolve(body)
+        body = render_body(text, enable_mermaid=enable_mermaid, dark=dark)
 
-    return (
-        "<!DOCTYPE html><html><head><meta charset='utf-8'>"
-        f"<meta http-equiv='Content-Security-Policy' content=\"{_CSP}\">"
-        f"<title>{html.escape(path.name)}</title>"
-        f"<style>{read_asset('style.css')}</style>"
-        f"</head><body><article class='markdown-body'>{body}</article>"
-        "</body></html>"
-    )
+    return build_document(body, path.name)
 
 
 class Viewer(Gtk.ApplicationWindow):

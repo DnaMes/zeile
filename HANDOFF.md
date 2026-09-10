@@ -16,7 +16,24 @@ usage limit mid-session — if this file says a phase is unfinished and the
 session has gone idle, that's why; git history is the source of truth for
 what actually landed.
 
-**Phases 1-3 done.** Phase 4 (module split + pytest) is next.
+**Phases 1-4 done.** Phase 5 (Ctrl+F, local-link navigation + history) is next.
+
+## Files Changed (Phase 4)
+
+- `zeile.py`: `render()` split into `render_body(text, *, enable_mermaid,
+  dark)` (pure — no file I/O, no GTK) and `build_document(body, title)`
+  (wraps body in the CSP/stylesheet shell), with `render()` now a thin I/O
+  shell calling both.
+- `tests/` (new): `conftest.py` (repo root on `sys.path`, since these are
+  scripts, not a package), `test_markdown_ext.py` (7 tests: fence-in-list,
+  nonce-collision safety, disabled-mode escaping, `MermaidUnavailable`
+  error path — skipped automatically if `mmdc` happens to be installed),
+  `test_zeile.py` (13 tests: frontmatter strip, tasklist, codehilite/toc/
+  footnote sanitizer preservation, script/onerror/javascript:/style
+  stripping, CSP presence, end-to-end `render()` incl. the missing-file
+  path). 20/20 pass.
+- System dependency installed: `python-pytest` (pacman, `extra` repo).
+- `.gitignore`: `.pytest_cache/`, `.ruff_cache/`.
 
 ## Files Changed (Phase 3)
 
@@ -135,8 +152,7 @@ Per the plan's phasing (each step its own commit):
 1. ~~Rename (`mdview` → `zeile` everywhere)~~ — done
 2. ~~Security + Mermaid rewrite~~ — done, see above
 3. ~~Fix confirmed-broken renders: frontmatter leak, `pymdownx.tasklist`~~ — done
-4. Split `render()` into `render_body`/`build_document` + I/O shell, add
-   `pytest` unit tests (install `python-pytest`)
+4. ~~Split render()/add pytest~~ — done, 20/20 passing
 5. Ctrl+F find-in-page, local `.md` link navigation with back/forward history
 6. TOC overlay (Ctrl+T), Print/PDF export
 7. Theme: full Pygments token coverage, VSCode Dark+/Light+ heading palette,
