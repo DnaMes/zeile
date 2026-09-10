@@ -16,7 +16,31 @@ usage limit mid-session — if this file says a phase is unfinished and the
 session has gone idle, that's why; git history is the source of truth for
 what actually landed.
 
-**Phases 1-5 done.** Phase 6 (TOC overlay, Print/PDF export) is next.
+**Phases 1-6 done.** Phase 7 (theme: full Pygments coverage, VSCode-style
+heading palette) is next.
+
+## Files Changed (Phase 6)
+
+- `zeile.py`: `render_body()`/`render()` now return `(html_or_body,
+  toc_tokens)` instead of a bare string — `toc_tokens` is the `toc`
+  extension's already-computed heading tree, previously discarded. New
+  `flatten_toc()` turns that nested structure into a flat `(depth, id,
+  name)` list for the overlay. `Ctrl+T` opens a `Gtk.Popover`/`Gtk.ListBox`
+  built from that list; clicking an entry calls `evaluate_javascript(
+  "document.getElementById(...).scrollIntoView()")` with the heading id
+  passed through `json.dumps()` rather than f-string interpolation (the one
+  value here that comes from document content). `Ctrl+P` opens
+  `WebKit.PrintOperation.run_dialog()` (the interactive OS print dialog); a
+  header "Export PDF…" button uses `Gtk.FileDialog.save()` for a
+  destination, then `WebKit.PrintOperation.print_()` with
+  `Gtk.PrintSettings` keys `output-uri`/`output-file-format=pdf` set via the
+  generic `.set()` — confirmed via introspection there's no
+  `set_export_filename` on `WebKitPrintOperation` (that's a
+  `GtkPrintOperation` method, the plan's own warning turned out accurate).
+- `tests/test_zeile.py`: updated for the new tuple return, plus 2 new tests
+  for `flatten_toc()` (flat and nested cases) and a toc-tokens assertion in
+  the end-to-end `render()` test. 22/22 passing.
+- `README.md`: new shortcuts, PDF export mention.
 
 ## Files Changed (Phase 5)
 
@@ -177,7 +201,12 @@ Per the plan's phasing (each step its own commit):
    SearchBar/SearchEntry signals) and the app was smoke-tested against a
    real two-page link setup with no crash, but nobody has actually clicked
    the link or typed into the search box and watched it work.
-6. TOC overlay (Ctrl+T), Print/PDF export
+6. ~~TOC overlay (Ctrl+T), Print/PDF export~~ — done. Same caveat as Phase
+   5: every individual API call (Popover/ListBox/MenuButton,
+   PrintOperation, FileDialog, PrintSettings key-based set/get) was verified
+   via introspection and the app launches without a traceback, but nobody
+   has clicked through the TOC, printed, or exported a real PDF and checked
+   the output.
 7. Theme: full Pygments token coverage, VSCode Dark+/Light+ heading palette,
    proper mermaid diagram theming (beyond the minimal Phase 2 CSS)
 8. i18n (gettext DE/EN), version-visible About dialog, CHANGELOG/PRIVACY/

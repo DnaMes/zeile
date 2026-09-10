@@ -53,6 +53,11 @@ zeile --debug README.md            # enable WebKit developer tools
 | `Ctrl+0` | reset zoom |
 | `Ctrl+F` | find in page |
 | `Alt+Left` / `Alt+Right` | back / forward through visited local links |
+| `Ctrl+T` | table of contents overlay (click a heading to jump to it) |
+| `Ctrl+P` | print |
+
+The header bar also has a PDF export button (save-location picker, then
+straight to a PDF file — no print dialog in between).
 
 The file is watched, so edits in another editor re-render automatically
 (debounced by 120 ms, because editors write in bursts). Clicking a link to

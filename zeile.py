@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import html
+import json
 import os
 import re
 import sys
@@ -129,10 +130,13 @@ def read_asset(name: str) -> str:
     return (Path(__file__).resolve().parent / "assets" / name).read_text(encoding="utf-8")
 
 
-def render_body(text: str, *, enable_mermaid: bool, dark: bool) -> str:
+def render_body(text: str, *, enable_mermaid: bool, dark: bool) -> tuple[str, list[dict]]:
     """Convert markdown text to sanitized HTML body content.
 
     Pure function -- no file I/O, no GTK -- so it's unit-testable directly.
+    Returns (body, toc_tokens): the `toc` extension already computes a
+    heading tree for anchor generation, so the TOC overlay reuses it instead
+    of re-deriving it from the rendered HTML.
     """
     text = _strip_frontmatter(text)
     mermaid_ext = MermaidExtension(enable_mermaid=enable_mermaid, dark=dark)
@@ -142,7 +146,8 @@ def render_body(text: str, *, enable_mermaid: bool, dark: bool) -> str:
     )
     body = md.convert(text)
     body = sanitize_html(body)
-    return mermaid_ext.resolve(body)
+    body = mermaid_ext.resolve(body)
+    return body, md.toc_tokens
 
 
 def build_document(body: str, title: str) -> str:
@@ -157,16 +162,26 @@ def build_document(body: str, title: str) -> str:
     )
 
 
-def render(path: Path, *, enable_mermaid: bool, dark: bool) -> str:
-    """Read `path`, render and sanitize its markdown, return a full HTML doc."""
+def render(path: Path, *, enable_mermaid: bool, dark: bool) -> tuple[str, list[dict]]:
+    """Read `path`, render and sanitize its markdown, return (html_doc, toc_tokens)."""
     try:
         text = path.read_text(encoding="utf-8")
     except OSError as exc:
         body = f"<h1>Cannot read file</h1><pre>{html.escape(str(exc))}</pre>"
+        toc_tokens: list[dict] = []
     else:
-        body = render_body(text, enable_mermaid=enable_mermaid, dark=dark)
+        body, toc_tokens = render_body(text, enable_mermaid=enable_mermaid, dark=dark)
 
-    return build_document(body, path.name)
+    return build_document(body, path.name), toc_tokens
+
+
+def flatten_toc(tokens: list[dict], depth: int = 0) -> list[tuple[int, str, str]]:
+    """Flatten the `toc` extension's nested heading tree to (depth, id, name)."""
+    flat: list[tuple[int, str, str]] = []
+    for token in tokens:
+        flat.append((depth, token["id"], token["name"]))
+        flat.extend(flatten_toc(token.get("children", []), depth + 1))
+    return flat
 
 
 _MARKDOWN_SUFFIXES = {".md", ".markdown"}
@@ -222,6 +237,27 @@ class Viewer(Gtk.ApplicationWindow):
         self.forward_button.connect("clicked", lambda _b: self.go_forward())
         self._update_nav_sensitivity()
 
+        self._toc_flat: list[tuple[int, str, str]] = []
+        self.toc_list = Gtk.ListBox()
+        self.toc_list.connect("row-activated", self._on_toc_row_activated)
+        toc_scroller = Gtk.ScrolledWindow()
+        toc_scroller.set_min_content_height(300)
+        toc_scroller.set_min_content_width(240)
+        toc_scroller.set_child(self.toc_list)
+        self.toc_popover = Gtk.Popover()
+        self.toc_popover.set_child(toc_scroller)
+        self.toc_popover.connect("show", self._populate_toc)
+        self.toc_button = Gtk.MenuButton(icon_name="view-list-symbolic")
+        self.toc_button.set_tooltip_text("Table of contents (Ctrl+T)")
+        self.toc_button.set_popover(self.toc_popover)
+
+        export_button = Gtk.Button(icon_name="document-save-symbolic")
+        export_button.set_tooltip_text("Export PDF…")
+        export_button.connect("clicked", lambda _b: self._export_pdf())
+        print_button = Gtk.Button(icon_name="document-print-symbolic")
+        print_button.set_tooltip_text("Print (Ctrl+P)")
+        print_button.connect("clicked", lambda _b: self._print_dialog())
+
         self._title_label = Gtk.Label(label=self.display_name)
         header = Gtk.HeaderBar()
         header.set_title_widget(self._title_label)
@@ -231,6 +267,9 @@ class Viewer(Gtk.ApplicationWindow):
         reload_button.set_tooltip_text("Reload (Ctrl+R)")
         reload_button.connect("clicked", lambda _b: self.reload())
         header.pack_start(reload_button)
+        header.pack_start(self.toc_button)
+        header.pack_end(export_button)
+        header.pack_end(print_button)
         self.set_titlebar(header)
 
         self.search_entry = Gtk.SearchEntry()
@@ -348,6 +387,63 @@ class Viewer(Gtk.ApplicationWindow):
             self.find_controller.search_finish()
         return True
 
+    def _populate_toc(self, *_args) -> bool:
+        child = self.toc_list.get_first_child()
+        while child is not None:
+            following = child.get_next_sibling()
+            self.toc_list.remove(child)
+            child = following
+        for depth, _heading_id, name in self._toc_flat:
+            label = Gtk.Label(label=name, xalign=0)
+            label.set_margin_start(12 + depth * 16)
+            label.set_margin_top(4)
+            label.set_margin_bottom(4)
+            self.toc_list.append(label)
+        return True
+
+    def _on_toc_row_activated(self, _listbox: Gtk.ListBox, row: Gtk.ListBoxRow) -> None:
+        index = row.get_index()
+        if 0 <= index < len(self._toc_flat):
+            _depth, heading_id, _name = self._toc_flat[index]
+            self.webview.evaluate_javascript(
+                f"document.getElementById({json.dumps(heading_id)}).scrollIntoView();",
+                -1,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
+        self.toc_popover.popdown()
+
+    def _print_dialog(self) -> bool:
+        """Interactive Ctrl+P: the OS print dialog, printer/copies/etc."""
+        op = WebKit.PrintOperation.new(self.webview)
+        op.run_dialog(self)
+        return True
+
+    def _export_pdf(self) -> None:
+        """Non-interactive PDF export: a save-location picker, then straight
+        to a PDF file -- no OS print dialog in between."""
+        dialog = Gtk.FileDialog()
+        dialog.set_title("Export PDF")
+        dialog.set_initial_name(self.path.stem + ".pdf")
+        dialog.save(self, None, self._on_export_pdf_chosen)
+
+    def _on_export_pdf_chosen(
+        self, dialog: Gtk.FileDialog, result: Gio.AsyncResult
+    ) -> None:
+        try:
+            gfile = dialog.save_finish(result)
+        except GLib.Error:
+            return  # user cancelled
+        settings = Gtk.PrintSettings()
+        settings.set("output-uri", gfile.get_uri())
+        settings.set("output-file-format", "pdf")
+        op = WebKit.PrintOperation.new(self.webview)
+        op.set_print_settings(settings)
+        op.print_()
+
     def _add_shortcuts(self) -> None:
         controller = Gtk.ShortcutController()
         controller.set_scope(Gtk.ShortcutScope.GLOBAL)
@@ -362,6 +458,8 @@ class Viewer(Gtk.ApplicationWindow):
             ("<Control>f", lambda *_: self._toggle_search()),
             ("<Alt>Left", lambda *_: self.go_back()),
             ("<Alt>Right", lambda *_: self.go_forward()),
+            ("<Control>t", lambda *_: self.toc_popover.popup()),
+            ("<Control>p", lambda *_: self._print_dialog()),
         ):
             controller.add_shortcut(
                 Gtk.Shortcut(
@@ -381,7 +479,10 @@ class Viewer(Gtk.ApplicationWindow):
         self.webview.evaluate_javascript(
             "window.__zeileScroll = window.scrollY;", -1, None, None, None, None, None
         )
-        html_doc = render(self.path, enable_mermaid=self.enable_mermaid, dark=self.dark)
+        html_doc, toc_tokens = render(
+            self.path, enable_mermaid=self.enable_mermaid, dark=self.dark
+        )
+        self._toc_flat = flatten_toc(toc_tokens)
         self.webview.load_html(html_doc, self.path.as_uri())
         return True
 

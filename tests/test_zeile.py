@@ -8,12 +8,12 @@ specifically so they're testable without a WebView or a display.
 
 from pathlib import Path
 
-from zeile import build_document, render, render_body, sanitize_html
+from zeile import build_document, flatten_toc, render, render_body, sanitize_html
 
 
 def test_frontmatter_stripped():
     doc = "---\ntitle: Test\ndate: 2026-01-01\n---\n\n# Hi\n"
-    out = render_body(doc, enable_mermaid=False, dark=False)
+    out, _toc = render_body(doc, enable_mermaid=False, dark=False)
     assert "title: Test" not in out
     assert "date: 2026-01-01" not in out
     assert '<h1 id="hi">Hi</h1>' in out
@@ -21,13 +21,13 @@ def test_frontmatter_stripped():
 
 def test_frontmatter_absent_is_a_no_op():
     doc = "# Hi\n\nNo frontmatter here.\n"
-    out = render_body(doc, enable_mermaid=False, dark=False)
+    out, _toc = render_body(doc, enable_mermaid=False, dark=False)
     assert '<h1 id="hi">Hi</h1>' in out
 
 
 def test_tasklist_renders_as_checkboxes():
     doc = "- [ ] todo\n- [x] done\n"
-    out = render_body(doc, enable_mermaid=False, dark=False)
+    out, _toc = render_body(doc, enable_mermaid=False, dark=False)
     assert "[ ] todo" not in out
     assert "[x] done" not in out
     assert out.count('type="checkbox"') == 2
@@ -35,15 +35,35 @@ def test_tasklist_renders_as_checkboxes():
 
 
 def test_heading_gets_toc_anchor_id():
-    out = render_body("# Section One\n", enable_mermaid=False, dark=False)
+    out, _toc = render_body("# Section One\n", enable_mermaid=False, dark=False)
     assert 'id="section-one"' in out
 
 
 def test_codehilite_preserves_pygments_class():
     doc = "```python\ndef f():\n    return 1\n```\n"
-    out = render_body(doc, enable_mermaid=False, dark=False)
+    out, _toc = render_body(doc, enable_mermaid=False, dark=False)
     assert 'class="codehilite"' in out
     assert 'class="k"' in out  # the `def` keyword token
+
+
+def test_render_body_returns_toc_tokens():
+    doc = "# Top\n\n## Child\n\nText.\n"
+    _out, toc = render_body(doc, enable_mermaid=False, dark=False)
+    flat = flatten_toc(toc)
+    assert flat == [(0, "top", "Top"), (1, "child", "Child")]
+
+
+def test_flatten_toc_nested():
+    tokens = [
+        {
+            "level": 1,
+            "id": "a",
+            "name": "A",
+            "children": [{"level": 2, "id": "b", "name": "B", "children": []}],
+        },
+        {"level": 1, "id": "c", "name": "C", "children": []},
+    ]
+    assert flatten_toc(tokens) == [(0, "a", "A"), (1, "b", "B"), (0, "c", "C")]
 
 
 def test_sanitizer_strips_script_tag():
@@ -86,14 +106,16 @@ def test_build_document_has_csp_and_title():
 def test_render_end_to_end(tmp_path: Path):
     md_file = tmp_path / "doc.md"
     md_file.write_text("# Hello\n\nSome *text*.\n", encoding="utf-8")
-    out = render(md_file, enable_mermaid=False, dark=False)
+    out, toc = render(md_file, enable_mermaid=False, dark=False)
     assert out.startswith("<!DOCTYPE html>")
     assert "Content-Security-Policy" in out
     assert '<h1 id="hello">Hello</h1>' in out
+    assert flatten_toc(toc) == [(0, "hello", "Hello")]
 
 
 def test_render_missing_file_shows_error_not_traceback(tmp_path: Path):
     missing = tmp_path / "does-not-exist.md"
-    out = render(missing, enable_mermaid=False, dark=False)
+    out, toc = render(missing, enable_mermaid=False, dark=False)
     assert "Cannot read file" in out
     assert out.startswith("<!DOCTYPE html>")
+    assert toc == []
