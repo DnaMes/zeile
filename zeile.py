@@ -19,6 +19,7 @@ plan for the full threat model and what was measured, not assumed.
 from __future__ import annotations
 
 import argparse
+import gettext
 import html
 import json
 import os
@@ -38,6 +39,15 @@ from gi.repository import Gio, GLib, Gtk, WebKit  # noqa: E402
 from markdown_ext import MermaidExtension  # noqa: E402
 
 APP_ID = "com.erdlabs.zeile"
+__version__ = "0.1.0"
+
+# fallback=True: on a system with no compiled translation for the current
+# locale (or none at all, as on this dev machine's default LANG), _() just
+# returns the original English string instead of raising -- translation is
+# additive, never a hard requirement to run.
+_ = gettext.translation(
+    "zeile", localedir=Path(__file__).resolve().parent / "locale", fallback=True
+).gettext
 
 EXTENSIONS = [
     "extra",  # tables, fenced_code, footnotes, def_list, abbr, attr_list
@@ -167,7 +177,7 @@ def render(path: Path, *, enable_mermaid: bool, dark: bool) -> tuple[str, list[d
     try:
         text = path.read_text(encoding="utf-8")
     except OSError as exc:
-        body = f"<h1>Cannot read file</h1><pre>{html.escape(str(exc))}</pre>"
+        body = f"<h1>{_('Cannot read file')}</h1><pre>{html.escape(str(exc))}</pre>"
         toc_tokens: list[dict] = []
     else:
         body, toc_tokens = render_body(text, enable_mermaid=enable_mermaid, dark=dark)
@@ -230,10 +240,10 @@ class Viewer(Gtk.ApplicationWindow):
         self.find_controller = self.webview.get_find_controller()
 
         self.back_button = Gtk.Button(icon_name="go-previous-symbolic")
-        self.back_button.set_tooltip_text("Back (Alt+Left)")
+        self.back_button.set_tooltip_text(_("Back (Alt+Left)"))
         self.back_button.connect("clicked", lambda _b: self.go_back())
         self.forward_button = Gtk.Button(icon_name="go-next-symbolic")
-        self.forward_button.set_tooltip_text("Forward (Alt+Right)")
+        self.forward_button.set_tooltip_text(_("Forward (Alt+Right)"))
         self.forward_button.connect("clicked", lambda _b: self.go_forward())
         self._update_nav_sensitivity()
 
@@ -248,15 +258,18 @@ class Viewer(Gtk.ApplicationWindow):
         self.toc_popover.set_child(toc_scroller)
         self.toc_popover.connect("show", self._populate_toc)
         self.toc_button = Gtk.MenuButton(icon_name="view-list-symbolic")
-        self.toc_button.set_tooltip_text("Table of contents (Ctrl+T)")
+        self.toc_button.set_tooltip_text(_("Table of contents (Ctrl+T)"))
         self.toc_button.set_popover(self.toc_popover)
 
         export_button = Gtk.Button(icon_name="document-save-symbolic")
-        export_button.set_tooltip_text("Export PDF…")
+        export_button.set_tooltip_text(_("Export PDF…"))
         export_button.connect("clicked", lambda _b: self._export_pdf())
         print_button = Gtk.Button(icon_name="document-print-symbolic")
-        print_button.set_tooltip_text("Print (Ctrl+P)")
+        print_button.set_tooltip_text(_("Print (Ctrl+P)"))
         print_button.connect("clicked", lambda _b: self._print_dialog())
+        about_button = Gtk.Button(icon_name="help-about-symbolic")
+        about_button.set_tooltip_text(_("About zeile"))
+        about_button.connect("clicked", lambda _b: self._show_about())
 
         self._title_label = Gtk.Label(label=self.display_name)
         header = Gtk.HeaderBar()
@@ -264,10 +277,11 @@ class Viewer(Gtk.ApplicationWindow):
         header.pack_start(self.back_button)
         header.pack_start(self.forward_button)
         reload_button = Gtk.Button(icon_name="view-refresh-symbolic")
-        reload_button.set_tooltip_text("Reload (Ctrl+R)")
+        reload_button.set_tooltip_text(_("Reload (Ctrl+R)"))
         reload_button.connect("clicked", lambda _b: self.reload())
         header.pack_start(reload_button)
         header.pack_start(self.toc_button)
+        header.pack_end(about_button)
         header.pack_end(export_button)
         header.pack_end(print_button)
         self.set_titlebar(header)
@@ -416,6 +430,18 @@ class Viewer(Gtk.ApplicationWindow):
             )
         self.toc_popover.popdown()
 
+    def _show_about(self) -> None:
+        about = Gtk.AboutDialog()
+        about.set_transient_for(self)
+        about.set_modal(True)
+        about.set_program_name("zeile")
+        about.set_version(__version__)
+        about.set_comments(_("A small, fast, read-only markdown viewer."))
+        about.set_license_type(Gtk.License.GPL_3_0)
+        about.set_website("https://erdlabs.com")
+        about.set_website_label("erdlabs.com")
+        about.present()
+
     def _print_dialog(self) -> bool:
         """Interactive Ctrl+P: the OS print dialog, printer/copies/etc."""
         op = WebKit.PrintOperation.new(self.webview)
@@ -426,7 +452,7 @@ class Viewer(Gtk.ApplicationWindow):
         """Non-interactive PDF export: a save-location picker, then straight
         to a PDF file -- no OS print dialog in between."""
         dialog = Gtk.FileDialog()
-        dialog.set_title("Export PDF")
+        dialog.set_title(_("Export PDF"))
         dialog.set_initial_name(self.path.stem + ".pdf")
         dialog.save(self, None, self._on_export_pdf_chosen)
 

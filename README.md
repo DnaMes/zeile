@@ -133,6 +133,12 @@ API, not assumed:
   opens.
 - **Developer tools are off by default**, behind `--debug`/`ZEILE_DEBUG`.
 
+## Internationalization
+
+The UI is available in English and German, following your system locale
+(`LANGUAGE`/`LANG`). Translations live in `po/de.po`; `install.sh` compiles
+them to `locale/<lang>/LC_MESSAGES/zeile.mo` if `gettext` is available.
+
 ## Files
 
 ```
@@ -141,7 +147,8 @@ markdown_ext.py          mermaid fence extraction (python-markdown preprocessor)
 mermaid_render.py        mmdc subprocess wrapper, content-hash cache
 assets/style.css         rendering stylesheet
 assets/zeile.svg         icon
-install.sh               installer
+po/de.po                 German translation
+install.sh               installer (also: --uninstall)
 ```
 
 ## Build
@@ -152,5 +159,8 @@ interpreter the launcher pins.
 ## Licence
 
 GPL-3.0-or-later. Copyright (c) 2026 erdlabs.
+
+See also: [CHANGELOG.md](CHANGELOG.md), [PRIVACY.md](PRIVACY.md),
+[RELEASE.md](RELEASE.md), [ASSETS.md](ASSETS.md).
 
 Part of [erdlabs](https://erdlabs.com).

@@ -10,14 +10,79 @@ Executing the plan at `~/.claude/plans/hi-hier-wa-rein-humming-kahan.md`
 (security hardening, Mermaid pre-render rewrite, feature fixes, i18n,
 release docs — phased so `main` stays buildable after every commit).
 
-Running fully autonomously per operator instruction (2026-09-10): finish all
-remaining phases, commit each, no per-phase check-in. Claude Max hit its 5h
-usage limit mid-session — if this file says a phase is unfinished and the
-session has gone idle, that's why; git history is the source of truth for
-what actually landed.
+Ran fully autonomously per operator instruction (2026-09-10): finish all
+remaining phases, commit each, no per-phase check-in, shut the machine down
+when done. Git history is the source of truth for what actually landed.
 
-**Phases 1-7 done.** Phase 8 (i18n, release docs, install.sh polish) is next
-— the last one.
+**All 8 phases done.** The plan is fully implemented. What's NOT done —
+see "Not verified, next human session" at the bottom of this file — is
+everything that genuinely needed a person clicking through a GUI or
+installing a 300 MB opt-in dependency, neither of which this session could
+do for itself.
+
+## Files Changed (Phase 8 — the last one)
+
+- `zeile.py`: `gettext` wired up (`_ = gettext.translation("zeile",
+  localedir=.../locale, fallback=True).gettext` — `fallback=True` so a
+  missing translation is never a hard error, just English). Every
+  user-facing tooltip/dialog-title/error string wrapped in `_()`
+  (`argparse` help text deliberately left English — developer/CLI-facing,
+  matches the erdlabs convention that log/developer output stays English).
+  `__version__ = "0.1.0"` and a `Gtk.AboutDialog` (header "About zeile"
+  button) showing it, program name, licence, and a link to erdlabs.com.
+- `po/zeile.pot` (extracted via `xgettext`, 10 strings — matches what was
+  actually wrapped, verified by re-running `xgettext` after the code
+  change and diffing), `po/de.po` (translated by hand), compiled to
+  `locale/de/LC_MESSAGES/zeile.mo` via `msgfmt --check` (clean) and
+  committed — so `python3 zeile.py` works with German out of the box even
+  without running `install.sh` first. **Verified end-to-end, not just that
+  it compiles**: `LANG=de_DE.UTF-8 LANGUAGE=de python3 -c "import zeile;
+  print(zeile._('Reload (Ctrl+R)'))"` printed `Neu laden (Strg+R)`; the
+  default locale on this machine printed the English original unchanged.
+- `install.sh`: dependency check for `python-gobject`/`webkitgtk-6.0`/
+  `python-markdown`/`python-nh3`/`python-pymdown-extensions`, each
+  failure naming the exact `pacman` package to install (verified both the
+  pass-silently path with all deps present, and the fail-with-clear-message
+  path with a synthetic missing command); `--uninstall` (removes exactly
+  the 3 files this script writes, leaves the mime default alone rather than
+  guessing what to restore it to); the generated launcher now checks its
+  own target file exists before exec'ing it, with a message naming the
+  path, instead of a bare Python traceback if the repo ever moves; compiles
+  `po/*.po` to `locale/` on install if `msgfmt` is present. **Verified with
+  a real round trip**: install -> launcher runs the app with no crash ->
+  uninstall removes exactly the 3 files -> reinstall works again.
+  `shellcheck install.sh` clean.
+- `ASSETS.md` (new), `CHANGELOG.md` (new, reconstructed from `git log`),
+  `PRIVACY.md` (new — the "no network call in our own code" claim is a
+  literal, currently-true `grep` command, re-run at write time to confirm),
+  `RELEASE.md` (new — an honest checklist, most boxes checked, several
+  explicitly left open with the reason).
+- `README.md`: Internationalization section, links to the four new docs,
+  `po/de.po`/`--uninstall` in the Files table.
+
+## Not verified, next human session
+
+Everything below needs a person, a display, or a large opt-in dependency —
+none of which this autonomous pass had:
+
+1. **Install `mmdc`** (`npm install -g @mermaid-js/mermaid-cli`, ~300 MB)
+   and render a real `--enable-mermaid` diagram. Confirm it displays
+   correctly, and that the `htmlLabels: false` config actually suppresses
+   `<foreignObject>` (sourced from two independent external reports, never
+   directly observed).
+2. **Click through the GUI**: Ctrl+F search, the TOC overlay, a real local
+   `.md`-to-`.md` link click (does it actually navigate and does
+   Alt+Left actually go back?), Ctrl+P, the PDF export button, the About
+   dialog, `LANG=de_DE.UTF-8 zeile ...` and actually read the German UI.
+   Every one of these was verified at the API-call level (introspection)
+   and the app launches without a traceback against a crafted test
+   document, but nobody has watched any of it happen on screen.
+3. **Look at a rendered document.** The heading colour accent (h3/h4) and
+   the mermaid container styling were reasoned about, never seen.
+4. **Double-click a `.md` file in an actual file manager** after
+   `./install.sh` — every test this session ran launched via CLI.
+5. Tag `v0.1.0` once the above close — see `RELEASE.md` for the full
+   checklist.
 
 ## Files Changed (Phase 7)
 
@@ -232,8 +297,7 @@ Per the plan's phasing (each step its own commit):
    the output.
 7. ~~Theme: Pygments coverage, headings, footnote/toc/mermaid CSS~~ — done,
    see above
-8. i18n (gettext DE/EN), version-visible About dialog, CHANGELOG/PRIVACY/
-   RELEASE/ASSETS.md, `install.sh` uninstall + dependency check
+8. ~~i18n, About dialog, release docs, install.sh polish~~ — done, see above
 
 Full detail, rationale, and verification plan for every phase: the plan file
-above.
+above. See "Not verified, next human session" above for what to check first.

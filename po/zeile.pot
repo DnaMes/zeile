@@ -1,0 +1,58 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR erdlabs
+# This file is distributed under the same license as the zeile package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: zeile 0.1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-10 19:38+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: zeile.py:180
+msgid "Cannot read file"
+msgstr ""
+
+#: zeile.py:243
+msgid "Back (Alt+Left)"
+msgstr ""
+
+#: zeile.py:246
+msgid "Forward (Alt+Right)"
+msgstr ""
+
+#: zeile.py:261
+msgid "Table of contents (Ctrl+T)"
+msgstr ""
+
+#: zeile.py:265
+msgid "Export PDF…"
+msgstr ""
+
+#: zeile.py:268
+msgid "Print (Ctrl+P)"
+msgstr ""
+
+#: zeile.py:271
+msgid "About zeile"
+msgstr ""
+
+#: zeile.py:280
+msgid "Reload (Ctrl+R)"
+msgstr ""
+
+#: zeile.py:439
+msgid "A small, fast, read-only markdown viewer."
+msgstr ""
+
+#: zeile.py:455
+msgid "Export PDF"
+msgstr ""
