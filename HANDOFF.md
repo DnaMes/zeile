@@ -16,8 +16,31 @@ usage limit mid-session — if this file says a phase is unfinished and the
 session has gone idle, that's why; git history is the source of truth for
 what actually landed.
 
-**Phases 1-6 done.** Phase 7 (theme: full Pygments coverage, VSCode-style
-heading palette) is next.
+**Phases 1-7 done.** Phase 8 (i18n, release docs, install.sh polish) is next
+— the last one.
+
+## Files Changed (Phase 7)
+
+- `assets/style.css`: full Pygments token coverage. Verified by actually
+  running Pygments' `HtmlFormatter` over python/bash/json/yaml/html/diff
+  samples and diffing the emitted `class="..."` values against what had a
+  CSS rule — `ch`/`fm`/`gu`/`kc`/`na`/`ne`/`nt`/`nv`/`sa`/`si` were
+  confirmed missing (matches the plan's own count of 13 unstyled classes)
+  and now have rules in both the light and dark blocks; a script re-run
+  after the fix confirms zero missing classes across those 6 languages
+  (`w`/Text.Whitespace deliberately left unstyled). Added `.footnote`
+  (previously unstyled despite the extension being active), `.toc` (for a
+  document that uses python-markdown's own `[TOC]` marker — separate from
+  the Ctrl+T overlay, which is a native GTK popover and doesn't touch this
+  CSS at all), an `h3`/`h4` colour accent (the user's own ask for a
+  document-reading theme, explicitly scoped apart from erdlabs brand
+  tokens per BRAND.md), and a proper container (background/padding) for
+  `.mermaid-diagram` beyond Phase 2's bare fallback.
+- **Not verified**: no real Mermaid SVG has been rendered through this CSS
+  (same caveat as every phase since 2 — `mmdc` isn't installed), and the
+  heading colour choice hasn't been looked at on screen, only reasoned
+  about — flag if it needs revisiting once someone actually looks at a
+  rendered document.
 
 ## Files Changed (Phase 6)
 
@@ -207,8 +230,8 @@ Per the plan's phasing (each step its own commit):
    via introspection and the app launches without a traceback, but nobody
    has clicked through the TOC, printed, or exported a real PDF and checked
    the output.
-7. Theme: full Pygments token coverage, VSCode Dark+/Light+ heading palette,
-   proper mermaid diagram theming (beyond the minimal Phase 2 CSS)
+7. ~~Theme: Pygments coverage, headings, footnote/toc/mermaid CSS~~ — done,
+   see above
 8. i18n (gettext DE/EN), version-visible About dialog, CHANGELOG/PRIVACY/
    RELEASE/ASSETS.md, `install.sh` uninstall + dependency check
 

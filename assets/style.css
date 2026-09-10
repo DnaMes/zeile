@@ -147,8 +147,17 @@ img {
   max-width: 100%;
 }
 
-/* Mermaid: minimal fallback styling. Full theming is a later pass -- this
-   just keeps the disabled/error states from looking broken. */
+/* Mermaid. Not verified against a real diagram (mmdc isn't installed --
+   opt-in, see README) -- this styles the container, not the SVG's own
+   internal colours, which come from mmdc's --theme flag. */
+.mermaid-diagram {
+  margin: 0 0 1em;
+  padding: 1em;
+  text-align: center;
+  background: var(--code-bg);
+  border-radius: 6px;
+}
+
 .mermaid-diagram svg {
   max-width: 100%;
   height: auto;
@@ -200,32 +209,93 @@ img {
   color: var(--danger);
 }
 
-/* Pygments (codehilite) — light */
-.codehilite .c, .codehilite .cm, .codehilite .c1, .codehilite .cs { color: #6a737d; font-style: italic; }
-.codehilite .k, .codehilite .kd, .codehilite .kn, .codehilite .kr { color: #cf222e; }
+/* Pygments (codehilite) — light. Class list verified by running real
+   Pygments output for python/bash/json/yaml/html/diff through
+   HtmlFormatter and diffing the emitted classes against what was styled
+   here -- ch/fm/gu/kc/na/ne/nt/nv/sa/si were confirmed missing and are
+   included below (previously: 13 unstyled classes, confirmed by the audit
+   that flagged this). `w` (Text.Whitespace) is deliberately left unstyled. */
+.codehilite .c, .codehilite .cm, .codehilite .c1, .codehilite .cs, .codehilite .ch { color: #6a737d; font-style: italic; }
+.codehilite .k, .codehilite .kd, .codehilite .kn, .codehilite .kr, .codehilite .kc { color: #cf222e; }
 .codehilite .kt { color: #953800; }
-.codehilite .s, .codehilite .s1, .codehilite .s2, .codehilite .sb, .codehilite .sd { color: #0a3069; }
-.codehilite .n, .codehilite .nx { color: var(--fg); }
-.codehilite .nf, .codehilite .nd { color: #8250df; }
-.codehilite .nc, .codehilite .nn { color: #953800; }
+.codehilite .s, .codehilite .s1, .codehilite .s2, .codehilite .sb, .codehilite .sd, .codehilite .sa { color: #0a3069; }
+.codehilite .si { color: #953800; }
+.codehilite .n, .codehilite .nx, .codehilite .nv { color: var(--fg); }
+.codehilite .nf, .codehilite .nd, .codehilite .fm { color: #8250df; }
+.codehilite .nc, .codehilite .nn, .codehilite .ne { color: #953800; }
 .codehilite .nb, .codehilite .bp { color: #0550ae; }
+.codehilite .na { color: #0550ae; }
+.codehilite .nt { color: #116329; }
 .codehilite .mi, .codehilite .mf, .codehilite .m { color: #0550ae; }
 .codehilite .o, .codehilite .ow { color: #cf222e; }
 .codehilite .p { color: var(--fg); }
 .codehilite .err { color: var(--danger); }
 .codehilite .gd { color: #82071e; background: #ffebe9; }
 .codehilite .gi { color: #116329; background: #dafbe1; }
+.codehilite .gu { color: #6639ba; }
 
 @media (prefers-color-scheme: dark) {
-  .codehilite .c, .codehilite .cm, .codehilite .c1, .codehilite .cs { color: #8b949e; }
-  .codehilite .k, .codehilite .kd, .codehilite .kn, .codehilite .kr { color: #ff7b72; }
+  .codehilite .c, .codehilite .cm, .codehilite .c1, .codehilite .cs, .codehilite .ch { color: #8b949e; }
+  .codehilite .k, .codehilite .kd, .codehilite .kn, .codehilite .kr, .codehilite .kc { color: #ff7b72; }
   .codehilite .kt { color: #ffa657; }
-  .codehilite .s, .codehilite .s1, .codehilite .s2, .codehilite .sb, .codehilite .sd { color: #a5d6ff; }
-  .codehilite .nf, .codehilite .nd { color: #d2a8ff; }
-  .codehilite .nc, .codehilite .nn { color: #ffa657; }
+  .codehilite .s, .codehilite .s1, .codehilite .s2, .codehilite .sb, .codehilite .sd, .codehilite .sa { color: #a5d6ff; }
+  .codehilite .si { color: #ffa657; }
+  .codehilite .nv { color: var(--fg); }
+  .codehilite .nf, .codehilite .nd, .codehilite .fm { color: #d2a8ff; }
+  .codehilite .nc, .codehilite .nn, .codehilite .ne { color: #ffa657; }
   .codehilite .nb, .codehilite .bp { color: #79c0ff; }
+  .codehilite .na { color: #79c0ff; }
+  .codehilite .nt { color: #7ee787; }
   .codehilite .mi, .codehilite .mf, .codehilite .m { color: #79c0ff; }
   .codehilite .o, .codehilite .ow { color: #ff7b72; }
   .codehilite .gd { color: #ffdcd7; background: #67060c; }
   .codehilite .gi { color: #aff5b4; background: #033a16; }
+  .codehilite .gu { color: #d2a8ff; }
+}
+
+/* Heading colour ramp -- the user's own ask for a document reading theme
+   distinct from erdlabs' brand chrome (BRAND.md reserves palette.css for
+   header bar / buttons / active states; this is scoped to markdown content
+   only, same way a code editor's syntax theme is independent of its own UI
+   chrome). h1/h2 keep the bordered treatment above; h3+ get a light accent
+   so a document with several heading levels reads as a hierarchy at a
+   glance rather than six identical black lines. */
+h3 { color: var(--link); }
+h4 { color: var(--note); }
+
+/* Footnotes (python-markdown's `extra` bundle) */
+.footnote {
+  margin-top: 2em;
+  padding-top: 1em;
+  border-top: 1px solid var(--border);
+  font-size: 0.875em;
+  color: var(--muted);
+}
+
+.footnote li {
+  margin-bottom: 0.4em;
+}
+
+.footnote-ref, .footnote-backref {
+  text-decoration: none;
+}
+
+/* Inline [TOC] marker, if a document uses one (the Ctrl+T overlay is a
+   native GTK popover and doesn't use this -- this only styles a TOC a
+   document explicitly asks python-markdown to render into the page). */
+.toc {
+  padding: 0.8em 1em;
+  margin: 0 0 1em;
+  background: var(--code-bg);
+  border-radius: 6px;
+}
+
+.toc ul {
+  padding-left: 1.2em;
+  margin: 0;
+}
+
+.toc > ul {
+  padding-left: 0;
+  list-style: none;
 }
