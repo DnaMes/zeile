@@ -51,9 +51,14 @@ zeile --debug README.md            # enable WebKit developer tools
 | `Ctrl+W` / `Ctrl+Q` | close |
 | `Ctrl++` / `Ctrl+-` | zoom |
 | `Ctrl+0` | reset zoom |
+| `Ctrl+F` | find in page |
+| `Alt+Left` / `Alt+Right` | back / forward through visited local links |
 
 The file is watched, so edits in another editor re-render automatically
-(debounced by 120 ms, because editors write in bursts).
+(debounced by 120 ms, because editors write in bursts). Clicking a link to
+another local `.md` file navigates to it in the same window, with back/
+forward history — the target file is watched instead, and the original stays
+one `Alt+Left` away.
 
 ## Features
 

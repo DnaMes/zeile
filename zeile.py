@@ -169,6 +169,9 @@ def render(path: Path, *, enable_mermaid: bool, dark: bool) -> str:
     return build_document(body, path.name)
 
 
+_MARKDOWN_SUFFIXES = {".md", ".markdown"}
+
+
 class Viewer(Gtk.ApplicationWindow):
     def __init__(
         self, app: Gtk.Application, path: Path, *, enable_mermaid: bool, debug: bool
@@ -183,6 +186,8 @@ class Viewer(Gtk.ApplicationWindow):
         self.enable_mermaid = enable_mermaid
         self.monitor: Gio.FileMonitor | None = None
         self._reload_source: int | None = None
+        self._back_stack: list[Path] = []
+        self._forward_stack: list[Path] = []
 
         self.dark = Gtk.Settings.get_default().get_property(
             "gtk-application-prefer-dark-theme"
@@ -207,18 +212,48 @@ class Viewer(Gtk.ApplicationWindow):
         settings.set_enable_html5_database(False)
         settings.set_enable_developer_extras(debug)
         self.webview.connect("decide-policy", self._on_decide_policy)
+        self.find_controller = self.webview.get_find_controller()
 
+        self.back_button = Gtk.Button(icon_name="go-previous-symbolic")
+        self.back_button.set_tooltip_text("Back (Alt+Left)")
+        self.back_button.connect("clicked", lambda _b: self.go_back())
+        self.forward_button = Gtk.Button(icon_name="go-next-symbolic")
+        self.forward_button.set_tooltip_text("Forward (Alt+Right)")
+        self.forward_button.connect("clicked", lambda _b: self.go_forward())
+        self._update_nav_sensitivity()
+
+        self._title_label = Gtk.Label(label=self.display_name)
         header = Gtk.HeaderBar()
-        header.set_title_widget(Gtk.Label(label=self.display_name))
+        header.set_title_widget(self._title_label)
+        header.pack_start(self.back_button)
+        header.pack_start(self.forward_button)
         reload_button = Gtk.Button(icon_name="view-refresh-symbolic")
         reload_button.set_tooltip_text("Reload (Ctrl+R)")
         reload_button.connect("clicked", lambda _b: self.reload())
         header.pack_start(reload_button)
         self.set_titlebar(header)
 
+        self.search_entry = Gtk.SearchEntry()
+        self.search_entry.connect("search-changed", self._on_search_changed)
+        self.search_entry.connect(
+            "next-match", lambda *_: self.find_controller.search_next()
+        )
+        self.search_entry.connect(
+            "previous-match", lambda *_: self.find_controller.search_previous()
+        )
+        self.search_entry.connect("stop-search", lambda *_: self._close_search())
+        self.search_bar = Gtk.SearchBar()
+        self.search_bar.set_child(self.search_entry)
+        self.search_bar.connect_entry(self.search_entry)
+
         scroller = Gtk.ScrolledWindow()
         scroller.set_child(self.webview)
-        self.set_child(scroller)
+
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        box.append(self.search_bar)
+        box.append(scroller)
+        box.set_vexpand(True)
+        self.set_child(box)
 
         self._add_shortcuts()
         self.reload()
@@ -232,11 +267,15 @@ class Viewer(Gtk.ApplicationWindow):
     ) -> bool:
         """Only allow file:// navigation under the open document's directory.
 
-        Everything else -- http(s), any other scheme, or a file:// path
-        outside that tree -- is handed to the system's default opener
-        instead of being loaded in this WebView. Combined with the ephemeral
-        NetworkSession above, this is what actually makes "no network
-        access" true rather than aspirational.
+        A local .md/.markdown link re-enters our own renderer via
+        navigate_to() instead of letting WebKit load it directly (which
+        would dump raw markdown source with no way back -- confirmed broken
+        before this). Any other local file:// link (an image, say) still
+        loads in the WebView directly. Everything else -- http(s), any other
+        scheme, or a file:// path outside the document's directory tree --
+        is handed to the system's default opener. Combined with the
+        ephemeral NetworkSession above, this is what actually makes "no
+        network access" true rather than aspirational.
         """
         if decision_type != WebKit.PolicyDecisionType.NAVIGATION_ACTION:
             decision.use()
@@ -245,16 +284,68 @@ class Viewer(Gtk.ApplicationWindow):
         uri = decision.get_navigation_action().get_request().get_uri()
         gfile = Gio.File.new_for_uri(uri)
         local_path = gfile.get_path()
-        if (
-            gfile.get_uri_scheme() == "file"
-            and local_path is not None
-            and Path(local_path).resolve().is_relative_to(self.path.parent)
-        ):
-            decision.use()
-            return True
+        if gfile.get_uri_scheme() == "file" and local_path is not None:
+            target = Path(local_path).resolve()
+            if target.is_relative_to(self.path.parent):
+                if target != self.path and target.suffix.lower() in _MARKDOWN_SUFFIXES:
+                    decision.ignore()
+                    self.navigate_to(target)
+                    return True
+                decision.use()
+                return True
 
         decision.ignore()
         Gio.AppInfo.launch_default_for_uri(uri)
+        return True
+
+    def navigate_to(self, path: Path, *, record_history: bool = True) -> None:
+        """Switch the currently displayed document, without opening a new window."""
+        if record_history:
+            self._back_stack.append(self.path)
+            self._forward_stack.clear()
+        self.path = path.resolve()
+        self.display_name = self.path.name
+        self._title_label.set_label(self.display_name)
+        self.set_title(self.display_name)
+        self._update_nav_sensitivity()
+        self._watch()
+        self.reload()
+
+    def go_back(self) -> bool:
+        if self._back_stack:
+            self._forward_stack.append(self.path)
+            self.navigate_to(self._back_stack.pop(), record_history=False)
+        return True
+
+    def go_forward(self) -> bool:
+        if self._forward_stack:
+            self._back_stack.append(self.path)
+            self.navigate_to(self._forward_stack.pop(), record_history=False)
+        return True
+
+    def _update_nav_sensitivity(self) -> None:
+        self.back_button.set_sensitive(bool(self._back_stack))
+        self.forward_button.set_sensitive(bool(self._forward_stack))
+
+    def _on_search_changed(self, entry: Gtk.SearchEntry) -> None:
+        text = entry.get_text()
+        if not text:
+            self.find_controller.search_finish()
+            return
+        options = WebKit.FindOptions.CASE_INSENSITIVE | WebKit.FindOptions.WRAP_AROUND
+        self.find_controller.search(text, options, 1000)
+
+    def _close_search(self) -> None:
+        self.find_controller.search_finish()
+        self.search_bar.set_search_mode(False)
+
+    def _toggle_search(self) -> bool:
+        active = not self.search_bar.get_search_mode()
+        self.search_bar.set_search_mode(active)
+        if active:
+            self.search_entry.grab_focus()
+        else:
+            self.find_controller.search_finish()
         return True
 
     def _add_shortcuts(self) -> None:
@@ -268,6 +359,9 @@ class Viewer(Gtk.ApplicationWindow):
             ("<Control>equal", lambda *_: self._zoom(0.1)),
             ("<Control>minus", lambda *_: self._zoom(-0.1)),
             ("<Control>0", lambda *_: self.webview.set_zoom_level(1.0)),
+            ("<Control>f", lambda *_: self._toggle_search()),
+            ("<Alt>Left", lambda *_: self.go_back()),
+            ("<Alt>Right", lambda *_: self.go_forward()),
         ):
             controller.add_shortcut(
                 Gtk.Shortcut(
@@ -292,6 +386,14 @@ class Viewer(Gtk.ApplicationWindow):
         return True
 
     def _watch(self) -> None:
+        """(Re-)establish the file monitor for self.path.
+
+        Safe to call again after navigate_to() switches documents -- cancels
+        whatever monitor was watching the previous file first, so an edit to
+        a document we've since navigated away from doesn't trigger a reload.
+        """
+        if self.monitor is not None:
+            self.monitor.cancel()
         gfile = Gio.File.new_for_path(str(self.path))
         self.monitor = gfile.monitor_file(Gio.FileMonitorFlags.NONE, None)
         self.monitor.connect("changed", self._on_changed)

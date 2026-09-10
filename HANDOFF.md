@@ -16,7 +16,25 @@ usage limit mid-session — if this file says a phase is unfinished and the
 session has gone idle, that's why; git history is the source of truth for
 what actually landed.
 
-**Phases 1-4 done.** Phase 5 (Ctrl+F, local-link navigation + history) is next.
+**Phases 1-5 done.** Phase 6 (TOC overlay, Print/PDF export) is next.
+
+## Files Changed (Phase 5)
+
+- `zeile.py`: `Ctrl+F` find-in-page via `WebKit.FindController` + a
+  `Gtk.SearchBar`/`Gtk.SearchEntry` revealed above the document (Enter/
+  Shift+Enter or the entry's built-in next/previous-match signals step
+  through matches, Escape closes and clears). Local `.md`/`.markdown` link
+  navigation: `_on_decide_policy` now distinguishes a local markdown link
+  (re-enters the renderer via the new `navigate_to()`, pushing history)
+  from any other local file:// link (an image, say — still loads directly
+  in the WebView as before) from everything else (unchanged: handed to the
+  system's default opener). `navigate_to()`/`go_back()`/`go_forward()` with
+  `_back_stack`/`_forward_stack`, back/forward header buttons
+  (`go-previous-symbolic`/`go-next-symbolic`, sensitivity follows the
+  stacks) plus `Alt+Left`/`Alt+Right`. `_watch()` is now safely re-callable
+  (cancels the previous file's monitor first) so navigating away doesn't
+  leave a stale monitor still firing reloads for the old file.
+- `README.md`: new shortcuts, local-link navigation behaviour.
 
 ## Files Changed (Phase 4)
 
@@ -153,7 +171,12 @@ Per the plan's phasing (each step its own commit):
 2. ~~Security + Mermaid rewrite~~ — done, see above
 3. ~~Fix confirmed-broken renders: frontmatter leak, `pymdownx.tasklist`~~ — done
 4. ~~Split render()/add pytest~~ — done, 20/20 passing
-5. Ctrl+F find-in-page, local `.md` link navigation with back/forward history
+5. ~~Ctrl+F, local-link navigation + history~~ — done. Not interactively
+   verified (no mouse-driven GTK UI test tooling available this pass): API
+   calls were verified individually via introspection (FindController,
+   SearchBar/SearchEntry signals) and the app was smoke-tested against a
+   real two-page link setup with no crash, but nobody has actually clicked
+   the link or typed into the search box and watched it work.
 6. TOC overlay (Ctrl+T), Print/PDF export
 7. Theme: full Pygments token coverage, VSCode Dark+/Light+ heading palette,
    proper mermaid diagram theming (beyond the minimal Phase 2 CSS)
