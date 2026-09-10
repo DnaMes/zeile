@@ -77,6 +77,16 @@ none of which this autonomous pass had:
    Every one of these was verified at the API-call level (introspection)
    and the app launches without a traceback against a crafted test
    document, but nobody has watched any of it happen on screen.
+
+   **Check this specific one first**: `_on_decide_policy` calls
+   `self.navigate_to(target)` — which calls `self.reload()`, which calls
+   `self.webview.load_html()` — synchronously, from inside the
+   `decide-policy` signal handler, while WebKit is still resolving that
+   very policy decision. Re-entering `load_html()` mid-callback is a known
+   fragile pattern in WebKitGTK. If clicking a local `.md` link misbehaves
+   (doesn't navigate, freezes, or double-loads), defer the call with
+   `GLib.idle_add(lambda: self.navigate_to(target))` instead of calling it
+   directly, and see if that's the fix before looking anywhere else.
 3. **Look at a rendered document.** The heading colour accent (h3/h4) and
    the mermaid container styling were reasoned about, never seen.
 4. **Double-click a `.md` file in an actual file manager** after

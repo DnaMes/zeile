@@ -8,6 +8,14 @@ public.
 
 Current version: **0.1.0** (`pyproject.toml`). Never tagged, never released.
 
+**Version drift risk**: `pyproject.toml`'s `version` and `zeile.py`'s
+`__version__` (shown in the About dialog) are two hand-synced copies, not
+one source of truth — this bare-Python project has no build step to derive
+one from the other the way `docs/VERSIONING.md`'s `versionCode` derivation
+does for the Android apps in this label. Check both are still equal before
+tagging; a future bump script for this project should read one and write
+the other, not update them independently.
+
 ---
 
 ## Blockers

@@ -39,10 +39,20 @@ for the full detail on how this is enforced, not just intended.
 
 ## Data storage
 
-zeile keeps no configuration file, no cache, no history, and no cookies. Its
-document WebView has HTML5 local storage and the HTML5 database both
-disabled, so a `.md` file cannot plant an identifier that survives across
-opens. It writes nothing to `~/.config` or `~/.cache`.
+zeile keeps no configuration file, no history, and no cookies. Its document
+WebView has HTML5 local storage and the HTML5 database both disabled, so a
+`.md` file cannot plant an identifier that survives across opens. It writes
+nothing to `~/.config`.
+
+**One honest exception in `~/.cache`, checked rather than assumed:** the
+GPU driver (Mesa) writes compiled shader bytecode to
+`~/.cache/mesa_shader_cache/` while the document window renders — confirmed
+by touching a marker file, running zeile, and diffing `~/.cache` before and
+after. This is shared, content-free GPU driver cache written by any
+OpenGL/GTK application on the system, not something zeile writes
+deliberately or that contains anything from the document you opened. No
+`~/.cache/webkitgtk` or similar app-specific cache directory was created in
+the same check.
 
 If you use `--enable-mermaid`, it invokes `mmdc` (mermaid-cli) as a local
 subprocess to render a diagram to a temporary SVG file, deleted immediately
