@@ -14,10 +14,38 @@ Ran fully autonomously per operator instruction (2026-09-10): finish all
 remaining phases, commit each, no per-phase check-in, shut the machine down
 when done. Git history is the source of truth for what actually landed.
 
-**All 8 phases done.** The plan is fully implemented. What's NOT done —
-see "Not verified, next human session" at the bottom of this file — is
-everything that genuinely needed a person clicking through a GUI or
-installing a 300 MB opt-in dependency, neither of which this session could
+**All 8 phases done, plus one post-release bug found and fixed
+(2026-09-11): the operator opened a `.md` file and got a fully black
+window, no content.** This is exactly the failure mode the "Not verified"
+section below warned about — every phase-5-through-8 verification launched
+via CLI with a `timeout`+exit-code check, never an actual screenshot. First
+screenshot ever taken of this app (via `grim`) immediately showed the bug.
+
+**Root cause** (bisected by re-implementing pieces of `Viewer.__init__` in
+isolated throwaway scripts until one reproduced it): Phase 5 restructured
+the window's child from a bare `Gtk.ScrolledWindow` (which a
+`Gtk.ApplicationWindow` always allocates 100% of its own space to) into a
+`Gtk.Box` holding the new search bar plus that same `ScrolledWindow`. Only
+`box.set_vexpand(True)` was set — on the *Box*, which only affects how the
+Box itself is allocated space by the window, not how the Box then
+distributes that space to its own children. Without `vexpand`/`hexpand` on
+the `ScrolledWindow` itself, GTK4 gives it its natural (minimum) size
+inside the Box, leaving the rest of the window's area allocated to nothing
+— unpainted, rendering as black. Fixed with two lines
+(`scroller.set_vexpand(True)`; `scroller.set_hexpand(True)`), verified by
+reproducing the black screen in isolation, applying the exact same two
+lines, and confirming a real rendered document appears both in an isolated
+test and in the actual `zeile.py`.
+
+**Lesson, stated so it doesn't repeat**: "the process didn't crash" is not
+"it works" for a GUI. Every future phase that touches window layout gets a
+`grim` screenshot before being called done, not just a `timeout`+exit-code
+check.
+
+What's NOT done — see "Not verified, next human session" at the bottom of
+this file — is everything that genuinely needed a person clicking through a
+GUI or installing a 300 MB opt-in dependency, neither of which this session
+could
 do for itself.
 
 ## Files Changed (Phase 8 — the last one)
@@ -87,8 +115,14 @@ none of which this autonomous pass had:
    (doesn't navigate, freezes, or double-loads), defer the call with
    `GLib.idle_add(lambda: self.navigate_to(target))` instead of calling it
    directly, and see if that's the fix before looking anywhere else.
-3. **Look at a rendered document.** The heading colour accent (h3/h4) and
-   the mermaid container styling were reasoned about, never seen.
+3. **Look at a rendered document.** Partially done 2026-09-11 while fixing
+   the black-screen bug above: a real screenshot (`grim` — available on
+   this machine, Wayland/Hyprland) confirms basic markdown (headings, text,
+   blockquote) now renders correctly. Still unseen: the h3/h4 colour
+   accent, the mermaid container, tables, code blocks, task lists, and
+   anything needing mouse/keyboard interaction (`wtype` is available for
+   keyboard input if a future pass wants to script that; no mouse-click
+   simulation tool was found).
 4. **Double-click a `.md` file in an actual file manager** after
    `./install.sh` — every test this session ran launched via CLI.
 5. Tag `v0.1.0` once the above close — see `RELEASE.md` for the full

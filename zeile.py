@@ -301,11 +301,18 @@ class Viewer(Gtk.ApplicationWindow):
 
         scroller = Gtk.ScrolledWindow()
         scroller.set_child(self.webview)
+        # Without these, the ScrolledWindow collapses to its natural
+        # (minimum) size inside the Box below instead of filling it --
+        # vexpand on the Box alone only affects the Box's own allocation
+        # from its parent, not how the Box distributes space to its own
+        # children. Confirmed by reproducing a fully black WebView with
+        # this missing and fixing it by adding exactly these two lines.
+        scroller.set_vexpand(True)
+        scroller.set_hexpand(True)
 
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         box.append(self.search_bar)
         box.append(scroller)
-        box.set_vexpand(True)
         self.set_child(box)
 
         self._add_shortcuts()
