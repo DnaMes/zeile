@@ -471,6 +471,7 @@ class Viewer(Gtk.ApplicationWindow):
         self.monitor: Gio.FileMonitor | None = None
         self._reload_source: int | None = None
         self._pending_restore_scroll = False
+        self._scroll_to_restore = 0
         self._back_stack: list[Path] = []
         self._forward_stack: list[Path] = []
 
@@ -667,17 +668,22 @@ class Viewer(Gtk.ApplicationWindow):
         )
 
     def _apply_theme_and_font_attrs(self) -> None:
-        js = [
-            "const root = document.documentElement;",
+        # No `const`/`let` here: top-level lexical bindings persist across
+        # evaluate_javascript() calls on the same page, so a second call
+        # would die with "Identifier 'root' has already been declared" and
+        # silently do nothing (found by the headless theme-matrix harness:
+        # first switch worked, every later one was a no-op).
+        root = "document.documentElement"
+        js = (
             (
-                f"root.setAttribute('data-theme', {json.dumps(self.theme_id)});"
+                f"{root}.setAttribute('data-theme', {json.dumps(self.theme_id)});"
                 if self.theme_id != "auto"
-                else "root.removeAttribute('data-theme');"
-            ),
-            f"root.setAttribute('data-font-body', {json.dumps(self.body_font_id)});",
-            f"root.setAttribute('data-font-code', {json.dumps(self.code_font_id)});",
-        ]
-        self.webview.evaluate_javascript("\n".join(js), -1, None, None, None, None, None)
+                else f"{root}.removeAttribute('data-theme');"
+            )
+            + f"{root}.setAttribute('data-font-body', {json.dumps(self.body_font_id)});"
+            + f"{root}.setAttribute('data-font-code', {json.dumps(self.code_font_id)});"
+        )
+        self.webview.evaluate_javascript(js, -1, None, None, None, None, None)
 
     def _on_theme_dropdown_changed(
         self, theme_ids: list[str], dropdown: Gtk.DropDown, *_pspec
@@ -828,15 +834,13 @@ class Viewer(Gtk.ApplicationWindow):
             return
         if self._pending_restore_scroll:
             self._pending_restore_scroll = False
-            restore_script = (
-                "if (typeof window.__zeileScroll === 'number') "
-                "{ const maxY = Math.max(0, "
-                "document.documentElement.scrollHeight - window.innerHeight); "
-                "window.scrollTo(0, Math.min(window.__zeileScroll, maxY)); "
-                "delete window.__zeileScroll; }"
-            )
+            # Value embedded as a validated Python int -- no JS-side state,
+            # clamped to the new document height (it may have shrunk).
+            y = max(0, self._scroll_to_restore)
             self.webview.evaluate_javascript(
-                restore_script,
+                f"window.scrollTo(0, Math.min({y}, "
+                "Math.max(0, document.documentElement.scrollHeight "
+                "- window.innerHeight)));",
                 -1,
                 None,
                 None,
@@ -954,28 +958,44 @@ class Viewer(Gtk.ApplicationWindow):
         )
 
     def reload(self) -> bool:
-        """Re-render the file, preserving the current scroll position."""
+        """Re-render the file, preserving the current scroll position.
+
+        The offset is read back into Python BEFORE the new document is
+        loaded: a fresh document gets a fresh JS global object, so a value
+        stashed on `window` (the old `__zeileScroll` approach) is gone by
+        the time the restore runs -- and reading it asynchronously means
+        the actual load_html must wait for that callback, not race it.
+        """
+
+        def _got_scroll(src: WebKit.WebView, result: Gio.AsyncResult, _u) -> None:
+            try:
+                raw = src.evaluate_javascript_finish(result).to_string() or "0"
+                self._scroll_to_restore = int(float(raw))
+            except Exception:
+                self._scroll_to_restore = 0
+            # Re-read the desktop dark preference on every render: for the
+            # "Auto" theme it decides the Mermaid palette, and the system
+            # preference can flip mid-session. Explicit themes override it
+            # via is_theme_dark.
+            self.dark = Gtk.Settings.get_default().get_property(
+                "gtk-application-prefer-dark-theme"
+            )
+            html_doc, toc_tokens = render(
+                self.path,
+                enable_mermaid=self.enable_mermaid,
+                dark=self.dark,
+                theme_id=self.theme_id,
+                body_font_id=self.body_font_id,
+                code_font_id=self.code_font_id,
+            )
+            self._toc_flat = flatten_toc(toc_tokens)
+            self._pending_restore_scroll = True
+            self.webview.load_html(html_doc, self.path.as_uri())
+            self._sync_theme_with_gtk()
+
         self.webview.evaluate_javascript(
-            "window.__zeileScroll = window.scrollY;", -1, None, None, None, None, None
+            "window.scrollY | 0", -1, None, None, None, _got_scroll, None
         )
-        # Re-read the desktop dark preference on every render: for the "Auto"
-        # theme it decides the Mermaid palette, and the system preference can
-        # flip mid-session. Explicit themes override this via is_theme_dark.
-        self.dark = Gtk.Settings.get_default().get_property(
-            "gtk-application-prefer-dark-theme"
-        )
-        html_doc, toc_tokens = render(
-            self.path,
-            enable_mermaid=self.enable_mermaid,
-            dark=self.dark,
-            theme_id=self.theme_id,
-            body_font_id=self.body_font_id,
-            code_font_id=self.code_font_id,
-        )
-        self._toc_flat = flatten_toc(toc_tokens)
-        self._pending_restore_scroll = True
-        self.webview.load_html(html_doc, self.path.as_uri())
-        self._sync_theme_with_gtk()
         return True
 
     def _watch(self) -> None:

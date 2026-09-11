@@ -63,6 +63,45 @@ Still open from before (unchanged): real `mmdc` render check, human
 click-through of search/TOC/print/PDF, file-manager double-click test,
 `v0.1.0` tag.
 
+## Session 2026-09-11 (evening): focus-free testing + 2 real bugs
+
+Operator feedback: test windows stole desktop focus every run. Fix: run
+cage with `WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1` — a fully
+invisible nested compositor. Verified via `hyprctl activewindow` before/
+after: focus never moves. All WebKit-content assertions still work through
+`get_snapshot()`; this is now the standard harness for any GUI check.
+
+The headless theme/font/scroll matrix (17 themes × snapshot bg pixel +
+computed `.codehilite .k` colour, 11 font switches via computed
+`font-family`, one live file-edit scroll-restore cycle) caught two real
+bugs that every introspection-level test had missed:
+
+1. **Theme/font switching silently died after the first switch.**
+   `_apply_theme_and_font_attrs()` built its JS with
+   `const root = document.documentElement;` — top-level lexical bindings
+   PERSIST across `evaluate_javascript()` calls on the same page, so every
+   second-and-later call raised `SyntaxError: Identifier 'root' has
+already been declared` and (with no callback passed) silently did
+   nothing. Symptom in the matrix: computed `font-family` never changed
+   after the initial value. Fix: no `const`; direct
+   `document.documentElement.setAttribute(...)` calls.
+2. **Scroll restore was unfixably broken by design, not just missing.**
+   The old scheme stashed `window.__zeileScroll` on the page being
+   replaced — but a fresh document gets a fresh JS global, so the value
+   was always gone before any restore could read it (and the save
+   `evaluate_javascript` also raced the immediately-following
+   `load_html`). Fix: read `window.scrollY | 0` with a callback, store the
+   int Python-side (`self._scroll_to_restore`), and only then `load_html`;
+   restore on `load-changed` FINISHED embeds the validated int directly
+   into `window.scrollTo(0, Math.min(Y, maxScroll))`. Matrix-verified
+   end-to-end across a real file-watch reload (y 799 → 798).
+
+Matrix result after fixes: 28/29 strict + `auto` "failing" only because
+the harness expected light but WebKitGTK resolved `prefers-color-scheme:
+dark` in the headless cage — the measured colours were exactly the
+`:root` dark block (GitHub Dark), i.e. Auto did its system-following job.
+On a real desktop it tracks the user's actual theme.
+
 ## Current Task
 
 Executing the plan at `~/.claude/plans/hi-hier-wa-rein-humming-kahan.md`

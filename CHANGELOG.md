@@ -36,10 +36,16 @@ Versioning: [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
-- Scroll position is actually restored after a reload now: `__zeileScroll`
-  was saved on every file-watch reload but never re-applied (the docstring
-  claimed otherwise). Restoration happens on WebKit's `load-changed` signal,
-  clamped to the new document height.
+- Theme/font switching was a silent no-op after the first switch on a page:
+  the injected JS used `const root = …`, whose top-level binding persists
+  across `evaluate_javascript()` calls, so every later call died with a
+  SyntaxError nothing surfaced. Now uses direct `documentElement` calls.
+- Scroll position is actually restored after a reload now — and the original
+  approach was doubly broken: `__zeileScroll` was stashed on the page being
+  replaced (gone with the fresh document's fresh JS global) and the save
+  raced the immediately-following `load_html`. The offset is now read into
+  Python first, and restored after WebKit's `load-changed` FINISHED, clamped
+  to the new document height.
 - `codehilite` line-number/token styles: `.gu` (Generic.Subheading) keeps a
   theme-relative colour instead of a hardcoded one; `.mi`/`.mf` numbers
   share the numeric token colour consistently.
