@@ -102,6 +102,52 @@ dark` in the headless cage — the measured colours were exactly the
 `:root` dark block (GitHub Dark), i.e. Auto did its system-following job.
 On a real desktop it tracks the user's actual theme.
 
+## Session 2026-09-11 (night): release blockers, autonomously
+
+Operator: "mach du, wenn du das autonom kannst." Focus-safe via
+`WLR_BACKENDS=headless cage` throughout (verified: `hyprctl activewindow`
+unchanged before/after — the operator's focus was never stolen again).
+
+Closed / advanced from RELEASE.md:
+
+- **Mermaid blocker CLOSED.** `mmdc` 11.17.0 installed (note: npm's
+  allow-scripts policy blocks Puppeteer's postinstall by default; the
+  flag is `npm install -g --allow-scripts=puppeteer @mermaid-js/mermaid-cli`).
+  Real flowchart rendered light+dark; the exact shipped SVG rasterized at
+  full size via `rsvg-convert` — 383 colours, #ECECFF node fills, strokes,
+  all labels; in the running app: svg with 5 nodes, 14 rects, 0 `<script>`.
+- **The old foreignObject claim was wrong on mermaid 11.17.2** — exactly
+  the "never directly observed" risk HANDOFF warned about. `htmlLabels:
+false` is ignored (config file, `%%{init}%%`, `defaultRenderer:"native"`
+  all tested). Containment reframed honestly: the document-level walls
+  (enable-javascript-markup=False, CSP, decide-policy) hold regardless;
+  `mermaid_render._strip_script_vectors()` now strips `<script>`/`on*=`
+  from mmdc output as belt-and-braces, pinned by
+  `tests/test_mermaid_render.py` (no mmdc needed).
+- **Click-through largely closed**: find-in-page scrolls to the match
+  (counted-matches signal does not fire headless — functional effect
+  verified); TOC jump lands on the row's exact heading (delta 0 — after
+  fixing MY harness bug: `_toc_flat[0]` is the H1, so row 7 = section-7);
+  German UI verified widget-live; About dialog opens/closes with correct
+  name+version; theme/font matrix 29/29 after the const fix; scroll
+  restore end-to-end (y 799→798).
+- **Print/PDF is a platform limitation**: Arch `gtk4 1:4.22.4` ships NO
+  print backends and no follow-up package provides them;
+  `WebKitPrintOperation.print_()` fires `finished` without producing a
+  file. Documented in README (own subsection) and CHANGELOG; buttons
+  remain for systems that have backends.
+- **install.sh round trip verified** (shellcheck clean; uninstall restores
+  the previous default handler `omawrite.desktop`, reinstall restores
+  `zeile.desktop`); the installed launcher runs the app end-to-end inside
+  the headless compositor.
+
+Still open, all needing a human or a second machine: literal file-manager
+double-click; clean-machine install (missing-dep error path); print/PDF
+verification on a system with GTK4 print backends; `v0.1.0` tag — the
+checklist is green enough that tagging is one `git tag -a v0.1.0` away,
+but the print limitation and the remaining human items deserve an owner's
+glance first.
+
 ## Current Task
 
 Executing the plan at `~/.claude/plans/hi-hier-wa-rein-humming-kahan.md`

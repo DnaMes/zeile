@@ -46,6 +46,16 @@ Versioning: [Semantic Versioning](https://semver.org/).
   raced the immediately-following `load_html`. The offset is now read into
   Python first, and restored after WebKit's `load-changed` FINISHED, clamped
   to the new document height.
+- Mermaid output is defensively stripped of `<script>` elements and `on*=`
+  handler attributes in `mermaid_render` before it reaches the page:
+  empirically, mmdc 11.17.0 / mermaid 11.17.2 ignores the
+  `flowchart.htmlLabels:false` config (labels arrive as `<foreignObject>`
+  HTML), so the previously assumed suppression does not hold and the SVG
+  — which is injected after the nh3 pass — now gets its own pass. Covered
+  by `tests/test_mermaid_render.py`.
+- Known platform limitation documented: on GTK 4.22 (Arch `gtk4 1:4.22.4`)
+  the print dialog and PDF export no-op because GTK4 no longer ships print
+  backends and no follow-up package provides them.
 - `codehilite` line-number/token styles: `.gu` (Generic.Subheading) keeps a
   theme-relative colour instead of a hardcoded one; `.mi`/`.mf` numbers
   share the numeric token colour consistently.

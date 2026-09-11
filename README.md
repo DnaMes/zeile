@@ -117,6 +117,15 @@ it's a separate opt-in step and not part of the base install. Without
 of a diagram; with `--enable-mermaid` but no `mmdc` on `PATH`, they render a
 clear error instead of silently failing.
 
+#### Print / PDF export
+
+The print dialog and PDF export need GTK4's print backends (the `file`
+backend for PDF). Recent GTK 4 releases (e.g. Arch's `gtk4 1:4.22.4`) no
+longer ship them, and no follow-up package provides them — on such systems
+both buttons exist but produce nothing (verified 2026-09-11). Everything
+else is unaffected. View rendered markdown as PDF via any other tool in
+the meantime.
+
 ## Security
 
 A markdown file you open here is not assumed to be something you wrote or

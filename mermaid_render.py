@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import shutil
 import subprocess
 import tempfile
@@ -22,13 +23,17 @@ from pathlib import Path
 # Disables mermaid's foreignObject/htmlLabels rendering path for the diagram
 # types that expose the option, so mmdc emits plain SVG <text>/<tspan> labels
 # instead of <foreignObject><div xmlns="...">...</div></foreignObject>.
-# Confirmed key shape via mermaid-cli issue #691 and independent reports
-# (GNOME Inkscape #3268, Prince forum) -- not independently verified against
-# a real mmdc run here, since mmdc is not installed on this machine (opt-in,
-# default off). The sanitizer in zeile.py does not special-case SVG content
-# at all (see its module docstring), so this setting is the only thing
-# standing between a diagram and a foreignObject in the shipped output --
-# treat it as load-bearing, not cosmetic.
+#
+# 2026-09-11, empirically verified for the first time (mmdc 11.17.0 /
+# mermaid 11.17.2): this config is IGNORED for flowchart node labels —
+# neither the config file nor a %%{init}%% directive nor
+# defaultRenderer:"native" keeps labels out of foreignObject. It likely
+# worked on older mermaid and may work again, so it stays. The actual walls
+# are document-level anyway (enable-javascript-markup=False blocks <script>
+# and on*= handlers document-wide, CSP default-src 'none', decide-policy);
+# _strip_script_vectors() below adds a belt-and-suspenders pass over the
+# SVG mmdc hands back, because that output reaches the page un-sanitized
+# (injected after nh3's pass, see markdown_ext's nonce mechanism).
 _MERMAID_CONFIG = json.dumps(
     {
         "flowchart": {"htmlLabels": False},
@@ -36,6 +41,19 @@ _MERMAID_CONFIG = json.dumps(
         "state": {"htmlLabels": False},
     }
 )
+
+# A <script> element (with any content up to its closing tag) or an on*=
+# event-handler attribute anywhere in mmdc's SVG output is a mermaid-level
+# sanitizer regression and gets stripped here. Bounded by design: this runs
+# over the diagram SVG mmdc produced for us, not over arbitrary user input.
+_SCRIPT_RE = re.compile(r"<script\b[^>]*>.*?</script\s*>", re.DOTALL | re.IGNORECASE)
+_ON_ATTR_RE = re.compile(r'\s+on[a-zA-Z]+\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)')
+
+
+def _strip_script_vectors(svg: str) -> str:
+    svg = _SCRIPT_RE.sub("", svg)
+    return _ON_ATTR_RE.sub("", svg)
+
 
 _cache: dict[str, str] = {}
 
@@ -89,7 +107,7 @@ def render_svg(source: str, *, dark: bool) -> str:
             text=True,
             timeout=30,
         )
-        svg = out_path.read_text(encoding="utf-8")
+        svg = _strip_script_vectors(out_path.read_text(encoding="utf-8"))
 
     _cache[key] = svg
     return svg

@@ -22,17 +22,31 @@ the other, not update them independently.
 
 - [ ] **Never tagged.** Per `docs/VERSIONING.md`, a release needs an
       annotated tag; the first one is `v0.1.0`.
-- [ ] **No real Mermaid diagram has been rendered end-to-end.** `mmdc`
-      (mermaid-cli) is not installed on the machine this was built on —
-      it's an opt-in ~300 MB Puppeteer/Chromium dependency, and installing
-      it wasn't authorized mid-implementation. Before release: install it,
-      render a real diagram with `--enable-mermaid`, and visually confirm
-      it displays correctly (not just that the code path doesn't crash).
+- [x] **No real Mermaid diagram has been rendered end-to-end.** CLOSED
+      2026-09-11: `mmdc` 11.17.0 installed (`npm install -g --allow-scripts=
+  puppeteer @mermaid-js/mermaid-cli`), a real flowchart rendered through
+      `mermaid_render.render_svg()` in both light and dark, the exact SVG
+      zeile injects rasterized at full size (`rsvg-convert`) and verified —
+      383 distinct colours, node fills (#ECECFF), strokes, all labels
+      present. In the running app (headless cage): `.mermaid-diagram svg`
+      with 5 nodes, 14 rects, 0 `<script>`. Also found and handled: mermaid
+      11.17.2 **ignores** `flowchart.htmlLabels:false` (labels come out as
+      `<foreignObject>` via config file, `%%{init}%%` directive AND
+      `defaultRenderer:"native"` — the old comment's claim was never true
+      on this version); containment is the document-level walls plus a new
+      `_strip_script_vectors()` pass (tested in `tests/test_mermaid_render.py`).
 - [ ] **No interactive GTK UI feature has been clicked through by a
-      human.** Ctrl+F, the TOC overlay, back/forward link navigation,
-      print, and PDF export were all verified via API introspection and a
-      no-crash smoke test, not by a person using them. See HANDOFF.md's
-      per-phase notes for exactly what was and wasn't checked.
+      human.** LARGELY CLOSED 2026-09-11 by autonomous headless verification
+      (real signal paths, real widget state, WebKit snapshots — see
+      HANDOFF.md): find-in-page scrolls to the match; the TOC jump lands
+      exactly on the row's heading (delta 0); the German UI shows live
+      ("Theme und Schriften", "Inhaltsverzeichnis (Strg+T)"); the About
+      dialog opens with name/version and closes; theme/font switching works
+      across unlimited switches; scroll position survives reload end-to-end.
+      Remaining, needing a person: the print dialog and PDF export are
+      **unverifiable on this machine** (GTK4 4.22 ships no print backends —
+      see README; the buttons no-op), a literal file-manager double-click,
+      and `wtype`-driven keyboard input is unexercised.
 
 ## Licensing and provenance
 
@@ -55,20 +69,25 @@ the other, not update them independently.
 
 - [x] `ruff check` + `ruff format --check` clean.
 - [x] `pytest` — 22/22 passing (`tests/`).
-- [ ] `shellcheck install.sh` — clean as of 2026-09-10, re-check after any
-      further edit.
+- [x] `shellcheck install.sh` — clean as of 2026-09-10, re-check after any
+      further edit; re-checked clean 2026-09-11.
 - [ ] Install on a clean machine (no `python-nh3`/`python-pymdown-extensions`
       pre-installed) — verify `install.sh` fails with the specific missing
       package name, not a generic error, and that installing the named
       package and re-running actually works.
-- [ ] `./install.sh --uninstall` then `./install.sh` again — verify a full
-      round trip leaves the system in the same state as a fresh install
-      (tested once during Phase 8, but re-verify after any install.sh edit).
+- [x] `./install.sh --uninstall` then `./install.sh` again — verified
+      2026-09-11: uninstall removes launcher/desktop entry and the default
+      handler reverts to the previous one; reinstall restores `zeile.desktop`.
 - [ ] Actually double-click a `.md` file in a file manager after install —
-      every verification so far has launched via CLI.
-- [ ] `LANG=de_DE.UTF-8 zeile ...` — verify the German translations
-      actually appear in a real running window (verified only at the
-      Python/gettext level, not by looking at the UI).
+      every verification so far has launched via CLI. Closest autonomous
+      equivalent done 2026-09-11: `xdg-mime query default text/markdown` →
+      `zeile.desktop`, and the installed launcher
+      (`~/.local/bin/zeile file.md` — the desktop entry's exact Exec) runs
+      the app end-to-end inside a headless compositor.
+- [x] `LANG=de_DE.UTF-8 zeile ...` — verified 2026-09-11 in a real running
+      window (headless compositor, widget-level): tooltips and titles show
+      the German strings ("Theme und Schriften", "Inhaltsverzeichnis
+      (Strg+T)"); the About dialog shows name/version.
 
 ## Publishing
 
