@@ -158,3 +158,18 @@ msgstr "Markdown-Datei öffnen"
 
 msgid "Unavailable: GTK4 print backends are missing on this system"
 msgstr "Nicht verfügbar: GTK4-Druck-Backends fehlen auf diesem System"
+
+msgid "Back"
+msgstr "Zurück"
+
+msgid "Forward"
+msgstr "Vorwärts"
+
+msgid "Reload"
+msgstr "Neu laden"
+
+msgid "Table of contents"
+msgstr "Inhaltsverzeichnis"
+
+msgid "Print"
+msgstr "Drucken"

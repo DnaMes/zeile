@@ -491,6 +491,12 @@ def flatten_toc(tokens: list[dict], depth: int = 0) -> list[tuple[int, str, str]
 _MARKDOWN_SUFFIXES = {".md", ".markdown"}
 
 
+def _a11y_label(widget: Gtk.Widget, label: str) -> None:
+    """Icon-only buttons need an accessible name; tooltips alone are not
+    reliably exposed to assistive technology."""
+    widget.update_property([Gtk.AccessibleProperty.LABEL], [label])
+
+
 def _theme_label(theme_id: str) -> str:
     mapping = {
         "auto": _("Auto (system)"),
@@ -618,10 +624,12 @@ class Viewer(Gtk.ApplicationWindow):
 
         self.back_button = Gtk.Button(icon_name="go-previous-symbolic")
         self.back_button.set_tooltip_text(_("Back (Alt+Left)"))
+        _a11y_label(self.back_button, _("Back"))
         self.back_button.connect("clicked", lambda _b: self.go_back())
 
         self.forward_button = Gtk.Button(icon_name="go-next-symbolic")
         self.forward_button.set_tooltip_text(_("Forward (Alt+Right)"))
+        _a11y_label(self.forward_button, _("Forward"))
         self.forward_button.connect("clicked", lambda _b: self.go_forward())
 
         self._update_nav_sensitivity()
@@ -640,6 +648,7 @@ class Viewer(Gtk.ApplicationWindow):
 
         self.toc_button = Gtk.MenuButton(icon_name="view-list-symbolic")
         self.toc_button.set_tooltip_text(_("Table of contents (Ctrl+T)"))
+        _a11y_label(self.toc_button, _("Table of contents"))
         self.toc_button.set_popover(self.toc_popover)
 
         export_button = Gtk.Button(icon_name="document-save-symbolic")
@@ -647,6 +656,8 @@ class Viewer(Gtk.ApplicationWindow):
         if print_backends_available():
             export_button.set_tooltip_text(_("Export PDF…"))
             print_button.set_tooltip_text(_("Print (Ctrl+P)"))
+            _a11y_label(export_button, _("Export PDF"))
+            _a11y_label(print_button, _("Print"))
         else:
             # GTK 4.22+ ships no print backends on some distros; the buttons
             # would silently no-op. Degrade visibly instead.
@@ -659,10 +670,12 @@ class Viewer(Gtk.ApplicationWindow):
 
         about_button = Gtk.Button(icon_name="help-about-symbolic")
         about_button.set_tooltip_text(_("About zeile"))
+        _a11y_label(about_button, _("About zeile"))
         about_button.connect("clicked", lambda _b: self._show_about())
 
         self.theme_button = Gtk.MenuButton(icon_name="preferences-color-symbolic")
         self.theme_button.set_tooltip_text(_("Theme and fonts"))
+        _a11y_label(self.theme_button, _("Theme and fonts"))
         self.theme_button.set_popover(self._build_theme_popover())
 
         self._title_label = Gtk.Label(label=self.display_name)
@@ -673,6 +686,7 @@ class Viewer(Gtk.ApplicationWindow):
 
         reload_button = Gtk.Button(icon_name="view-refresh-symbolic")
         reload_button.set_tooltip_text(_("Reload (Ctrl+R)"))
+        _a11y_label(reload_button, _("Reload"))
         reload_button.connect("clicked", lambda _b: self.reload())
         header.pack_start(reload_button)
 
