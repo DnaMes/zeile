@@ -187,6 +187,10 @@ _DEFAULT_SETTINGS = {
     "theme": "auto",
     "body_font": "system",
     "code_font": "system",
+    "zoom": "1.0",
+    "window_w": "900",
+    "window_h": "1000",
+    "window_maximized": "false",
 }
 
 
@@ -209,6 +213,25 @@ def _coerce_font(font: str, kind: str) -> str:
         if font in allowed
         else _DEFAULT_SETTINGS["body_font" if kind == "body" else "code_font"]
     )
+
+
+def _coerce_number(
+    value, lo: float, hi: float, *, integer: bool = False, default: str | None = None
+) -> str:
+    """Clamp-to-range number coercion for free-form settings values.
+
+    Unparseable input falls back to `default` (the documented default), not
+    to the range minimum -- "garbage" should restore the shipped default,
+    not produce a 200px window.
+    """
+    try:
+        n = float(value)
+    except (TypeError, ValueError):
+        if default is not None:
+            return default
+        n = 0.0
+    n = min(hi, max(lo, n))
+    return str(int(n)) if integer else str(n)
 
 
 def is_theme_dark(theme_id: str, *, fallback: bool) -> bool:
@@ -242,6 +265,31 @@ def load_settings(*, path: Path | None = None) -> dict[str, str]:
     if isinstance(code_font, str):
         settings["code_font"] = _coerce_font(code_font, kind="code")
 
+    # Free-form numeric/bool keys: anything unparseable keeps the default,
+    # never raises, never propagates a bad value into the UI.
+    zoom = data.get("zoom")
+    if isinstance(zoom, (int, float, str)):
+        try:
+            z = float(zoom)
+            if 0.4 <= z <= 3.0:
+                settings["zoom"] = str(z)
+        except (TypeError, ValueError):
+            pass
+    for key, lo, hi in (("window_w", 200, 20000), ("window_h", 200, 20000)):
+        val = data.get(key)
+        if isinstance(val, (int, float, str)):
+            try:
+                n = int(float(val))
+                if lo <= n <= hi:
+                    settings[key] = str(n)
+            except (TypeError, ValueError):
+                pass
+    maximized = data.get("window_maximized")
+    if isinstance(maximized, bool):
+        settings["window_maximized"] = "true" if maximized else "false"
+    elif maximized in ("true", "false"):
+        settings["window_maximized"] = maximized
+
     return settings
 
 
@@ -257,6 +305,29 @@ def save_settings(settings: dict[str, str], *, path: Path | None = None) -> None
             ),
             "code_font": _coerce_font(
                 settings.get("code_font", _DEFAULT_SETTINGS["code_font"]), kind="code"
+            ),
+            "zoom": _coerce_number(
+                settings.get("zoom", _DEFAULT_SETTINGS["zoom"]), 0.4, 3.0
+            ),
+            "window_w": _coerce_number(
+                settings.get("window_w", _DEFAULT_SETTINGS["window_w"]),
+                200,
+                20000,
+                integer=True,
+                default=_DEFAULT_SETTINGS["window_w"],
+            ),
+            "window_h": _coerce_number(
+                settings.get("window_h", _DEFAULT_SETTINGS["window_h"]),
+                200,
+                20000,
+                integer=True,
+                default=_DEFAULT_SETTINGS["window_h"],
+            ),
+            "window_maximized": (
+                "true"
+                if settings.get("window_maximized", _DEFAULT_SETTINGS["window_maximized"])
+                in (True, "true")
+                else "false"
             ),
         }
         settings_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
@@ -280,6 +351,30 @@ def sanitize_html(body: str) -> str:
 def read_asset(name: str) -> str:
     """Return the contents of an asset shipped next to this script."""
     return (Path(__file__).resolve().parent / "assets" / name).read_text(encoding="utf-8")
+
+
+def print_backends_available() -> bool:
+    """Whether GTK4 ships at least one print backend module.
+
+    Recent GTK 4 releases (e.g. Arch's gtk4 1:4.22.4) no longer bundle the
+    unix print backends, and nothing provides them separately -- without
+    them WebKitPrintOperation quietly produces no file and no dialog. There
+    is no public GTK API for enumerating backends, so this checks the
+    well-known module directories. If a gtk-4.0 module tree exists at all,
+    its verdict is trusted (a tree without printbackends/*.so means the
+    backends are genuinely absent); only when no gtk-4.0 tree is found at
+    all does this fall back to "available" -- buttons stay enabled, worst
+    case is the old silent no-op.
+    """
+    import glob
+
+    found_module_tree = False
+    for libdir in ("/usr/lib", "/usr/lib64"):
+        for version_dir in glob.glob(f"{libdir}/gtk-4.0/*"):
+            found_module_tree = True
+            if glob.glob(f"{version_dir}/printbackends/*.so"):
+                return True
+    return not found_module_tree
 
 
 def render_body(
@@ -467,6 +562,12 @@ class Viewer(Gtk.ApplicationWindow):
         self.body_font_id = _coerce_font(body_font_id, kind="body")
         self.code_font_id = _coerce_font(code_font_id, kind="code")
         self.settings_path = settings_path
+        self._persisted = load_settings(path=settings_path)
+        self.set_default_size(
+            int(self._persisted["window_w"]), int(self._persisted["window_h"])
+        )
+        if self._persisted["window_maximized"] == "true":
+            self.maximize()
 
         self.monitor: Gio.FileMonitor | None = None
         self._reload_source: int | None = None
@@ -503,6 +604,18 @@ class Viewer(Gtk.ApplicationWindow):
         self.webview.connect("load-changed", self._on_load_changed)
         self.find_controller = self.webview.get_find_controller()
 
+        # Restore persisted zoom, and follow system light/dark flips when in
+        # "Auto" (the Mermaid palette bakes the theme in, so it needs a
+        # re-render, not just a CSS flip).
+        try:
+            self.webview.set_zoom_level(float(self._persisted["zoom"]))
+        except ValueError:
+            pass
+        Gtk.Settings.get_default().connect(
+            "notify::gtk-application-prefer-dark-theme", self._on_system_theme_changed
+        )
+        self.connect("close-request", self._on_close_request)
+
         self.back_button = Gtk.Button(icon_name="go-previous-symbolic")
         self.back_button.set_tooltip_text(_("Back (Alt+Left)"))
         self.back_button.connect("clicked", lambda _b: self.go_back())
@@ -530,11 +643,18 @@ class Viewer(Gtk.ApplicationWindow):
         self.toc_button.set_popover(self.toc_popover)
 
         export_button = Gtk.Button(icon_name="document-save-symbolic")
-        export_button.set_tooltip_text(_("Export PDF…"))
-        export_button.connect("clicked", lambda _b: self._export_pdf())
-
         print_button = Gtk.Button(icon_name="document-print-symbolic")
-        print_button.set_tooltip_text(_("Print (Ctrl+P)"))
+        if print_backends_available():
+            export_button.set_tooltip_text(_("Export PDF…"))
+            print_button.set_tooltip_text(_("Print (Ctrl+P)"))
+        else:
+            # GTK 4.22+ ships no print backends on some distros; the buttons
+            # would silently no-op. Degrade visibly instead.
+            reason = _("Unavailable: GTK4 print backends are missing on this system")
+            for button in (export_button, print_button):
+                button.set_sensitive(False)
+                button.set_tooltip_text(reason)
+        export_button.connect("clicked", lambda _b: self._export_pdf())
         print_button.connect("clicked", lambda _b: self._print_dialog())
 
         about_button = Gtk.Button(icon_name="help-about-symbolic")
@@ -658,14 +778,42 @@ class Viewer(Gtk.ApplicationWindow):
         return pop
 
     def _persist_settings(self) -> None:
-        save_settings(
+        # Merge into the freshly loaded state: only the three keys this
+        # method owns may change -- the zoom/window keys must survive.
+        current = load_settings(path=self.settings_path)
+        current.update(
             {
                 "theme": self.theme_id,
                 "body_font": self.body_font_id,
                 "code_font": self.code_font_id,
-            },
-            path=self.settings_path,
+            }
         )
+        save_settings(current, path=self.settings_path)
+
+    def _on_close_request(self, *_args) -> bool:
+        self._save_window_state()
+        return False  # keep closing
+
+    def _save_window_state(self) -> None:
+        if self.get_width() <= 0:  # never mapped -- nothing to record
+            return
+        current = load_settings(path=self.settings_path)
+        current.update(
+            {
+                "window_w": str(self.get_width()),
+                "window_h": str(self.get_height()),
+                "window_maximized": "true" if self.is_maximized() else "false",
+                "zoom": str(round(self.webview.get_zoom_level(), 3)),
+            }
+        )
+        save_settings(current, path=self.settings_path)
+
+    def _on_system_theme_changed(self, *_args) -> None:
+        # Only Auto tracks the system: explicit themes intentionally pin the
+        # GTK preference themselves (which fires this same notify -- guard
+        # prevents a reload loop).
+        if self.theme_id == "auto":
+            self.reload()
 
     def _apply_theme_and_font_attrs(self) -> None:
         # No `const`/`let` here: top-level lexical bindings persist across
@@ -770,7 +918,10 @@ class Viewer(Gtk.ApplicationWindow):
             if target.is_relative_to(self.path.parent):
                 if target != self.path and target.suffix.lower() in _MARKDOWN_SUFFIXES:
                     decision.ignore()
-                    self.navigate_to(target)
+                    # Deferred: re-entering load_html synchronously from
+                    # inside the policy callback is a documented-fragile
+                    # WebKitGTK pattern (HANDOFF.md's "check this first").
+                    GLib.idle_add(self.navigate_to, target)
                     return True
                 decision.use()
                 return True
@@ -1032,7 +1183,7 @@ class Viewer(Gtk.ApplicationWindow):
 class ZeileApp(Gtk.Application):
     def __init__(
         self,
-        path: Path,
+        path: Path | None,
         *,
         enable_mermaid: bool,
         debug: bool,
@@ -1047,9 +1198,28 @@ class ZeileApp(Gtk.Application):
         self.settings_path = settings_path
 
     def do_activate(self) -> None:
+        if self.path is None:
+            # Launched without a file (app menu / launcher with no %f):
+            # offer a picker instead of erroring out. Cancel = quit.
+            dialog = Gtk.FileDialog()
+            dialog.set_title(_("Open markdown file"))
+
+            def chosen(d: Gtk.FileDialog, result: Gio.AsyncResult) -> None:
+                try:
+                    gfile = d.open_finish(result)
+                except GLib.Error:
+                    self.quit()  # user cancelled
+                    return
+                self._present_path(Path(gfile.get_path()))
+
+            dialog.open(None, None, chosen)
+            return
+        self._present_path(self.path)
+
+    def _present_path(self, path: Path) -> None:
         Viewer(
             self,
-            self.path,
+            path,
             enable_mermaid=self.enable_mermaid,
             debug=self.debug,
             theme_id=self.settings["theme"],
@@ -1061,7 +1231,13 @@ class ZeileApp(Gtk.Application):
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Minimal GTK4 markdown viewer.")
-    parser.add_argument("file", type=Path, help="markdown file to display")
+    parser.add_argument(
+        "file",
+        nargs="?",
+        type=Path,
+        default=None,
+        help="markdown file to display (omit to pick one in a dialog)",
+    )
     parser.add_argument(
         "--enable-mermaid",
         action="store_true",
@@ -1094,7 +1270,7 @@ def main() -> int:
 
     args = parser.parse_args()
 
-    if not args.file.exists():
+    if args.file is not None and not args.file.exists():
         print(f"zeile: no such file: {args.file}", file=sys.stderr)
         return 1
 

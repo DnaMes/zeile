@@ -193,6 +193,10 @@ def test_load_settings_roundtrip_and_validation(tmp_path: Path):
             "theme": "dracula",
             "body_font": BODY_FONT_OPTIONS[1],
             "code_font": CODE_FONT_OPTIONS[1],
+            "zoom": "1.5",
+            "window_w": "1200",
+            "window_h": "800",
+            "window_maximized": "true",
         },
         path=settings_path,
     )
@@ -201,18 +205,26 @@ def test_load_settings_roundtrip_and_validation(tmp_path: Path):
         "theme": "dracula",
         "body_font": BODY_FONT_OPTIONS[1],
         "code_font": CODE_FONT_OPTIONS[1],
+        "zoom": "1.5",
+        "window_w": "1200",
+        "window_h": "800",
+        "window_maximized": "true",
     }
 
     loaded["theme"] = "not-a-theme"
     loaded["body_font"] = "not-a-font"
     loaded["code_font"] = "not-a-font"
+    loaded["zoom"] = "99"  # out of range -> clamped
+    loaded["window_w"] = "garbage"  # unparseable -> default
+    loaded["window_maximized"] = "not-a-bool"  # -> coerced to "false"
     save_settings(loaded, path=settings_path)
     clamped = load_settings(path=settings_path)
-    assert clamped == {
-        "theme": "auto",
-        "body_font": "system",
-        "code_font": "system",
-    }
+    assert clamped["theme"] == "auto"
+    assert clamped["body_font"] == "system"
+    assert clamped["code_font"] == "system"
+    assert float(clamped["zoom"]) == 3.0  # clamped to the upper bound
+    assert clamped["window_w"] == "900"  # default
+    assert clamped["window_maximized"] == "false"
 
 
 def test_load_settings_returns_default_on_broken_file(tmp_path: Path):
@@ -222,7 +234,27 @@ def test_load_settings_returns_default_on_broken_file(tmp_path: Path):
         "theme": "auto",
         "body_font": "system",
         "code_font": "system",
+        "zoom": "1.0",
+        "window_w": "900",
+        "window_h": "1000",
+        "window_maximized": "false",
     }
+
+
+def test_theme_switch_persists_zoom_and_window_keys(tmp_path: Path):
+    """_persist_settings must merge: theme/font changes may not wipe the
+    zoom/window keys owned by the window-state saver."""
+    settings_path = tmp_path / "settings.json"
+    save_settings(
+        {"zoom": "1.75", "window_w": "1400", "window_h": "900"}, path=settings_path
+    )
+    current = load_settings(path=settings_path)
+    current.update({"theme": "nord", "body_font": "inter", "code_font": "fira-code"})
+    save_settings(current, path=settings_path)
+    merged = load_settings(path=settings_path)
+    assert merged["zoom"] == "1.75"
+    assert merged["window_w"] == "1400"
+    assert merged["theme"] == "nord"
 
 
 def test_render_end_to_end(tmp_path: Path):

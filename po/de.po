@@ -152,3 +152,9 @@ msgstr "Tokyo Night"
 
 msgid "Tokyo Night Day"
 msgstr "Tokyo Night Day"
+
+msgid "Open markdown file"
+msgstr "Markdown-Datei öffnen"
+
+msgid "Unavailable: GTK4 print backends are missing on this system"
+msgstr "Nicht verfügbar: GTK4-Druck-Backends fehlen auf diesem System"

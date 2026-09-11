@@ -44,10 +44,11 @@ storage and the HTML5 database both disabled, so a `.md` file cannot plant
 an identifier that survives across opens.
 
 **One small configuration file, by request of the theme/font picker:**
-`~/.config/zeile/settings.json` stores exactly three strings — the selected
-theme id and body/code font ids (e.g. `"tokyo-night"`, `"ia-writer"`). No
-file paths, no document content, no timestamps, no identifiers. Delete the
-file and zeile falls back to its defaults on the next start.
+`~/.config/zeile/settings.json` stores UI preferences only — the selected
+theme id, body/code font ids, zoom level and window geometry (e.g.
+`"tokyo-night"`, `"ia-writer"`, `"1.5"`, `"1200"`). No file paths, no
+document content, no timestamps, no identifiers. Delete the file and zeile
+falls back to its defaults on the next start.
 
 **One honest exception in `~/.cache`, checked rather than assumed:** the
 GPU driver (Mesa) writes compiled shader bytecode to

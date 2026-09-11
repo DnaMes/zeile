@@ -7,6 +7,25 @@ Versioning: [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Launching without a file (app menu / launcher) now opens a markdown file
+  chooser instead of exiting with a usage error.
+- Window size, maximized state and zoom level persist across sessions
+  (`settings.json`); theme/font changes merge into the saved state instead
+  of resetting it.
+- "Auto" theme follows mid-session system light/dark switches immediately,
+  including the Mermaid palette.
+- Print and PDF-export buttons degrade visibly when GTK4 print backends
+  are missing (insensitive + explanatory tooltip) instead of silently
+  no-oping.
+
+### Changed
+
+- Local `.md` link navigation defers the document switch out of the WebKit
+  policy callback (`GLib.idle_add`), closing the re-entrancy risk flagged
+  in HANDOFF.md.
+
 ## [0.1.0] — 2026-09-11
 
 First tagged release. Ported in from a personal-laptop project
