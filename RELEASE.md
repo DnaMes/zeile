@@ -6,7 +6,7 @@ does not apply. What remains is the licensing, versioning, security, and
 documentation work every erdlabs project owes before its repository goes
 public.
 
-Current version: **0.1.0** (`pyproject.toml`). Never tagged, never released.
+Current version: **0.1.0** (`pyproject.toml`), tagged and released 2026-09-11.
 
 **Version drift risk**: `pyproject.toml`'s `version` and `zeile.py`'s
 `__version__` (shown in the About dialog) are two hand-synced copies, not
@@ -20,11 +20,12 @@ the other, not update them independently.
 
 ## Blockers
 
-- [ ] **Never tagged.** Per `docs/VERSIONING.md`, a release needs an
-      annotated tag; the first one is `v0.1.0`.
+- [x] **Never tagged.** CLOSED 2026-09-11: annotated tag `v0.1.0` created
+      and pushed; GitHub release cut with CHANGELOG-derived notes
+      (https://github.com/DnaMes/zeile/releases/tag/v0.1.0).
 - [x] **No real Mermaid diagram has been rendered end-to-end.** CLOSED
       2026-09-11: `mmdc` 11.17.0 installed (`npm install -g --allow-scripts=
-  puppeteer @mermaid-js/mermaid-cli`), a real flowchart rendered through
+puppeteer @mermaid-js/mermaid-cli`), a real flowchart rendered through
       `mermaid_render.render_svg()` in both light and dark, the exact SVG
       zeile injects rasterized at full size (`rsvg-convert`) and verified —
       383 distinct colours, node fills (#ECECFF), strokes, all labels
@@ -91,9 +92,14 @@ the other, not update them independently.
 
 ## Publishing
 
-- [ ] Repository is private on GitHub (`DnaMes/zeile`) — confirmed as of
+- [x] Repository is private on GitHub (`DnaMes/zeile`) — confirmed as of
       this rename; re-check before any public-listing decision.
-- [ ] Tag `v0.1.0` and cut a GitHub release, once the blockers above close.
+- [x] Tag `v0.1.0` and cut a GitHub release — done 2026-09-11
+      (`5ac2795`, https://github.com/DnaMes/zeile/releases/tag/v0.1.0),
+      with the print/PDF platform limitation stated in the release notes.
+      The two remaining verification items above (literal file-manager
+      double-click, clean-machine install) are recorded as follow-ups, not
+      release blockers, by owner decision 2026-09-11.
 
 ## Not applicable
 
