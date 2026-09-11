@@ -6,9 +6,22 @@ No GTK needed -- these are the pure-function pieces split out of render()
 specifically so they're testable without a WebView or a display.
 """
 
+import re
 from pathlib import Path
 
-from zeile import build_document, flatten_toc, render, render_body, sanitize_html
+from zeile import (
+    BODY_FONT_OPTIONS,
+    CODE_FONT_OPTIONS,
+    THEME_OPTIONS,
+    build_document,
+    flatten_toc,
+    load_settings,
+    read_asset,
+    render,
+    render_body,
+    sanitize_html,
+    save_settings,
+)
 
 
 def test_frontmatter_stripped():
@@ -101,6 +114,115 @@ def test_build_document_has_csp_and_title():
     assert "default-src 'none'" in doc
     assert "<title>my file.md</title>" in doc
     assert "<p>hi</p>" in doc
+
+
+def test_build_document_embeds_theme_and_font_attrs():
+    doc = build_document(
+        "<p>hi</p>",
+        "my file.md",
+        theme_id="catppuccin-mocha",
+        body_font_id="ia-writer",
+        code_font_id="jetbrains-mono",
+    )
+    assert 'data-theme="catppuccin-mocha"' in doc
+    assert 'data-font-body="ia-writer"' in doc
+    assert 'data-font-code="jetbrains-mono"' in doc
+
+
+def test_theme_css_defines_required_vars():
+    css = read_asset("themes.css")
+    required = {
+        "color-scheme",
+        "bg",
+        "fg",
+        "muted",
+        "border",
+        "link",
+        "code-bg",
+        "quote-border",
+        "quote-bg",
+        "selection",
+        "note",
+        "warning",
+        "danger",
+        "accent",
+        "focus",
+        "table-zebra",
+        "table-hover",
+        "inline-code-bg",
+        "syn-comment",
+        "syn-keyword",
+        "syn-type",
+        "syn-string",
+        "syn-number",
+        "syn-name",
+        "syn-function",
+        "syn-class",
+        "syn-builtin",
+        "syn-tag",
+        "syn-attr",
+        "syn-operator",
+        "syn-punctuation",
+        "syn-error",
+        "syn-added-fg",
+        "syn-added-bg",
+        "syn-removed-fg",
+        "syn-removed-bg",
+    }
+
+    theme_blocks = {
+        match.group(1): match.group(2)
+        for match in re.finditer(
+            r'html\[data-theme="([^"]+)"\]\s*\{([^}]*)\}', css, flags=re.S
+        )
+    }
+
+    for theme in THEME_OPTIONS:
+        if theme == "auto":
+            continue
+        assert theme in theme_blocks
+        vars_found = set(re.findall(r"--([a-z0-9-]+)\s*:", theme_blocks[theme], flags=re.I))
+        missing = required - vars_found
+        assert not missing, f"{theme} missing theme CSS vars: {', '.join(sorted(missing))}"
+
+
+def test_load_settings_roundtrip_and_validation(tmp_path: Path):
+    settings_path = tmp_path / "settings.json"
+    save_settings(
+        {
+            "theme": "dracula",
+            "body_font": BODY_FONT_OPTIONS[1],
+            "code_font": CODE_FONT_OPTIONS[1],
+        },
+        path=settings_path,
+    )
+    loaded = load_settings(path=settings_path)
+    assert loaded == {
+        "theme": "dracula",
+        "body_font": BODY_FONT_OPTIONS[1],
+        "code_font": CODE_FONT_OPTIONS[1],
+    }
+
+    loaded["theme"] = "not-a-theme"
+    loaded["body_font"] = "not-a-font"
+    loaded["code_font"] = "not-a-font"
+    save_settings(loaded, path=settings_path)
+    clamped = load_settings(path=settings_path)
+    assert clamped == {
+        "theme": "auto",
+        "body_font": "system",
+        "code_font": "system",
+    }
+
+
+def test_load_settings_returns_default_on_broken_file(tmp_path: Path):
+    settings_path = tmp_path / "settings.json"
+    settings_path.write_text("not-json", encoding="utf-8")
+    assert load_settings(path=settings_path) == {
+        "theme": "auto",
+        "body_font": "system",
+        "code_font": "system",
+    }
 
 
 def test_render_end_to_end(tmp_path: Path):

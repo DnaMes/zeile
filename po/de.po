@@ -56,3 +56,99 @@ msgstr "Ein kleiner, schneller, schreibgeschützter Markdown-Betrachter."
 #: zeile.py:455
 msgid "Export PDF"
 msgstr "PDF exportieren"
+
+msgid "Auto (system)"
+msgstr "Automatisch (System)"
+
+msgid "Theme and fonts"
+msgstr "Theme und Schriften"
+
+msgid "Theme"
+msgstr "Theme"
+
+msgid "Body font"
+msgstr "Schrift (Text)"
+
+msgid "Code font"
+msgstr "Schrift (Code)"
+
+msgid "System"
+msgstr "System"
+
+msgid "System monospace"
+msgstr "System-Monospace"
+
+msgid "JetBrains Mono"
+msgstr "JetBrains Mono"
+
+msgid "Inter"
+msgstr "Inter"
+
+msgid "Atkinson Hyperlegible"
+msgstr "Atkinson Hyperlegible"
+
+msgid "iA Writer Quattro"
+msgstr "iA Writer Quattro"
+
+msgid "Noto Serif"
+msgstr "Noto Serif"
+
+msgid "IBM Plex Sans"
+msgstr "IBM Plex Sans"
+
+msgid "iA Writer Mono"
+msgstr "iA Writer Mono"
+
+msgid "Fira Code"
+msgstr "Fira Code"
+
+msgid "Cascadia Code"
+msgstr "Cascadia Code"
+
+msgid "GitHub Light"
+msgstr "GitHub Hell"
+
+msgid "GitHub Dark"
+msgstr "GitHub Dunkel"
+
+msgid "Catppuccin Latte"
+msgstr "Catppuccin Latte"
+
+msgid "Catppuccin Frappé"
+msgstr "Catppuccin Frappé"
+
+msgid "Catppuccin Macchiato"
+msgstr "Catppuccin Macchiato"
+
+msgid "Catppuccin Mocha"
+msgstr "Catppuccin Mocha"
+
+msgid "Solarized Light"
+msgstr "Solarized Hell"
+
+msgid "Solarized Dark"
+msgstr "Solarized Dunkel"
+
+msgid "Gruvbox Light"
+msgstr "Gruvbox Hell"
+
+msgid "Gruvbox Dark"
+msgstr "Gruvbox Dunkel"
+
+msgid "Nord"
+msgstr "Nord"
+
+msgid "Dracula"
+msgstr "Dracula"
+
+msgid "Rosé Pine"
+msgstr "Rosé Pine"
+
+msgid "Rosé Pine Dawn"
+msgstr "Rosé Pine Dawn"
+
+msgid "Tokyo Night"
+msgstr "Tokyo Night"
+
+msgid "Tokyo Night Day"
+msgstr "Tokyo Night Day"

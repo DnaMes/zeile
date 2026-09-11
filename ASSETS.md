@@ -6,10 +6,11 @@ repo does not apply here. This file is maintained by hand.
 
 ## Shipped
 
-| Path | What | Provenance |
-|---|---|---|
-| `assets/zeile.svg` | Application icon | Carried over from `mdview` at the 2026-09-10 rename (`4a6825f`); original authorship predates this repository, from the `e14/apps/mdview` project this was ported in from. |
-| `assets/style.css` | Rendering stylesheet | Original work, written for this project. |
+| Path                | What                                                  | Provenance                                                                                                                                                                 |
+| ------------------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `assets/zeile.svg`  | Application icon                                      | Carried over from `mdview` at the 2026-09-10 rename (`4a6825f`); original authorship predates this repository, from the `e14/apps/mdview` project this was ported in from. |
+| `assets/style.css`  | Rendering stylesheet                                  | Original work, written for this project.                                                                                                                                   |
+| `assets/themes.css` | Theme + font variable blocks (16 themes, font stacks) | Original work; colour values transcribed from each theme's official published palette (Catppuccin, Solarized, Gruvbox, Nord, Dracula, Rosé Pine, Tokyo Night, GitHub).     |
 
 ## Removed
 

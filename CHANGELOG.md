@@ -8,8 +8,42 @@ Versioning: [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+
+- 16 curated document themes plus system-following "Auto": GitHub Light/Dark,
+  Catppuccin (Latte, Frappé, Macchiato, Mocha), Solarized Light/Dark,
+  Gruvbox Light/Dark, Nord, Dracula, Rosé Pine/Dawn, Tokyo Night/Day — each
+  with its own full Pygments syntax palette, selectable live from a new
+  header-bar popover (`--theme` also works from the CLI).
+- Body- and code-font pickers (Inter, Atkinson Hyperlegible, iA Writer,
+  Noto Serif, IBM Plex Sans; JetBrains Mono, iA Writer Mono, Fira Code,
+  Cascadia Code) with system-fallback stacks (`--body-font`/`--code-font`).
+- Theme and font selections persist to `~/.config/zeile/settings.json`
+  (defensively parsed; invalid values fall back to defaults).
+- Readability polish: tinted blockquotes, zebra + hover table rows, themed
+  text selection, `accent-color` task checkboxes, `kbd` keycap styling,
+  link focus outlines, `scroll-behavior: smooth`, print/PDF output forced to
+  a light palette.
+
 ### Changed
+
+- All colours in `assets/style.css` (including the previously hardcoded
+  Pygments token blocks) now flow through CSS variables; themes are pure
+  variable blocks in `assets/themes.css`, switched via `data-theme` /
+  `data-font-*` attributes on `<html>` — instant, no re-render, scroll and
+  zoom preserved. Only a Mermaid light↔dark flip triggers a real reload.
+- Choosing a dark theme also prefers the dark GTK style, so the header bar
+  matches the document.
+
 ### Fixed
+
+- Scroll position is actually restored after a reload now: `__zeileScroll`
+  was saved on every file-watch reload but never re-applied (the docstring
+  claimed otherwise). Restoration happens on WebKit's `load-changed` signal,
+  clamped to the new document height.
+- `codehilite` line-number/token styles: `.gu` (Generic.Subheading) keeps a
+  theme-relative colour instead of a hardcoded one; `.mi`/`.mf` numbers
+  share the numeric token colour consistently.
+
 ### Removed
 
 ## [0.1.0] — unreleased

@@ -25,6 +25,7 @@ import json
 import os
 import re
 import sys
+from functools import partial
 from pathlib import Path
 
 import gi
@@ -49,6 +50,7 @@ _ = gettext.translation(
     "zeile", localedir=Path(__file__).resolve().parent / "locale", fallback=True
 ).gettext
 
+
 EXTENSIONS = [
     "extra",  # tables, fenced_code, footnotes, def_list, abbr, attr_list
     "admonition",
@@ -64,6 +66,7 @@ EXTENSION_CONFIGS = {
     "toc": {"permalink": False},
     "pymdownx.tasklist": {"custom_checkbox": False},
 }
+
 
 # A YAML frontmatter block, stripped before conversion -- python-markdown has
 # no opinion on frontmatter, so left alone it renders as a literal <hr> plus
@@ -122,6 +125,145 @@ _ALLOWED_ATTRIBUTES = {
 }
 
 
+THEME_OPTIONS = (
+    "auto",
+    "github-light",
+    "github-dark",
+    "catppuccin-latte",
+    "catppuccin-frappe",
+    "catppuccin-macchiato",
+    "catppuccin-mocha",
+    "solarized-light",
+    "solarized-dark",
+    "gruvbox-light",
+    "gruvbox-dark",
+    "nord",
+    "dracula",
+    "rose-pine",
+    "rose-pine-dawn",
+    "tokyo-night",
+    "tokyo-night-day",
+)
+
+THEME_DARKNESS: dict[str, bool | None] = {
+    "auto": None,
+    "github-light": False,
+    "github-dark": True,
+    "catppuccin-latte": False,
+    "catppuccin-frappe": True,
+    "catppuccin-macchiato": True,
+    "catppuccin-mocha": True,
+    "solarized-light": False,
+    "solarized-dark": True,
+    "gruvbox-light": False,
+    "gruvbox-dark": True,
+    "nord": True,
+    "dracula": True,
+    "rose-pine": True,
+    "rose-pine-dawn": False,
+    "tokyo-night": True,
+    "tokyo-night-day": False,
+}
+
+
+BODY_FONT_OPTIONS = (
+    "system",
+    "inter",
+    "atkinson",
+    "ia-writer",
+    "noto-serif",
+    "ibmplex-sans",
+)
+
+CODE_FONT_OPTIONS = (
+    "system",
+    "jetbrains-mono",
+    "ia-writer",
+    "fira-code",
+    "cascadia-code",
+)
+
+_DEFAULT_SETTINGS = {
+    "theme": "auto",
+    "body_font": "system",
+    "code_font": "system",
+}
+
+
+def _default_settings_path() -> Path:
+    return (
+        Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config")))
+        / "zeile"
+        / "settings.json"
+    )
+
+
+def _coerce_theme(theme: str) -> str:
+    return theme if theme in THEME_OPTIONS else _DEFAULT_SETTINGS["theme"]
+
+
+def _coerce_font(font: str, kind: str) -> str:
+    allowed = BODY_FONT_OPTIONS if kind == "body" else CODE_FONT_OPTIONS
+    return (
+        font
+        if font in allowed
+        else _DEFAULT_SETTINGS["body_font" if kind == "body" else "code_font"]
+    )
+
+
+def is_theme_dark(theme_id: str, *, fallback: bool) -> bool:
+    value = THEME_DARKNESS.get(theme_id)
+    if value is None:
+        return fallback
+    return value
+
+
+def load_settings(*, path: Path | None = None) -> dict[str, str]:
+    """Load viewer settings from JSON with robust fallback."""
+    settings_path = path or _default_settings_path()
+    settings = dict(_DEFAULT_SETTINGS)
+    try:
+        data = json.loads(settings_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return settings
+
+    if not isinstance(data, dict):
+        return settings
+
+    theme = data.get("theme")
+    if isinstance(theme, str):
+        settings["theme"] = _coerce_theme(theme)
+
+    body_font = data.get("body_font")
+    if isinstance(body_font, str):
+        settings["body_font"] = _coerce_font(body_font, kind="body")
+
+    code_font = data.get("code_font")
+    if isinstance(code_font, str):
+        settings["code_font"] = _coerce_font(code_font, kind="code")
+
+    return settings
+
+
+def save_settings(settings: dict[str, str], *, path: Path | None = None) -> None:
+    """Persist settings if possible; silently ignore environment write failures."""
+    settings_path = path or _default_settings_path()
+    try:
+        settings_path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "theme": _coerce_theme(settings.get("theme", _DEFAULT_SETTINGS["theme"])),
+            "body_font": _coerce_font(
+                settings.get("body_font", _DEFAULT_SETTINGS["body_font"]), kind="body"
+            ),
+            "code_font": _coerce_font(
+                settings.get("code_font", _DEFAULT_SETTINGS["code_font"]), kind="code"
+            ),
+        }
+        settings_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    except OSError:
+        return
+
+
 def sanitize_html(body: str) -> str:
     """Strip everything nh3.clean() doesn't explicitly allow.
 
@@ -140,16 +282,32 @@ def read_asset(name: str) -> str:
     return (Path(__file__).resolve().parent / "assets" / name).read_text(encoding="utf-8")
 
 
-def render_body(text: str, *, enable_mermaid: bool, dark: bool) -> tuple[str, list[dict]]:
+def render_body(
+    text: str,
+    *,
+    enable_mermaid: bool,
+    dark: bool,
+    theme_id: str = "auto",
+    body_font_id: str = "system",
+    code_font_id: str = "system",
+) -> tuple[str, list[dict]]:
     """Convert markdown text to sanitized HTML body content.
 
     Pure function -- no file I/O, no GTK -- so it's unit-testable directly.
     Returns (body, toc_tokens): the `toc` extension already computes a
     heading tree for anchor generation, so the TOC overlay reuses it instead
     of re-deriving it from the rendered HTML.
+
+    body_font_id/code_font_id don't change the body HTML -- fonts are applied
+    purely in CSS via data-font-* attributes on <html> (see build_document) --
+    but they're accepted here so render() can forward the full setting set
+    without the call sites needing to know which knobs affect which stage.
     """
+    # Mermaid SVGs are pre-rendered with a light/dark palette baked in, so a
+    # theme's darkness (not the system preference) decides the mmdc theme.
+    theme_dark = is_theme_dark(theme_id, fallback=dark)
     text = _strip_frontmatter(text)
-    mermaid_ext = MermaidExtension(enable_mermaid=enable_mermaid, dark=dark)
+    mermaid_ext = MermaidExtension(enable_mermaid=enable_mermaid, dark=theme_dark)
     md = markdown.Markdown(
         extensions=[*EXTENSIONS, mermaid_ext],
         extension_configs=EXTENSION_CONFIGS,
@@ -157,32 +315,73 @@ def render_body(text: str, *, enable_mermaid: bool, dark: bool) -> tuple[str, li
     body = md.convert(text)
     body = sanitize_html(body)
     body = mermaid_ext.resolve(body)
-    return body, md.toc_tokens
+    return body, md.toc_tokens  # type: ignore[attr-defined]
 
 
-def build_document(body: str, title: str) -> str:
+def build_document(
+    body: str,
+    title: str,
+    *,
+    theme_id: str = "auto",
+    body_font_id: str = "system",
+    code_font_id: str = "system",
+) -> str:
     """Wrap a sanitized HTML body in the full page shell (CSP, stylesheet)."""
+    theme_id = _coerce_theme(theme_id)
+    body_font_id = _coerce_font(body_font_id, kind="body")
+    code_font_id = _coerce_font(code_font_id, kind="code")
+
+    theme_attr = f' data-theme="{html.escape(theme_id)}"' if theme_id != "auto" else ""
+    font_body_attr = f' data-font-body="{html.escape(body_font_id)}"'
+    font_code_attr = f' data-font-code="{html.escape(code_font_id)}"'
+    stylesheet = read_asset("style.css") + "\n" + read_asset("themes.css")
+
     return (
-        "<!DOCTYPE html><html><head><meta charset='utf-8'>"
+        "<!DOCTYPE html><html"
+        f"{theme_attr}{font_body_attr}{font_code_attr}><head><meta charset='utf-8'>"
         f"<meta http-equiv='Content-Security-Policy' content=\"{_CSP}\">"
         f"<title>{html.escape(title)}</title>"
-        f"<style>{read_asset('style.css')}</style>"
-        f"</head><body><article class='markdown-body'>{body}</article>"
-        "</body></html>"
+        f"<style>{stylesheet}</style>"
+        "</head><body><article class='markdown-body'>"
+        f"{body}</article></body></html>"
     )
 
 
-def render(path: Path, *, enable_mermaid: bool, dark: bool) -> tuple[str, list[dict]]:
-    """Read `path`, render and sanitize its markdown, return (html_doc, toc_tokens)."""
+def render(
+    path: Path,
+    *,
+    enable_mermaid: bool,
+    dark: bool,
+    theme_id: str = "auto",
+    body_font_id: str = "system",
+    code_font_id: str = "system",
+) -> tuple[str, list[dict]]:
+    """Read `path`, render and sanitize markdown, return (html_doc, toc_tokens)."""
     try:
         text = path.read_text(encoding="utf-8")
     except OSError as exc:
         body = f"<h1>{_('Cannot read file')}</h1><pre>{html.escape(str(exc))}</pre>"
         toc_tokens: list[dict] = []
     else:
-        body, toc_tokens = render_body(text, enable_mermaid=enable_mermaid, dark=dark)
+        body, toc_tokens = render_body(
+            text,
+            enable_mermaid=enable_mermaid,
+            dark=dark,
+            theme_id=theme_id,
+            body_font_id=body_font_id,
+            code_font_id=code_font_id,
+        )
 
-    return build_document(body, path.name), toc_tokens
+    return (
+        build_document(
+            body,
+            path.name,
+            theme_id=theme_id,
+            body_font_id=body_font_id,
+            code_font_id=code_font_id,
+        ),
+        toc_tokens,
+    )
 
 
 def flatten_toc(tokens: list[dict], depth: int = 0) -> list[tuple[int, str, str]]:
@@ -197,9 +396,63 @@ def flatten_toc(tokens: list[dict], depth: int = 0) -> list[tuple[int, str, str]
 _MARKDOWN_SUFFIXES = {".md", ".markdown"}
 
 
+def _theme_label(theme_id: str) -> str:
+    mapping = {
+        "auto": _("Auto (system)"),
+        "github-light": _("GitHub Light"),
+        "github-dark": _("GitHub Dark"),
+        "catppuccin-latte": _("Catppuccin Latte"),
+        "catppuccin-frappe": _("Catppuccin Frappé"),
+        "catppuccin-macchiato": _("Catppuccin Macchiato"),
+        "catppuccin-mocha": _("Catppuccin Mocha"),
+        "solarized-light": _("Solarized Light"),
+        "solarized-dark": _("Solarized Dark"),
+        "gruvbox-light": _("Gruvbox Light"),
+        "gruvbox-dark": _("Gruvbox Dark"),
+        "nord": _("Nord"),
+        "dracula": _("Dracula"),
+        "rose-pine": _("Rosé Pine"),
+        "rose-pine-dawn": _("Rosé Pine Dawn"),
+        "tokyo-night": _("Tokyo Night"),
+        "tokyo-night-day": _("Tokyo Night Day"),
+    }
+    return mapping.get(theme_id, theme_id)
+
+
+def _font_label(font_id: str, *, is_code: bool) -> str:
+    if is_code:
+        mapping = {
+            "system": _("System monospace"),
+            "jetbrains-mono": _("JetBrains Mono"),
+            "ia-writer": _("iA Writer Mono"),
+            "fira-code": _("Fira Code"),
+            "cascadia-code": _("Cascadia Code"),
+        }
+        return mapping.get(font_id, font_id)
+
+    mapping = {
+        "system": _("System"),
+        "inter": _("Inter"),
+        "atkinson": _("Atkinson Hyperlegible"),
+        "ia-writer": _("iA Writer Quattro"),
+        "noto-serif": _("Noto Serif"),
+        "ibmplex-sans": _("IBM Plex Sans"),
+    }
+    return mapping.get(font_id, font_id)
+
+
 class Viewer(Gtk.ApplicationWindow):
     def __init__(
-        self, app: Gtk.Application, path: Path, *, enable_mermaid: bool, debug: bool
+        self,
+        app: Gtk.Application,
+        path: Path,
+        *,
+        enable_mermaid: bool,
+        debug: bool,
+        theme_id: str,
+        body_font_id: str,
+        code_font_id: str,
+        settings_path: Path,
     ) -> None:
         super().__init__(application=app, title=path.name)
         self.set_default_size(900, 1000)
@@ -209,18 +462,26 @@ class Viewer(Gtk.ApplicationWindow):
         self.display_name = path.name
         self.path = path.resolve()
         self.enable_mermaid = enable_mermaid
+
+        self.theme_id = _coerce_theme(theme_id)
+        self.body_font_id = _coerce_font(body_font_id, kind="body")
+        self.code_font_id = _coerce_font(code_font_id, kind="code")
+        self.settings_path = settings_path
+
         self.monitor: Gio.FileMonitor | None = None
         self._reload_source: int | None = None
+        self._pending_restore_scroll = False
         self._back_stack: list[Path] = []
         self._forward_stack: list[Path] = []
 
+        # GTK preference is used for Mermaid defaults and to seed "Auto" theme.
         self.dark = Gtk.Settings.get_default().get_property(
             "gtk-application-prefer-dark-theme"
         )
 
         # Ephemeral session: no cookie jar, no HTTP cache persisted to disk.
         # decide-policy below is what actually stops any request from being
-        # made in the first place for anything but the local document tree.
+        # made in the first place for anything but the local document's tree.
         session = WebKit.NetworkSession.new_ephemeral()
         self.webview = WebKit.WebView(network_session=session)
         settings = self.webview.get_settings()
@@ -236,15 +497,19 @@ class Viewer(Gtk.ApplicationWindow):
         settings.set_enable_html5_local_storage(False)
         settings.set_enable_html5_database(False)
         settings.set_enable_developer_extras(debug)
+
         self.webview.connect("decide-policy", self._on_decide_policy)
+        self.webview.connect("load-changed", self._on_load_changed)
         self.find_controller = self.webview.get_find_controller()
 
         self.back_button = Gtk.Button(icon_name="go-previous-symbolic")
         self.back_button.set_tooltip_text(_("Back (Alt+Left)"))
         self.back_button.connect("clicked", lambda _b: self.go_back())
+
         self.forward_button = Gtk.Button(icon_name="go-next-symbolic")
         self.forward_button.set_tooltip_text(_("Forward (Alt+Right)"))
         self.forward_button.connect("clicked", lambda _b: self.go_forward())
+
         self._update_nav_sensitivity()
 
         self._toc_flat: list[tuple[int, str, str]] = []
@@ -254,9 +519,11 @@ class Viewer(Gtk.ApplicationWindow):
         toc_scroller.set_min_content_height(300)
         toc_scroller.set_min_content_width(240)
         toc_scroller.set_child(self.toc_list)
+
         self.toc_popover = Gtk.Popover()
         self.toc_popover.set_child(toc_scroller)
         self.toc_popover.connect("show", self._populate_toc)
+
         self.toc_button = Gtk.MenuButton(icon_name="view-list-symbolic")
         self.toc_button.set_tooltip_text(_("Table of contents (Ctrl+T)"))
         self.toc_button.set_popover(self.toc_popover)
@@ -264,23 +531,32 @@ class Viewer(Gtk.ApplicationWindow):
         export_button = Gtk.Button(icon_name="document-save-symbolic")
         export_button.set_tooltip_text(_("Export PDF…"))
         export_button.connect("clicked", lambda _b: self._export_pdf())
+
         print_button = Gtk.Button(icon_name="document-print-symbolic")
         print_button.set_tooltip_text(_("Print (Ctrl+P)"))
         print_button.connect("clicked", lambda _b: self._print_dialog())
+
         about_button = Gtk.Button(icon_name="help-about-symbolic")
         about_button.set_tooltip_text(_("About zeile"))
         about_button.connect("clicked", lambda _b: self._show_about())
+
+        self.theme_button = Gtk.MenuButton(icon_name="preferences-color-symbolic")
+        self.theme_button.set_tooltip_text(_("Theme and fonts"))
+        self.theme_button.set_popover(self._build_theme_popover())
 
         self._title_label = Gtk.Label(label=self.display_name)
         header = Gtk.HeaderBar()
         header.set_title_widget(self._title_label)
         header.pack_start(self.back_button)
         header.pack_start(self.forward_button)
+
         reload_button = Gtk.Button(icon_name="view-refresh-symbolic")
         reload_button.set_tooltip_text(_("Reload (Ctrl+R)"))
         reload_button.connect("clicked", lambda _b: self.reload())
         header.pack_start(reload_button)
+
         header.pack_start(self.toc_button)
+        header.pack_start(self.theme_button)
         header.pack_end(about_button)
         header.pack_end(export_button)
         header.pack_end(print_button)
@@ -318,6 +594,145 @@ class Viewer(Gtk.ApplicationWindow):
         self._add_shortcuts()
         self.reload()
         self._watch()
+
+    def _build_theme_popover(self) -> Gtk.Popover:
+        pop = Gtk.Popover()
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        box.set_margin_top(8)
+        box.set_margin_bottom(8)
+        box.set_margin_start(8)
+        box.set_margin_end(8)
+
+        theme_title = Gtk.Label(label=_("Theme"), xalign=0)
+        box.append(theme_title)
+
+        theme_model = Gtk.StringList()
+        self._theme_ids: list[str] = list(THEME_OPTIONS)
+        for theme_id in self._theme_ids:
+            theme_model.append(_theme_label(theme_id))
+
+        self.theme_dropdown = Gtk.DropDown.new(model=theme_model)
+        self.theme_dropdown.set_selected(self._theme_ids.index(self.theme_id))
+        self.theme_dropdown.connect(
+            "notify::selected",
+            partial(self._on_theme_dropdown_changed, self._theme_ids),
+        )
+        box.append(self.theme_dropdown)
+
+        body_font_title = Gtk.Label(label=_("Body font"), xalign=0)
+        body_font_title.set_margin_top(8)
+        box.append(body_font_title)
+
+        body_font_model = Gtk.StringList()
+        self._body_font_ids: list[str] = list(BODY_FONT_OPTIONS)
+        for body_font_id in self._body_font_ids:
+            body_font_model.append(_font_label(body_font_id, is_code=False))
+
+        self.body_font_dropdown = Gtk.DropDown.new(model=body_font_model)
+        self.body_font_dropdown.set_selected(self._body_font_ids.index(self.body_font_id))
+        self.body_font_dropdown.connect(
+            "notify::selected",
+            partial(self._on_font_dropdown_changed, self._body_font_ids, "body"),
+        )
+        box.append(self.body_font_dropdown)
+
+        code_font_title = Gtk.Label(label=_("Code font"), xalign=0)
+        code_font_title.set_margin_top(8)
+        box.append(code_font_title)
+
+        code_font_model = Gtk.StringList()
+        self._code_font_ids: list[str] = list(CODE_FONT_OPTIONS)
+        for code_font_id in self._code_font_ids:
+            code_font_model.append(_font_label(code_font_id, is_code=True))
+
+        self.code_font_dropdown = Gtk.DropDown.new(model=code_font_model)
+        self.code_font_dropdown.set_selected(self._code_font_ids.index(self.code_font_id))
+        self.code_font_dropdown.connect(
+            "notify::selected",
+            partial(self._on_font_dropdown_changed, self._code_font_ids, "code"),
+        )
+        box.append(self.code_font_dropdown)
+
+        pop.set_child(box)
+        return pop
+
+    def _persist_settings(self) -> None:
+        save_settings(
+            {
+                "theme": self.theme_id,
+                "body_font": self.body_font_id,
+                "code_font": self.code_font_id,
+            },
+            path=self.settings_path,
+        )
+
+    def _apply_theme_and_font_attrs(self) -> None:
+        js = [
+            "const root = document.documentElement;",
+            (
+                f"root.setAttribute('data-theme', {json.dumps(self.theme_id)});"
+                if self.theme_id != "auto"
+                else "root.removeAttribute('data-theme');"
+            ),
+            f"root.setAttribute('data-font-body', {json.dumps(self.body_font_id)});",
+            f"root.setAttribute('data-font-code', {json.dumps(self.code_font_id)});",
+        ]
+        self.webview.evaluate_javascript("\n".join(js), -1, None, None, None, None, None)
+
+    def _on_theme_dropdown_changed(
+        self, theme_ids: list[str], dropdown: Gtk.DropDown, *_pspec
+    ) -> None:
+        selected = dropdown.get_selected()
+        if selected < 0:
+            return
+        self._set_theme(theme_ids[selected])
+
+    def _on_font_dropdown_changed(
+        self, font_ids: list[str], kind: str, dropdown: Gtk.DropDown, *_pspec
+    ) -> None:
+        selected = dropdown.get_selected()
+        if selected < 0:
+            return
+        font_id = font_ids[selected]
+        if kind == "body":
+            self._set_body_font(font_id)
+        else:
+            self._set_code_font(font_id)
+
+    def _set_theme(self, theme_id: str) -> None:
+        theme_id = _coerce_theme(theme_id)
+        if theme_id == self.theme_id:
+            return
+
+        prev_dark = is_theme_dark(self.theme_id, fallback=self.dark)
+        self.theme_id = theme_id
+        next_dark = is_theme_dark(self.theme_id, fallback=self.dark)
+
+        if self.enable_mermaid and prev_dark != next_dark:
+            # Mermaid SVGs bake the palette in at render time, so a
+            # light<->dark flip needs a real re-render, not just a CSS flip.
+            self.reload()  # also syncs the GTK chrome via _sync_theme_with_gtk
+        else:
+            self._apply_theme_and_font_attrs()
+            self._sync_theme_with_gtk()
+
+        self._persist_settings()
+
+    def _set_body_font(self, body_font_id: str) -> None:
+        body_font_id = _coerce_font(body_font_id, kind="body")
+        if body_font_id == self.body_font_id:
+            return
+        self.body_font_id = body_font_id
+        self._apply_theme_and_font_attrs()
+        self._persist_settings()
+
+    def _set_code_font(self, code_font_id: str) -> None:
+        code_font_id = _coerce_font(code_font_id, kind="code")
+        if code_font_id == self.code_font_id:
+            return
+        self.code_font_id = code_font_id
+        self._apply_theme_and_font_attrs()
+        self._persist_settings()
 
     def _on_decide_policy(
         self,
@@ -408,12 +823,35 @@ class Viewer(Gtk.ApplicationWindow):
             self.find_controller.search_finish()
         return True
 
+    def _on_load_changed(self, _webview: WebKit.WebView, event: WebKit.LoadEvent) -> None:
+        if event != WebKit.LoadEvent.FINISHED:
+            return
+        if self._pending_restore_scroll:
+            self._pending_restore_scroll = False
+            restore_script = (
+                "if (typeof window.__zeileScroll === 'number') "
+                "{ const maxY = Math.max(0, "
+                "document.documentElement.scrollHeight - window.innerHeight); "
+                "window.scrollTo(0, Math.min(window.__zeileScroll, maxY)); "
+                "delete window.__zeileScroll; }"
+            )
+            self.webview.evaluate_javascript(
+                restore_script,
+                -1,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
+
     def _populate_toc(self, *_args) -> bool:
         child = self.toc_list.get_first_child()
         while child is not None:
             following = child.get_next_sibling()
             self.toc_list.remove(child)
             child = following
+
         for depth, _heading_id, name in self._toc_flat:
             label = Gtk.Label(label=name, xalign=0)
             label.set_margin_start(12 + depth * 16)
@@ -507,16 +945,37 @@ class Viewer(Gtk.ApplicationWindow):
         self.webview.set_zoom_level(level)
         return True
 
+    def _sync_theme_with_gtk(self) -> None:
+        if self.theme_id == "auto":
+            return
+        Gtk.Settings.get_default().set_property(
+            "gtk-application-prefer-dark-theme",
+            is_theme_dark(self.theme_id, fallback=False),
+        )
+
     def reload(self) -> bool:
         """Re-render the file, preserving the current scroll position."""
         self.webview.evaluate_javascript(
             "window.__zeileScroll = window.scrollY;", -1, None, None, None, None, None
         )
+        # Re-read the desktop dark preference on every render: for the "Auto"
+        # theme it decides the Mermaid palette, and the system preference can
+        # flip mid-session. Explicit themes override this via is_theme_dark.
+        self.dark = Gtk.Settings.get_default().get_property(
+            "gtk-application-prefer-dark-theme"
+        )
         html_doc, toc_tokens = render(
-            self.path, enable_mermaid=self.enable_mermaid, dark=self.dark
+            self.path,
+            enable_mermaid=self.enable_mermaid,
+            dark=self.dark,
+            theme_id=self.theme_id,
+            body_font_id=self.body_font_id,
+            code_font_id=self.code_font_id,
         )
         self._toc_flat = flatten_toc(toc_tokens)
+        self._pending_restore_scroll = True
         self.webview.load_html(html_doc, self.path.as_uri())
+        self._sync_theme_with_gtk()
         return True
 
     def _watch(self) -> None:
@@ -530,6 +989,7 @@ class Viewer(Gtk.ApplicationWindow):
             self.monitor.cancel()
         gfile = Gio.File.new_for_path(str(self.path))
         self.monitor = gfile.monitor_file(Gio.FileMonitorFlags.NONE, None)
+        assert self.monitor is not None
         self.monitor.connect("changed", self._on_changed)
 
     def _on_changed(self, _monitor, _f, _other, event) -> None:
@@ -550,15 +1010,32 @@ class Viewer(Gtk.ApplicationWindow):
 
 
 class ZeileApp(Gtk.Application):
-    def __init__(self, path: Path, *, enable_mermaid: bool, debug: bool) -> None:
+    def __init__(
+        self,
+        path: Path,
+        *,
+        enable_mermaid: bool,
+        debug: bool,
+        settings: dict[str, str],
+        settings_path: Path,
+    ) -> None:
         super().__init__(application_id=APP_ID, flags=Gio.ApplicationFlags.NON_UNIQUE)
         self.path = path
         self.enable_mermaid = enable_mermaid
         self.debug = debug
+        self.settings = settings
+        self.settings_path = settings_path
 
     def do_activate(self) -> None:
         Viewer(
-            self, self.path, enable_mermaid=self.enable_mermaid, debug=self.debug
+            self,
+            self.path,
+            enable_mermaid=self.enable_mermaid,
+            debug=self.debug,
+            theme_id=self.settings["theme"],
+            body_font_id=self.settings["body_font"],
+            code_font_id=self.settings["code_font"],
+            settings_path=self.settings_path,
         ).present()
 
 
@@ -576,6 +1053,25 @@ def main() -> int:
         action="store_true",
         help="enable WebKit developer tools (same as setting ZEILE_DEBUG)",
     )
+    parser.add_argument(
+        "--theme",
+        choices=THEME_OPTIONS,
+        default=None,
+        help="start with a theme (saved selection is used otherwise)",
+    )
+    parser.add_argument(
+        "--body-font",
+        choices=BODY_FONT_OPTIONS,
+        default=None,
+        help="body font selection (saved selection is used otherwise)",
+    )
+    parser.add_argument(
+        "--code-font",
+        choices=CODE_FONT_OPTIONS,
+        default=None,
+        help="monospace/code font selection (saved selection is used otherwise)",
+    )
+
     args = parser.parse_args()
 
     if not args.file.exists():
@@ -583,7 +1079,23 @@ def main() -> int:
         return 1
 
     debug = args.debug or bool(os.environ.get("ZEILE_DEBUG"))
-    return ZeileApp(args.file, enable_mermaid=args.enable_mermaid, debug=debug).run([])
+    settings = load_settings()
+    if args.theme is not None:
+        settings["theme"] = _coerce_theme(args.theme)
+    if args.body_font is not None:
+        settings["body_font"] = _coerce_font(args.body_font, kind="body")
+    if args.code_font is not None:
+        settings["code_font"] = _coerce_font(args.code_font, kind="code")
+    save_settings(settings)
+
+    settings_path = _default_settings_path()
+    return ZeileApp(
+        args.file,
+        enable_mermaid=args.enable_mermaid,
+        debug=debug,
+        settings=settings,
+        settings_path=settings_path,
+    ).run([])
 
 
 if __name__ == "__main__":

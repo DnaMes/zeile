@@ -1,6 +1,6 @@
 # Privacy Policy — zeile
 
-Last updated: 2026-09-10
+Last updated: 2026-09-11
 
 ## Summary
 
@@ -39,10 +39,15 @@ for the full detail on how this is enforced, not just intended.
 
 ## Data storage
 
-zeile keeps no configuration file, no history, and no cookies. Its document
-WebView has HTML5 local storage and the HTML5 database both disabled, so a
-`.md` file cannot plant an identifier that survives across opens. It writes
-nothing to `~/.config`.
+zeile keeps no history and no cookies. Its document WebView has HTML5 local
+storage and the HTML5 database both disabled, so a `.md` file cannot plant
+an identifier that survives across opens.
+
+**One small configuration file, by request of the theme/font picker:**
+`~/.config/zeile/settings.json` stores exactly three strings — the selected
+theme id and body/code font ids (e.g. `"tokyo-night"`, `"ia-writer"`). No
+file paths, no document content, no timestamps, no identifiers. Delete the
+file and zeile falls back to its defaults on the next start.
 
 **One honest exception in `~/.cache`, checked rather than assumed:** the
 GPU driver (Mesa) writes compiled shader bytecode to
@@ -74,7 +79,8 @@ entirely on your machine.
 zeile requests no special permissions. It reads the markdown file you open
 (and watches it for changes), and — only with `--enable-mermaid` — runs the
 `mmdc` subprocess you installed yourself. It writes nothing except a PDF you
-explicitly choose to export, to the location you choose.
+explicitly choose to export, to the location you choose, and the three-string
+theme/font settings file described above.
 
 ## Children
 

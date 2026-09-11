@@ -26,11 +26,11 @@ handing a clicked link to your actual browser. See Security below.
 
 Writes:
 
-| Path | What |
-|---|---|
-| `~/.local/bin/zeile` | launcher (pins `/usr/bin/python3`) |
-| `~/.local/share/applications/zeile.desktop` | desktop entry + mime association |
-| `~/.local/share/icons/hicolor/scalable/apps/zeile.svg` | icon |
+| Path                                                   | What                               |
+| ------------------------------------------------------ | ---------------------------------- |
+| `~/.local/bin/zeile`                                   | launcher (pins `/usr/bin/python3`) |
+| `~/.local/share/applications/zeile.desktop`            | desktop entry + mime association   |
+| `~/.local/share/icons/hicolor/scalable/apps/zeile.svg` | icon                               |
 
 Then sets itself as the default handler for `text/markdown`, so double-clicking
 a `.md` file in the file manager opens it.
@@ -41,20 +41,23 @@ a `.md` file in the file manager opens it.
 zeile README.md                    # GUI window
 zeile --enable-mermaid README.md   # render mermaid diagrams (needs mmdc, see below)
 zeile --debug README.md            # enable WebKit developer tools
+zeile --theme rose-pine README.md    # open with a specific theme (also saved)
+zeile --body-font inter README.md    # set body font for this run
+zeile --code-font jetbrains-mono README.md
 ```
 
 `ZEILE_DEBUG=1` is equivalent to `--debug`.
 
-| Shortcut | Action |
-|---|---|
-| `Ctrl+R` | reload |
-| `Ctrl+W` / `Ctrl+Q` | close |
-| `Ctrl++` / `Ctrl+-` | zoom |
-| `Ctrl+0` | reset zoom |
-| `Ctrl+F` | find in page |
-| `Alt+Left` / `Alt+Right` | back / forward through visited local links |
-| `Ctrl+T` | table of contents overlay (click a heading to jump to it) |
-| `Ctrl+P` | print |
+| Shortcut                 | Action                                                    |
+| ------------------------ | --------------------------------------------------------- |
+| `Ctrl+R`                 | reload                                                    |
+| `Ctrl+W` / `Ctrl+Q`      | close                                                     |
+| `Ctrl++` / `Ctrl+-`      | zoom                                                      |
+| `Ctrl+0`                 | reset zoom                                                |
+| `Ctrl+F`                 | find in page                                              |
+| `Alt+Left` / `Alt+Right` | back / forward through visited local links                |
+| `Ctrl+T`                 | table of contents overlay (click a heading to jump to it) |
+| `Ctrl+P`                 | print                                                     |
 
 The header bar also has a PDF export button (save-location picker, then
 straight to a PDF file — no print dialog in between).
@@ -68,9 +71,21 @@ one `Alt+Left` away.
 ## Features
 
 - GitHub-style CSS, light and dark following `prefers-color-scheme`
+- 16 curated themes (GitHub Light/Dark, Catppuccin ×4, Solarized ×2,
+  Gruvbox ×2, Nord, Dracula, Rosé Pine ×2, Tokyo Night ×2) plus an
+  "Auto" mode following the system; pick in the header-bar palette button
+  or via `--theme`. The selection persists in `~/.config/zeile/settings.json`
+  (theme + body/code font, nothing else).
+- Body and code font pickers with graceful fallback stacks: Inter, Atkinson
+  Hyperlegible, iA Writer Quattro, Noto Serif, IBM Plex Sans; JetBrains Mono,
+  iA Writer Mono, Fira Code, Cascadia Code. Fonts are used if installed and
+  silently fall back if not.
+- Readability polish: tinted blockquotes, zebra table rows, styled `kbd`
+  keycaps, themed text selection, focus outlines, print/PDF always renders
+  on a light palette
 - Tables, footnotes, definition lists, admonitions, TOC anchors
 - Syntax highlighting via Pygments
-- Mermaid diagrams: fenced ```` ```mermaid ```` blocks render as real
+- Mermaid diagrams: fenced ` ```mermaid ` blocks render as real
   diagrams, opt-in via `--enable-mermaid`. Pre-rendered to static SVG by the
   `mmdc` CLI (`@mermaid-js/mermaid-cli`) at render time, cached by content
   hash, so the document view itself never runs a live JS diagram renderer —
@@ -110,7 +125,7 @@ shapes every decision below, each one verified against the real WebKitGTK
 API, not assumed:
 
 - **Document JavaScript is structurally disabled** (`enable-javascript-markup
-  = False`), so a `<script>` or `onerror=` embedded in the source cannot run,
+= False`), so a `<script>` or `onerror=` embedded in the source cannot run,
   independent of the sanitizer below. The app's own `evaluate_javascript()`
   calls (scroll position) still work — they never evaluate anything sourced
   from the document.
@@ -146,6 +161,7 @@ zeile.py                the app
 markdown_ext.py          mermaid fence extraction (python-markdown preprocessor)
 mermaid_render.py        mmdc subprocess wrapper, content-hash cache
 assets/style.css         rendering stylesheet
+assets/themes.css        theme + font variable definitions
 assets/zeile.svg         icon
 po/de.po                 German translation
 install.sh               installer (also: --uninstall)

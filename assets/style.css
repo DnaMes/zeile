@@ -1,18 +1,51 @@
 :root {
+  --color-scheme: light;
   --bg: #ffffff;
   --fg: #1f2328;
-  --muted: #59636e;
-  --border: #d1d9e0;
+  --muted: #5f6771;
+  --border: #d0d7de;
   --link: #0969da;
   --code-bg: #f6f8fa;
-  --quote-border: #d1d9e0;
+  --quote-border: #d0d7de;
+  --quote-bg: #f6f8fa;
+  --selection: #c9e1ff;
   --note: #0969da;
   --warning: #9a6700;
   --danger: #cf222e;
+  --accent: #1f6feb;
+  --focus: #0969da;
+  --table-zebra: #f6f8fa;
+  --table-hover: #edf2fa;
+  --inline-code-bg: #eaeef2;
+  --line-height: 1.65;
+  --font-body: "-apple-system", "Segoe UI", "Adwaita Sans", "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-code: ui-monospace, "JetBrainsMono Nerd Font", "JetBrains Mono", "iA Writer Mono S", Menlo, monospace;
+
+  --syn-comment: #6a737d;
+  --syn-keyword: #cf222e;
+  --syn-type: #953800;
+  --syn-string: #0a3069;
+  --syn-number: #116329;
+  --syn-name: var(--fg);
+  --syn-function: #8250df;
+  --syn-class: #953800;
+  --syn-builtin: #0550ae;
+  --syn-tag: #116329;
+  --syn-attr: #0550ae;
+  --syn-operator: #cf222e;
+  --syn-punctuation: var(--fg);
+  --syn-error: #cf222e;
+  --syn-added-fg: #1a7f37;
+  --syn-added-bg: #dafbe1;
+  --syn-removed-fg: #cf222e;
+  --syn-removed-bg: #ffebe9;
+
+  --content-width: min(980px, calc(100% - 4rem));
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
+    --color-scheme: dark;
     --bg: #0d1117;
     --fg: #e6edf3;
     --muted: #9198a1;
@@ -20,9 +53,38 @@
     --link: #4493f8;
     --code-bg: #151b23;
     --quote-border: #3d444d;
+    --quote-bg: #161b22;
+    --selection: #264f78;
     --note: #4493f8;
     --warning: #d29922;
     --danger: #f85149;
+    --accent: #2f81f7;
+    --focus: #4493f8;
+    --table-zebra: #0d1117;
+    --table-hover: #161b22;
+    --inline-code-bg: #161b22;
+    --line-height: 1.65;
+    --font-body: "-apple-system", "Segoe UI", "Adwaita Sans", "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+    --font-code: ui-monospace, "JetBrainsMono Nerd Font", "JetBrains Mono", "iA Writer Mono S", Menlo, monospace;
+
+    --syn-comment: #8b949e;
+    --syn-keyword: #ff7b72;
+    --syn-type: #ffa657;
+    --syn-string: #a5d6ff;
+    --syn-number: #79c0ff;
+    --syn-name: var(--fg);
+    --syn-function: #d2a8ff;
+    --syn-class: #ffa657;
+    --syn-builtin: #79c0ff;
+    --syn-tag: #7ee787;
+    --syn-attr: #79c0ff;
+    --syn-operator: #ff7b72;
+    --syn-punctuation: var(--fg);
+    --syn-error: #f85149;
+    --syn-added-fg: #aff5b4;
+    --syn-added-bg: #033a16;
+    --syn-removed-fg: #ffdcd7;
+    --syn-removed-bg: #67060c;
   }
 }
 
@@ -30,93 +92,157 @@
   box-sizing: border-box;
 }
 
+html {
+  color-scheme: var(--color-scheme);
+}
+
 body {
   margin: 0;
   background: var(--bg);
   color: var(--fg);
-  font-family: -apple-system, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  font-family: var(--font-body);
   font-size: 16px;
-  line-height: 1.6;
+  line-height: var(--line-height);
 }
 
 .markdown-body {
-  max-width: 860px;
+  max-width: var(--content-width);
   margin: 0 auto;
-  padding: 2.5rem 2rem 6rem;
+  padding: 2.6rem 2rem 6rem;
+  text-wrap: pretty;
 }
 
-h1, h2, h3, h4, h5, h6 {
+::selection {
+  background: var(--selection);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   margin: 1.6em 0 0.6em;
-  font-weight: 600;
+  font-weight: 650;
   line-height: 1.25;
+  letter-spacing: 0.01em;
 }
 
-h1 { font-size: 2em; }
-h2 { font-size: 1.5em; }
-h3 { font-size: 1.25em; }
-h4 { font-size: 1em; }
-h5 { font-size: 0.875em; }
-h6 { font-size: 0.85em; color: var(--muted); }
+h1 {
+  font-size: 2em;
+}
 
-h1, h2 {
-  padding-bottom: 0.3em;
+h2 {
+  font-size: 1.5em;
+  padding-bottom: 0.35em;
   border-bottom: 1px solid var(--border);
+}
+
+h3 {
+  font-size: 1.25em;
+  color: var(--link);
+}
+
+h4 {
+  font-size: 1.05em;
+  color: var(--note);
+}
+
+h5 {
+  font-size: 0.875em;
+}
+
+h6 {
+  font-size: 0.85em;
+  color: var(--muted);
 }
 
 .markdown-body > :first-child {
   margin-top: 0;
 }
 
-p, ul, ol, blockquote, table, pre {
+p,
+ul,
+ol,
+blockquote,
+table,
+pre {
   margin: 0 0 1em;
 }
 
 a {
   color: var(--link);
-  text-decoration: none;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
 }
 
 a:hover {
   text-decoration: underline;
 }
 
-ul, ol {
+a:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+ul,
+ol {
   padding-left: 2em;
 }
 
 li + li {
-  margin-top: 0.25em;
+  margin-top: 0.3em;
 }
 
 blockquote {
-  padding: 0 1em;
+  padding: 0.5em 1em;
+  margin-inline-start: 0;
   color: var(--muted);
   border-left: 0.25em solid var(--quote-border);
+  background: var(--quote-bg);
+  border-radius: 0 6px 6px 0;
+}
+
+blockquote p:last-child {
+  margin-bottom: 0;
 }
 
 hr {
-  height: 1px;
-  margin: 1.5em 0;
-  background: var(--border);
   border: 0;
+  height: 1px;
+  margin: 1.8em 0;
+  background-image: linear-gradient(
+    to right,
+    transparent,
+    var(--border),
+    transparent
+  );
 }
 
-code, kbd, samp {
-  font-family: ui-monospace, "JetBrainsMono Nerd Font", "Cascadia Code", Menlo, monospace;
-  font-size: 0.875em;
+code,
+kbd,
+samp {
+  font-family: var(--font-code);
+  font-size: 0.91em;
+}
+
+code {
+  font-feature-settings: "calt" 0;
 }
 
 :not(pre) > code {
-  padding: 0.2em 0.4em;
-  background: var(--code-bg);
+  padding: 0.18em 0.38em;
+  background: var(--inline-code-bg);
   border-radius: 6px;
+  color: var(--fg);
 }
 
 pre {
   padding: 1em;
   overflow-x: auto;
   background: var(--code-bg);
-  border-radius: 6px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
   line-height: 1.45;
 }
 
@@ -125,37 +251,56 @@ pre code {
   background: none;
 }
 
-table {
-  display: block;
-  width: max-content;
-  max-width: 100%;
-  overflow-x: auto;
-  border-collapse: collapse;
+kbd {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.1em 0.45em;
+  box-shadow: inset 0 -1px 0 var(--border);
+  background: var(--code-bg);
+  font-size: 0.85em;
 }
 
-th, td {
-  padding: 0.4em 0.8em;
+table {
+  display: block;
+  max-width: 100%;
+  width: max-content;
+  overflow-x: auto;
+  border-collapse: collapse;
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+
+th,
+td {
+  padding: 0.45em 0.8em;
   border: 1px solid var(--border);
 }
 
 th {
-  font-weight: 600;
-  background: var(--code-bg);
+  font-weight: 650;
+  text-align: left;
+  background: var(--table-hover);
+}
+
+tr:nth-child(even) {
+  background: var(--table-zebra);
+}
+
+tr:hover {
+  background: var(--table-hover);
 }
 
 img {
   max-width: 100%;
 }
 
-/* Mermaid. Not verified against a real diagram (mmdc isn't installed --
-   opt-in, see README) -- this styles the container, not the SVG's own
-   internal colours, which come from mmdc's --theme flag. */
 .mermaid-diagram {
-  margin: 0 0 1em;
+  margin: 0 0 1.1em;
   padding: 1em;
   text-align: center;
+  border-radius: 8px;
   background: var(--code-bg);
-  border-radius: 6px;
+  border: 1px solid var(--border);
 }
 
 .mermaid-diagram svg {
@@ -176,7 +321,6 @@ img {
   color: var(--danger);
 }
 
-/* python-markdown admonition blocks */
 .admonition {
   padding: 0.8em 1em;
   margin: 0 0 1em;
@@ -191,7 +335,8 @@ img {
   color: var(--note);
 }
 
-.admonition.warning, .admonition.caution {
+.admonition.warning,
+.admonition.caution {
   border-left-color: var(--warning);
 }
 
@@ -200,7 +345,8 @@ img {
   color: var(--warning);
 }
 
-.admonition.danger, .admonition.error {
+.admonition.danger,
+.admonition.error {
   border-left-color: var(--danger);
 }
 
@@ -209,61 +355,109 @@ img {
   color: var(--danger);
 }
 
-/* Pygments (codehilite) — light. Class list verified by running real
-   Pygments output for python/bash/json/yaml/html/diff through
-   HtmlFormatter and diffing the emitted classes against what was styled
-   here -- ch/fm/gu/kc/na/ne/nt/nv/sa/si were confirmed missing and are
-   included below (previously: 13 unstyled classes, confirmed by the audit
-   that flagged this). `w` (Text.Whitespace) is deliberately left unstyled. */
-.codehilite .c, .codehilite .cm, .codehilite .c1, .codehilite .cs, .codehilite .ch { color: #6a737d; font-style: italic; }
-.codehilite .k, .codehilite .kd, .codehilite .kn, .codehilite .kr, .codehilite .kc { color: #cf222e; }
-.codehilite .kt { color: #953800; }
-.codehilite .s, .codehilite .s1, .codehilite .s2, .codehilite .sb, .codehilite .sd, .codehilite .sa { color: #0a3069; }
-.codehilite .si { color: #953800; }
-.codehilite .n, .codehilite .nx, .codehilite .nv { color: var(--fg); }
-.codehilite .nf, .codehilite .nd, .codehilite .fm { color: #8250df; }
-.codehilite .nc, .codehilite .nn, .codehilite .ne { color: #953800; }
-.codehilite .nb, .codehilite .bp { color: #0550ae; }
-.codehilite .na { color: #0550ae; }
-.codehilite .nt { color: #116329; }
-.codehilite .mi, .codehilite .mf, .codehilite .m { color: #0550ae; }
-.codehilite .o, .codehilite .ow { color: #cf222e; }
-.codehilite .p { color: var(--fg); }
-.codehilite .err { color: var(--danger); }
-.codehilite .gd { color: #82071e; background: #ffebe9; }
-.codehilite .gi { color: #116329; background: #dafbe1; }
-.codehilite .gu { color: #6639ba; }
-
-@media (prefers-color-scheme: dark) {
-  .codehilite .c, .codehilite .cm, .codehilite .c1, .codehilite .cs, .codehilite .ch { color: #8b949e; }
-  .codehilite .k, .codehilite .kd, .codehilite .kn, .codehilite .kr, .codehilite .kc { color: #ff7b72; }
-  .codehilite .kt { color: #ffa657; }
-  .codehilite .s, .codehilite .s1, .codehilite .s2, .codehilite .sb, .codehilite .sd, .codehilite .sa { color: #a5d6ff; }
-  .codehilite .si { color: #ffa657; }
-  .codehilite .nv { color: var(--fg); }
-  .codehilite .nf, .codehilite .nd, .codehilite .fm { color: #d2a8ff; }
-  .codehilite .nc, .codehilite .nn, .codehilite .ne { color: #ffa657; }
-  .codehilite .nb, .codehilite .bp { color: #79c0ff; }
-  .codehilite .na { color: #79c0ff; }
-  .codehilite .nt { color: #7ee787; }
-  .codehilite .mi, .codehilite .mf, .codehilite .m { color: #79c0ff; }
-  .codehilite .o, .codehilite .ow { color: #ff7b72; }
-  .codehilite .gd { color: #ffdcd7; background: #67060c; }
-  .codehilite .gi { color: #aff5b4; background: #033a16; }
-  .codehilite .gu { color: #d2a8ff; }
+.codehilite .c,
+.codehilite .cm,
+.codehilite .c1,
+.codehilite .cs,
+.codehilite .ch {
+  color: var(--syn-comment);
+  font-style: italic;
 }
 
-/* Heading colour ramp -- the user's own ask for a document reading theme
-   distinct from erdlabs' brand chrome (BRAND.md reserves palette.css for
-   header bar / buttons / active states; this is scoped to markdown content
-   only, same way a code editor's syntax theme is independent of its own UI
-   chrome). h1/h2 keep the bordered treatment above; h3+ get a light accent
-   so a document with several heading levels reads as a hierarchy at a
-   glance rather than six identical black lines. */
-h3 { color: var(--link); }
-h4 { color: var(--note); }
+.codehilite .k,
+.codehilite .kd,
+.codehilite .kn,
+.codehilite .kr,
+.codehilite .kc {
+  color: var(--syn-keyword);
+}
 
-/* Footnotes (python-markdown's `extra` bundle) */
+.codehilite .kt {
+  color: var(--syn-type);
+}
+
+.codehilite .s,
+.codehilite .s1,
+.codehilite .s2,
+.codehilite .sb,
+.codehilite .sd,
+.codehilite .sa {
+  color: var(--syn-string);
+}
+
+.codehilite .si,
+.codehilite .mf,
+.codehilite .mi {
+  color: var(--syn-number);
+}
+
+.codehilite .n,
+.codehilite .nx,
+.codehilite .nv {
+  color: var(--syn-name);
+}
+
+.codehilite .nf,
+.codehilite .nd,
+.codehilite .fm {
+  color: var(--syn-function);
+}
+
+.codehilite .nc,
+.codehilite .nn,
+.codehilite .ne {
+  color: var(--syn-class);
+}
+
+.codehilite .nb,
+.codehilite .bp {
+  color: var(--syn-builtin);
+}
+
+.codehilite .na {
+  color: var(--syn-attr);
+}
+
+.codehilite .nt {
+  color: var(--syn-tag);
+}
+
+.codehilite .o,
+.codehilite .ow {
+  color: var(--syn-operator);
+}
+
+.codehilite .p {
+  color: var(--syn-punctuation);
+}
+
+.codehilite .err {
+  color: var(--syn-error);
+}
+
+.codehilite .gd {
+  color: var(--syn-removed-fg);
+  background: var(--syn-removed-bg);
+}
+
+.codehilite .gi {
+  color: var(--syn-added-fg);
+  background: var(--syn-added-bg);
+}
+
+.codehilite .gu {
+  color: #8250df;
+  font-weight: 700;
+}
+
+input[type="checkbox"] {
+  accent-color: var(--accent);
+}
+
+.task-list-item-checkbox {
+  margin-right: 0.35rem;
+}
+
 .footnote {
   margin-top: 2em;
   padding-top: 1em;
@@ -276,18 +470,17 @@ h4 { color: var(--note); }
   margin-bottom: 0.4em;
 }
 
-.footnote-ref, .footnote-backref {
+.footnote-ref,
+.footnote-backref {
   text-decoration: none;
 }
 
-/* Inline [TOC] marker, if a document uses one (the Ctrl+T overlay is a
-   native GTK popover and doesn't use this -- this only styles a TOC a
-   document explicitly asks python-markdown to render into the page). */
 .toc {
   padding: 0.8em 1em;
   margin: 0 0 1em;
   background: var(--code-bg);
-  border-radius: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
 }
 
 .toc ul {
@@ -298,4 +491,46 @@ h4 { color: var(--note); }
 .toc > ul {
   padding-left: 0;
   list-style: none;
+}
+
+/* Scrollbars pick up each theme's accent (progressive enhancement: engines
+   without scrollbar-color ignore it and keep their default scrollbar). */
+html {
+  scrollbar-color: var(--accent) transparent;
+}
+
+@media print {
+  :root {
+    --bg: #ffffff;
+    --fg: #24292f;
+    --muted: #57606a;
+    --border: #d0d7de;
+    --link: #0969da;
+    --code-bg: #f6f8fa;
+    --quote-border: #d0d7de;
+    --quote-bg: #f6f8fa;
+    --selection: #d0d7de;
+    --note: #0969da;
+    --warning: #9a6700;
+    --danger: #cf222e;
+    --accent: #0969da;
+    --focus: #0969da;
+    --table-zebra: #f6f8fa;
+    --table-hover: #eef0f3;
+    --inline-code-bg: #e6edf3;
+  }
+
+  .mermaid-diagram,
+  .mermaid-disabled,
+  .mermaid-error,
+  pre,
+  table,
+  .admonition,
+  .toc {
+    border-color: #d0d7de;
+  }
+
+  @page {
+    margin: 1.5cm;
+  }
 }
