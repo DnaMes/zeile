@@ -7,6 +7,12 @@ Versioning: [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.0] — 2026-09-11
+
+First tagged release. Ported in from a personal-laptop project
+(`e14/apps/mdview`) and renamed to `zeile` the same day `mdview` collided
+with an existing AUR package and a 144-star GitHub project.
+
 ### Added
 
 - 16 curated document themes plus system-following "Auto": GitHub Light/Dark,
@@ -21,8 +27,28 @@ Versioning: [Semantic Versioning](https://semver.org/).
   (defensively parsed; invalid values fall back to defaults).
 - Readability polish: tinted blockquotes, zebra + hover table rows, themed
   text selection, `accent-color` task checkboxes, `kbd` keycap styling,
-  link focus outlines, `scroll-behavior: smooth`, print/PDF output forced to
-  a light palette.
+  link focus outlines, print/PDF output forced to a light palette.
+- Render a `.md` file in a GTK4 + WebKitGTK window, live-reloading on save
+  (debounced 120 ms).
+- GitHub-style CSS, light and dark following the system theme, with a
+  VSCode-inspired colour accent on headings.
+- Tables, footnotes, definition lists, admonitions, task lists
+  (`- [ ]`/`- [x]` as real disabled checkboxes), TOC anchors, full Pygments
+  syntax-highlighting token coverage.
+- YAML frontmatter is stripped before rendering instead of leaking into the
+  document as raw text.
+- Mermaid diagrams: fenced ` ```mermaid ` blocks, opt-in via
+  `--enable-mermaid`, pre-rendered to static SVG by the `mmdc` CLI and
+  cached by content hash — the document view itself never runs a live JS
+  diagram renderer.
+- Find in page (`Ctrl+F`), a table-of-contents overlay (`Ctrl+T`), and
+  local `.md`/`.markdown` link navigation with back/forward history
+  (`Alt+Left`/`Alt+Right`).
+- Print (`Ctrl+P`) and a header button to export straight to PDF.
+- An About dialog showing the current version.
+- German and English UI strings via `gettext` (`po/de.po`).
+- `install.sh`: launcher, desktop entry, mime association, a dependency
+  check that names the exact missing `pacman` package, and `--uninstall`.
 
 ### Changed
 
@@ -59,40 +85,6 @@ Versioning: [Semantic Versioning](https://semver.org/).
 - `codehilite` line-number/token styles: `.gu` (Generic.Subheading) keeps a
   theme-relative colour instead of a hardcoded one; `.mi`/`.mf` numbers
   share the numeric token colour consistently.
-
-### Removed
-
-## [0.1.0] — unreleased
-
-First version. Reconstructed from `git log`; this project has never been
-tagged or released, so the date is deliberately absent. Ported in from a
-personal-laptop project (`e14/apps/mdview`) and renamed to `zeile` the same
-day `mdview` collided with an existing AUR package and a 144-star GitHub
-project.
-
-### Added
-
-- Render a `.md` file in a GTK4 + WebKitGTK window, live-reloading on save
-  (debounced 120 ms).
-- GitHub-style CSS, light and dark following the system theme, with a
-  VSCode-inspired colour accent on headings.
-- Tables, footnotes, definition lists, admonitions, task lists
-  (`- [ ]`/`- [x]` as real disabled checkboxes), TOC anchors, full Pygments
-  syntax-highlighting token coverage.
-- YAML frontmatter is stripped before rendering instead of leaking into the
-  document as raw text.
-- Mermaid diagrams: fenced ` ```mermaid ` blocks, opt-in via
-  `--enable-mermaid`, pre-rendered to static SVG by the `mmdc` CLI and
-  cached by content hash — the document view itself never runs a live JS
-  diagram renderer.
-- Find in page (`Ctrl+F`), a table-of-contents overlay (`Ctrl+T`), and
-  local `.md`/`.markdown` link navigation with back/forward history
-  (`Alt+Left`/`Alt+Right`).
-- Print (`Ctrl+P`) and a header button to export straight to PDF.
-- An About dialog showing the current version.
-- German and English UI strings via `gettext` (`po/de.po`).
-- `install.sh`: launcher, desktop entry, mime association, a dependency
-  check that names the exact missing `pacman` package, and `--uninstall`.
 
 ### Security
 
