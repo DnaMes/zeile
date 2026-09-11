@@ -4,6 +4,109 @@ Created 2026-09-10. Renamed from `mdview` to `zeile` same day (name collision
 research: `mdview` clashes on PyPI, npm, crates.io, AUR and a 144★ GitHub
 project — see the full plan).
 
+## Session 2026-09-11 (finale): v0.1.0 released, 1.0-readiness done
+
+Operator arc: "premium themes" → "commit/push/merge" → "weiter" (×n) →
+"mach du autonom" → "handoff & Feierabend". Everything below is pushed to
+`origin/main` and CI-green; nothing is left uncommitted.
+
+**Released: `v0.1.0`** — annotated tag + GitHub release
+(https://github.com/DnaMes/zeile/releases/tag/v0.1.0, `gh` as DnaMes,
+notes from the CHANGELOG; repo is PRIVATE, so the release URL and the
+PKGBUILD source URL need auth/public-ness — noted in RELEASE.md).
+
+### What landed in this final stretch
+
+1. **1.0-readiness blockers (all fixed, headless-verified):**
+   - Launching without a file (app menu, empty `%f`) used to die on
+     argparse → now opens a markdown file chooser; cancel quits.
+   - Window size / maximized state / zoom persist in `settings.json`.
+     CRITICAL detail: `_persist_settings` (theme/font) must MERGE into the
+     freshly loaded file — a plain overwrite zeroed the window keys. The
+     window-state saver guards `get_width() <= 0` (headless/never-mapped)
+     so 0×0 never gets persisted. Unparseable numerics fall back to the
+     shipped DEFAULT, not the range minimum (200px-window trap).
+   - "Auto" theme re-renders on mid-session system light/dark flips
+     (`notify::gtk-application-prefer-dark-theme`); explicit themes pin
+     the GTK preference themselves and the auto-guard prevents a loop.
+   - Print/PDF degrade VISIBLY: `print_backends_available()` checks the
+     GTK4 module tree (`/usr/lib{,64}/gtk-4.0/*/printbackends/*.so`);
+     Arch gtk4 4.22 has none → buttons insensitive + "Unavailable:"
+     tooltip (de+en). First detection version was too optimistic ("unknown
+     layout → assume best") — a KNOWN tree without backends must return
+     False; only a totally unknown layout may assume best.
+   - `decide-policy` re-entrancy (an earlier session's "check this
+     first"): navigate_to now deferred via `GLib.idle_add`.
+2. **Engineering:**
+   - CI: `.github/workflows/ci.yml` — ruff + pytest + shellcheck; **first
+     run green in 26s** (Ubuntu gir1.2-gtk-4.0 + gir1.2-webkit-6.0 + pip
+     deps; only cosmetic checkout@v4 Node-20 annotation).
+   - Headless GUI harness institutionalized: `tests/headless_gui.py`
+     (standalone matrix) + `tests/test_headless_gui.py` (pytest wrapper,
+     skips without cage/Wayland/gi). Now a REAL regression net: zoom/
+     window restore, print degradation, live theme switch via computed
+     style, settings merge.
+   - `packaging/PKGBUILD`: Arch template, real v0.1.0 sha256 (via
+     `gh api repos/DnaMes/zeile/tarball/v0.1.0` — the plain archive URL
+     404s because the repo is private). Validated with makepkg -o plus a
+     headless run of the packaged tree. Deliberately does NOT claim the
+     text/markdown default handler; users opt in via xdg-mime.
+   - a11y: every icon-only header-bar button sets a GTK accessible LABEL
+     (tooltips alone are not reliably exposed to AT).
+3. **Findings worth keeping:**
+   - Clean-machine `install.sh` verification via bwrap (mask site-packages
+     dirs) — and a real hole it exposed: an empty/masked package dir makes
+     `import nh3` succeed VACUOUSLY as a PEP 420 namespace package
+     (`__file__` is None). Checks hardened to verify attributes
+     (`nh3.clean`, `markdown.markdown`). Error paths now proven for
+     markdown/nh3/pymdownx with exact package + pacman-fix lines; full
+     install/uninstall round trip ran in a sandboxed fake `$HOME`.
+   - `gtk-launch zeile file.md` (the file-manager activation path) spawns
+     the app as a CHILD and exits 0 immediately — monitor the child
+     (pgrep -f zeile.py), never `subprocess.run(capture_output=True)`,
+     which blocks on pipe EOF held by the app.
+   - mmdc pin test skipped deliberately: mermaid-cli@10 needs Chromium
+     rev 1108766 (~150MB) just to test whether old mermaid honours
+     `htmlLabels:false`. Even if it does, "pin an old major with an old
+     Chromium" is worse advice than "current mmdc + the version-independent
+     script-vector strip" already in place. Old-version behaviour stays
+     untested, documented as such.
+
+### What didn't work / traps hit (so they don't repeat)
+
+- `pkill -f cage` killed MY OWN shell (the pattern matched the heredoc
+  command line). Use precise process names, not -f with generic words.
+- Harness walker bug (cost two "FAIL"s): the GTK widget-tree walker MUST
+  call `get_first_child()` OUTSIDE the `isinstance` branch — inside, the
+  traversal stops at the first button and finds nothing.
+- `npm --prefix` counts as project-scoped: `--allow-scripts` is rejected
+  there; a local `package.json` with `"allowScripts": {"puppeteer": true}`
+  is the way.
+- The `2026-09-11 (evening)` session's bugs (const-redeclaration no-op,
+  scroll restore) were BOTH caught only by the headless matrix, not by
+  introspection-level tests — keep that harness fed.
+
+### Next steps (concrete, ordered)
+
+1. **Dogfood v0.1.0+ as daily driver** (`./install.sh` to refresh). The
+   remaining human verifications fall out naturally: Nautilus double-click,
+   theme/font switching with real clicks, German UI at length.
+2. **Watch CI** for a few pushes; bump `actions/checkout@v4` → `@v5` when
+   convenient (Node-20 deprecation annotation only).
+3. **Cut `v1.0.0`** when dogfood is clean — mechanical steps:
+   a. bump BOTH `pyproject.toml` `version` AND `zeile.py` `__version__`
+   (hand-synced pair, see RELEASE.md's drift warning);
+   b. CHANGELOG: `## [Unreleased]` → `## [1.0.0] — <date>`, fold entries;
+   c. `git commit`, `git tag -a v1.0.0`, `git push origin main v1.0.0`;
+   d. `gh release create v1.0.0` with notes from the CHANGELOG;
+   e. update PKGBUILD `pkgver` + sha256 (tarball via `gh api …/tarball/v1.0.0`).
+4. **If the repo ever goes public**: PKGBUILD source URL starts working;
+   AUR submission becomes possible (name `zeile` was cleared for this).
+5. Backlog (not 1.0): search match-count in the find bar, mmdc
+   htmlLabels fix tracking (upstream), settings-schema version field.
+
+See also the session sections below for the full history.
+
 ## Session 2026-09-11 (later): premium themes + fonts — DONE, committed
 
 Operator ask: "mehr Farbe, dark/light themes, coole CLI themes wie
