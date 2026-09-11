@@ -1,0 +1,78 @@
+# Maintainer: erdlabs <https://erdlabs.com>
+# Contributor: see repository
+pkgname=zeile
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Small, fast GTK4 markdown viewer with live reload, themes and Mermaid support"
+arch=(any)
+url="https://github.com/DnaMes/zeile"
+license=(GPL-3.0-or-later)
+depends=(
+    gtk4
+    webkitgtk-6.0
+    python-gobject
+    python-markdown
+    python-pygments
+    python-nh3
+    python-pymdown-extensions
+)
+optdepends=('mermaid-cli: render ```mermaid fences (npm install -g @mermaid-js/mermaid-cli)')
+# NOTE: the repository is currently private -- this source URL resolves once
+# it goes public. Until then, build from a local checkout instead.
+source=("$pkgname-$pkgver.tar.gz::https://github.com/DnaMes/zeile/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('76573177fd106c22b35c9a2905baae6cbe72d97b683d66ce5323e9fecda54419')
+
+package() {
+    local appdir="/usr/share/$pkgname"
+    cd "$pkgname-$pkgver"
+
+    # App tree: read_asset() resolves assets relative to zeile.py, so the
+    # layout below must keep assets/ and locale/ next to the script.
+    install -d "$pkgdir$appdir"
+    install -m 644 zeile.py markdown_ext.py mermaid_render.py "$appdir/"
+    cp -r assets "$appdir/assets"
+    install -d "$appdir/locale"
+
+    # Compile translations when msgfmt is available; fall back to shipping
+    # the pre-compiled catalogue from the repository.
+    if command -v msgfmt >/dev/null 2>&1; then
+        while read -r po_file; do
+            lang="$(basename "$po_file" .po)"
+            install -d "$appdir/locale/$lang/LC_MESSAGES"
+            msgfmt "$po_file" -o "$appdir/locale/$lang/LC_MESSAGES/zeile.mo"
+        done < <(find po -name '*.po' 2>/dev/null)
+    fi
+    if ! find "$appdir/locale" -name 'zeile.mo' | grep -q .; then
+        cp -r locale/. "$appdir/locale/"
+    fi
+
+    # System-wide launcher (the user-level install.sh launcher is NOT
+    # installed -- a package never hijacks ~/.local).
+    install -d "$pkgdir/usr/bin"
+    cat > "$pkgdir/usr/bin/zeile" <<EOF
+#!/bin/bash
+exec /usr/bin/python3 $appdir/zeile.py "\$@"
+EOF
+    chmod 755 "$pkgdir/usr/bin/zeile"
+
+    # Desktop integration. A package must not claim the text/markdown
+    # default handler on its own -- users opt in via:
+    #   xdg-mime default zeile.desktop text/markdown text/x-markdown
+    install -Dm 644 /dev/null "$pkgdir/usr/share/applications/zeile.desktop"
+    cat > "$pkgdir/usr/share/applications/zeile.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=zeile
+GenericName=Markdown Viewer
+Comment=View markdown files
+Exec=/usr/bin/zeile %f
+Icon=zeile
+Terminal=false
+Categories=Utility;TextEditor;Viewer;
+MimeType=text/markdown;text/x-markdown;
+StartupWMClass=com.erdlabs.zeile
+EOF
+
+    install -Dm 644 assets/zeile.svg \
+        "$pkgdir/usr/share/icons/hicolor/scalable/apps/zeile.svg"
+}

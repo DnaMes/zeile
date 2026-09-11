@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["*"]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: System dependencies (GTK4 + WebKitGTK 6.0 GObject introspection)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            python3-gi \
+            gir1.2-gtk-4.0 \
+            gir1.2-webkit-6.0 \
+            shellcheck
+
+      - name: Python dependencies
+        run: |
+          python3 -m pip install --break-system-packages \
+            markdown nh3 pymdown-extensions pygments pytest ruff
+
+      - name: ruff (lint)
+        run: python3 -m ruff check zeile.py tests/ mermaid_render.py markdown_ext.py
+
+      - name: pytest
+        run: python3 -m pytest -q
+
+      - name: shellcheck (install.sh)
+        run: shellcheck install.sh

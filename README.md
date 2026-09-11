@@ -181,6 +181,14 @@ install.sh               installer (also: --uninstall)
 Nothing to build — `zeile.py` runs as-is via the `/usr/bin/python3`
 interpreter the launcher pins.
 
+## Packaging & CI
+
+- `packaging/PKGBUILD` — Arch/AUR package template (installs to
+  `/usr/share/zeile`, never claims the markdown default handler on its
+  own; users opt in via `xdg-mime`). The `source` URL resolves once the
+  repository is public; until then build from a local checkout.
+- `.github/workflows/ci.yml` — ruff, pytest and shellcheck on every push.
+
 ## Licence
 
 GPL-3.0-or-later. Copyright (c) 2026 erdlabs.
