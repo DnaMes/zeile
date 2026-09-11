@@ -4,6 +4,65 @@ Created 2026-09-10. Renamed from `mdview` to `zeile` same day (name collision
 research: `mdview` clashes on PyPI, npm, crates.io, AUR and a 144★ GitHub
 project — see the full plan).
 
+## Session 2026-09-11 (later): premium themes + fonts — DONE, committed
+
+Operator ask: "mehr Farbe, dark/light themes, coole CLI themes wie
+Catppuccin/Solarized/GitHub, Lesbarkeit, moderne Fonts". Landed as commit
+`accf85e` (+ this doc and the recompiled `.mo` in the follow-up commit).
+
+What it is:
+
+- 16 themes + system-following Auto (GitHub ×2, Catppuccin ×4, Solarized ×2,
+  Gruvbox ×2, Nord, Dracula, Rosé Pine ×2, Tokyo Night ×2), each with a full
+  Pygments syntax palette transcribed from the theme's official colours.
+- Body/code font pickers (Inter, Atkinson Hyperlegible, iA Writer Quattro,
+  Noto Serif, IBM Plex Sans; JetBrains Mono, iA Writer Mono, Fira Code,
+  Cascadia Code) — pure CSS `data-font-*` attribute selectors with fallback
+  stacks, so an uninstalled font silently falls back.
+- Live switching via `data-theme`/`data-font-*` attributes on `<html>`:
+  instant, no re-render, scroll/zoom preserved. Only a Mermaid
+  light↔dark flip re-renders (the SVG bakes its palette in at `mmdc` time).
+- Selections persist to `~/.config/zeile/settings.json`
+  (whitelist-clamped; PRIVACY.md updated accordingly — the old "writes
+  nothing to `~/.config`" claim became false and was corrected).
+- Theme registry lives in `zeile.py` (`THEME_OPTIONS`, `THEME_DARKNESS`);
+  colour values in `assets/themes.css`. Adding a theme = one CSS block +
+  two registry entries + one label + de.po strings; a test enforces the
+  full variable set per block.
+- Also fixed: scroll position was saved on reload but never restored
+  (docstring lied); now restored on WebKit `load-changed` FINISHED, clamped
+  to document height. Print/PDF forces a light palette.
+
+**How it was verified — and the tooling lesson that cost half a session:**
+
+1. Pure logic (settings roundtrip, attr injection, CSS var completeness,
+   hostile id clamping): unit tests — green.
+2. Full GTK UI under `cage -d` (nested Wayland): theme/font switching,
+   persistence, invalid-id clamping, and the REAL `notify::selected` signal
+   path — green. This caught a real bug: GObject passes a ParamSpec as a
+   third argument to `notify::selected` handlers; the `partial`-bound
+   handlers originally took only two and would have TypeError'd on every
+   actual user click. Introspection-level tests never caught that; the
+   signal-emission test did.
+3. **`grim` screenshots are worthless for post-initial-frame WebKit content
+   on this machine.** WebKitGTK correctly throttles rendering for occluded /
+   non-focused windows (energy saving) — the first frame paints, then
+   nothing: not inline `style.color='red'`, not `queue_draw()`, not
+   `scrollBy`. half a session went chasing a "theme switch doesn't work"
+   ghost that was actually the compositor throttling. The tool that works,
+   even headless inside cage: **`webview.get_snapshot()`** (WebKitGTK 6
+   returns a `Gdk.Texture`; `Gdk.pixbuf_get_from_texture()` → PNG). That
+   proved the live switch pixel-for-pixel: mocha `(26,26,41)` → solarized
+   cream `(249,242,223)` after `_set_theme()`, screenshot-level, with the
+   Solarized syntax palette visibly correct. **Next GUI verification of
+   WebKit content: `get_snapshot()`, not `grim`.** (`grim` remains right
+   for GTK-chrome/layout checks, where it caught the original black-screen
+   bug.)
+
+Still open from before (unchanged): real `mmdc` render check, human
+click-through of search/TOC/print/PDF, file-manager double-click test,
+`v0.1.0` tag.
+
 ## Current Task
 
 Executing the plan at `~/.claude/plans/hi-hier-wa-rein-humming-kahan.md`
@@ -26,7 +85,7 @@ isolated throwaway scripts until one reproduced it): Phase 5 restructured
 the window's child from a bare `Gtk.ScrolledWindow` (which a
 `Gtk.ApplicationWindow` always allocates 100% of its own space to) into a
 `Gtk.Box` holding the new search bar plus that same `ScrolledWindow`. Only
-`box.set_vexpand(True)` was set — on the *Box*, which only affects how the
+`box.set_vexpand(True)` was set — on the _Box_, which only affects how the
 Box itself is allocated space by the window, not how the Box then
 distributes that space to its own children. Without `vexpand`/`hexpand` on
 the `ScrolledWindow` itself, GTK4 gives it its natural (minimum) size
@@ -51,7 +110,7 @@ do for itself.
 ## Files Changed (Phase 8 — the last one)
 
 - `zeile.py`: `gettext` wired up (`_ = gettext.translation("zeile",
-  localedir=.../locale, fallback=True).gettext` — `fallback=True` so a
+localedir=.../locale, fallback=True).gettext` — `fallback=True` so a
   missing translation is never a hard error, just English). Every
   user-facing tooltip/dialog-title/error string wrapped in `_()`
   (`argparse` help text deliberately left English — developer/CLI-facing,
@@ -65,7 +124,7 @@ do for itself.
   committed — so `python3 zeile.py` works with German out of the box even
   without running `install.sh` first. **Verified end-to-end, not just that
   it compiles**: `LANG=de_DE.UTF-8 LANGUAGE=de python3 -c "import zeile;
-  print(zeile._('Reload (Ctrl+R)'))"` printed `Neu laden (Strg+R)`; the
+print(zeile._('Reload (Ctrl+R)'))"` printed `Neu laden (Strg+R)`; the
   default locale on this machine printed the English original unchanged.
 - `install.sh`: dependency check for `python-gobject`/`webkitgtk-6.0`/
   `python-markdown`/`python-nh3`/`python-pymdown-extensions`, each
@@ -115,14 +174,16 @@ none of which this autonomous pass had:
    (doesn't navigate, freezes, or double-loads), defer the call with
    `GLib.idle_add(lambda: self.navigate_to(target))` instead of calling it
    directly, and see if that's the fix before looking anywhere else.
-3. **Look at a rendered document.** Partially done 2026-09-11 while fixing
-   the black-screen bug above: a real screenshot (`grim` — available on
-   this machine, Wayland/Hyprland) confirms basic markdown (headings, text,
-   blockquote) now renders correctly. Still unseen: the h3/h4 colour
-   accent, the mermaid container, tables, code blocks, task lists, and
-   anything needing mouse/keyboard interaction (`wtype` is available for
-   keyboard input if a future pass wants to script that; no mouse-click
-   simulation tool was found).
+
+3. **Look at a rendered document.** Largely superseded 2026-09-11: the
+   theme/font session verified mocha + solarized-light renders including
+   syntax highlighting, tables, admonitions, blockquotes and task-list
+   checkboxes via WebKit snapshots (see the session section at the top).
+   Still unseen live: every OTHER theme, and anything needing
+   mouse/keyboard interaction (`wtype` is available for keyboard input if a
+   future pass wants to script that; no mouse-click simulation tool was
+   found — but the `notify::selected` signal-path test in the theme
+   session is the template for driving the dropdowns headlessly).
 4. **Double-click a `.md` file in an actual file manager** after
    `./install.sh` — every test this session ran launched via CLI.
 5. Tag `v0.1.0` once the above close — see `RELEASE.md` for the full
@@ -154,12 +215,12 @@ none of which this autonomous pass had:
 ## Files Changed (Phase 6)
 
 - `zeile.py`: `render_body()`/`render()` now return `(html_or_body,
-  toc_tokens)` instead of a bare string — `toc_tokens` is the `toc`
+toc_tokens)` instead of a bare string — `toc_tokens` is the `toc`
   extension's already-computed heading tree, previously discarded. New
   `flatten_toc()` turns that nested structure into a flat `(depth, id,
-  name)` list for the overlay. `Ctrl+T` opens a `Gtk.Popover`/`Gtk.ListBox`
+name)` list for the overlay. `Ctrl+T` opens a `Gtk.Popover`/`Gtk.ListBox`
   built from that list; clicking an entry calls `evaluate_javascript(
-  "document.getElementById(...).scrollIntoView()")` with the heading id
+"document.getElementById(...).scrollIntoView()")` with the heading id
   passed through `json.dumps()` rather than f-string interpolation (the one
   value here that comes from document content). `Ctrl+P` opens
   `WebKit.PrintOperation.run_dialog()` (the interactive OS print dialog); a
@@ -195,7 +256,7 @@ none of which this autonomous pass had:
 ## Files Changed (Phase 4)
 
 - `zeile.py`: `render()` split into `render_body(text, *, enable_mermaid,
-  dark)` (pure — no file I/O, no GTK) and `build_document(body, title)`
+dark)` (pure — no file I/O, no GTK) and `build_document(body, title)`
   (wraps body in the CSP/stylesheet shell), with `render()` now a thin I/O
   shell calling both.
 - `tests/` (new): `conftest.py` (repo root on `sys.path`, since these are
@@ -238,7 +299,7 @@ none of which this autonomous pass had:
   directory, handing everything else to the system's default opener.
   `extract_mermaid()`/`MERMAID_FENCE` removed (replaced below).
 - `markdown_ext.py` (new): `MermaidExtension`, a real python-markdown
-  preprocessor for ```` ```mermaid ```` fences. Fixes two confirmed bugs from
+  preprocessor for ` ```mermaid ` fences. Fixes two confirmed bugs from
   the old raw-text-regex approach: a fence indented inside a list/blockquote
   is now correctly extracted (the old column-0-anchored regex silently
   missed it), and a document containing predictable marker-like text can no
@@ -246,7 +307,7 @@ none of which this autonomous pass had:
   nonce). Deliberately does NOT hand the sanitizer any SVG/diagram markup —
   it stashes the nonce, not the rendered content, and the caller
   (`zeile.py`'s `render()`) substitutes the real fragment back in only
-  *after* `sanitize_html()` has run. This means the nh3 allowlist never had
+  _after_ `sanitize_html()` has run. This means the nh3 allowlist never had
   to grow SVG tags/attributes at all (a design correction mid-implementation
   — the first draft tried allowlisting `<svg>`/`<path>`/etc. globally in nh3,
   which would have also let a malicious `.md`'s own raw `<svg>`/`<style>`
@@ -274,7 +335,7 @@ none of which this autonomous pass had:
   `fenced_code_block` preprocessor also registers at priority 25 in
   python-markdown 3.10.3, and registers first (since `EXTENSIONS` lists
   `"extra"` before the Mermaid extension), so equal-priority ties went to it
-  — a `` ```mermaid `` fence was being silently consumed as an ordinary code
+  — a ` ```mermaid ` fence was being silently consumed as an ordinary code
   block before `MermaidPreprocessor` ever ran. Fixed by registering at
   priority 26. Found via direct reproduction, not assumed — confirmed
   `md.preprocessors._priority` shows the collision, confirmed the fix by
