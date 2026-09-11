@@ -148,6 +148,42 @@ checklist is green enough that tagging is one `git tag -a v0.1.0` away,
 but the print limitation and the remaining human items deserve an owner's
 glance first.
 
+## Session 2026-09-11 (late): release cut + sandbox verification
+
+**`v0.1.0` tagged and released** (https://github.com/DnaMes/zeile/releases/tag/v0.1.0,
+gh CLI as DnaMes, notes derived from the CHANGELOG). Version drift check
+passed first (pyproject 0.1.0 == `__version__` 0.1.0); CHANGELOG's two
+sections merged into one `[0.1.0] — 2026-09-11`.
+
+Then the last RELEASE checklist items, closed autonomously with bubblewrap
+(bwrap 0.12, already on the system as a WebKitGTK dep) and the headless
+cage harness — zero focus steal, real `$HOME` untouched:
+
+- **Clean-machine error path CLOSED**: masking site-packages dirs via
+  `bwrap --tmpfs` makes `install.sh` fail with the exact package name +
+  `pacman` fix line (verified for python-markdown, python-nh3,
+  python-pymdown-extensions). Finding on the way: masking a package dir
+  leaves an empty dir, and PEP 420 turns bare top-level imports
+  (`import nh3`) into vacuous successes (`__file__` is None!) —
+  `pymdownx.tasklist` kept failing because submodule imports don't get
+  the namespace treatment. install.sh's checks were hardened to verify an
+  attribute (`nh3.clean`, `markdown.markdown`), which catches broken
+  installs too. shellcheck still clean.
+- **Full install/uninstall round trip in a sandboxed fake `$HOME`**: all
+  four artifacts written (launcher, desktop entry, icon, mimeapps.list —
+  repo had to be bound read-write so msgfmt can compile the .mo), then
+  `--uninstall` removes them again.
+- **Desktop-entry activation verified**: `gtk-launch zeile file.md` (the
+  path file managers actually invoke) spawns the real app
+  (`/usr/bin/python3 …/zeile.py file.md`), confirmed via pgrep inside the
+  headless compositor. Harness gotcha for the record: gtk-launch spawns
+  the app as a child and exits 0 immediately; `subprocess.run(capture_
+output=True)` then blocks on pipe EOF held by the app — don't capture,
+  pgrep instead.
+
+Remaining human items (unchanged): the literal Nautilus double-click
+gesture; print/PDF on a system with GTK4 print backends.
+
 ## Current Task
 
 Executing the plan at `~/.claude/plans/hi-hier-wa-rein-humming-kahan.md`

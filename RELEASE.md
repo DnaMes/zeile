@@ -72,19 +72,31 @@ puppeteer @mermaid-js/mermaid-cli`), a real flowchart rendered through
 - [x] `pytest` — 22/22 passing (`tests/`).
 - [x] `shellcheck install.sh` — clean as of 2026-09-10, re-check after any
       further edit; re-checked clean 2026-09-11.
-- [ ] Install on a clean machine (no `python-nh3`/`python-pymdown-extensions`
-      pre-installed) — verify `install.sh` fails with the specific missing
-      package name, not a generic error, and that installing the named
-      package and re-running actually works.
+- [x] Install on a clean machine (no `python-nh3`/`python-pymdown-extensions`
+      pre-installed) — CLOSED 2026-09-11 via a bubblewrap sandbox masking
+      the real site-packages dirs: `install.sh` fails with the exact
+      missing package name and the copy-pasteable `pacman` fix line for
+      `python-markdown`, `python-nh3` and `python-pymdown-extensions`
+      (exit 1, nothing written). This exposed and fixed a real gap: bare
+      top-level imports (`import nh3`, `import markdown`) succeed vacuously
+      as PEP 420 namespace packages when the package dir exists but is
+      empty/broken — the checks now verify an attribute
+      (`nh3.clean`, `markdown.markdown`), so a broken install is caught too.
+      A full install/uninstall round trip was then run inside the sandbox
+      into a fake `$HOME` (repo bound read-write so `msgfmt` compiles):
+      launcher, desktop entry, icon and `mimeapps.list` all written, and
+      `--uninstall` removes them again — the real `$HOME` untouched.
 - [x] `./install.sh --uninstall` then `./install.sh` again — verified
-      2026-09-11: uninstall removes launcher/desktop entry and the default
-      handler reverts to the previous one; reinstall restores `zeile.desktop`.
+      2026-09-11 both on the real `$HOME` and inside the sandbox (see above):
+      uninstall removes launcher/desktop entry and the default handler
+      reverts to the previous one; reinstall restores `zeile.desktop`.
 - [ ] Actually double-click a `.md` file in a file manager after install —
       every verification so far has launched via CLI. Closest autonomous
-      equivalent done 2026-09-11: `xdg-mime query default text/markdown` →
-      `zeile.desktop`, and the installed launcher
-      (`~/.local/bin/zeile file.md` — the desktop entry's exact Exec) runs
-      the app end-to-end inside a headless compositor.
+      equivalents done 2026-09-11: `xdg-mime query default text/markdown` →
+      `zeile.desktop`; `gtk-launch zeile file.md` (the exact desktop-entry
+      activation path a file manager uses) spawns the real app process
+      (`/usr/bin/python3 …/zeile.py file.md`), verified inside the headless
+      compositor. Only the literal icon-click gesture remains human.
 - [x] `LANG=de_DE.UTF-8 zeile ...` — verified 2026-09-11 in a real running
       window (headless compositor, widget-level): tooltips and titles show
       the German strings ("Theme und Schriften", "Inhaltsverzeichnis

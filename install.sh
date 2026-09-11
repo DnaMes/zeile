@@ -44,8 +44,8 @@ check_dependency "GTK4 GObject bindings (python-gobject)" "python-gobject" \
     /usr/bin/python3 -c "import gi; gi.require_version('Gtk', '4.0'); from gi.repository import Gtk"
 check_dependency "WebKitGTK 6.0 (webkitgtk-6.0)" "webkitgtk-6.0" \
     /usr/bin/python3 -c "import gi; gi.require_version('WebKit', '6.0'); from gi.repository import WebKit"
-check_dependency "python-markdown" "python-markdown" /usr/bin/python3 -c "import markdown"
-check_dependency "python-nh3" "python-nh3" /usr/bin/python3 -c "import nh3"
+check_dependency "python-markdown" "python-markdown" /usr/bin/python3 -c "import markdown; markdown.markdown"
+check_dependency "python-nh3" "python-nh3" /usr/bin/python3 -c "import nh3; nh3.clean"
 check_dependency "python-pymdown-extensions" "python-pymdown-extensions" \
     /usr/bin/python3 -c "import pymdownx.tasklist"
 
