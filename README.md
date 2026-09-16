@@ -195,8 +195,10 @@ install.sh               installer (also: --uninstall)
 
 ## Build
 
-Nothing to build — `zeile.py` runs as-is via the `/usr/bin/python3`
-interpreter the launcher pins.
+There is nothing to compile for local development — `zeile.py` runs as-is via
+the `/usr/bin/python3` interpreter the launcher pins. Release tags trigger
+`.github/workflows/release.yml`, which validates the tag/version and publishes
+a checksumed Linux source archive to the GitHub Release.
 
 ## Packaging & CI
 
@@ -205,6 +207,23 @@ interpreter the launcher pins.
   own; users opt in via `xdg-mime`). The `source` URL resolves once the
   repository is public; until then build from a local checkout.
 - `.github/workflows/ci.yml` — ruff, pytest and shellcheck on every push.
+- `.github/workflows/release.yml` — validates SemVer/tag consistency, runs the
+  full test/lint/package checks, and publishes `zeile-VERSION.tar.gz` plus
+  `SHA256SUMS` for every `vX.Y.Z` tag.
+- `scripts/check_version.py` — checks the version copies in `pyproject.toml`,
+  `zeile.py` and `packaging/PKGBUILD`; the release workflow refuses drift.
+
+## Platform support
+
+- **Linux:** supported. The source release, `install.sh` and Arch `PKGBUILD`
+  use the system GTK4/WebKitGTK 6.0 stack.
+- **Windows/macOS:** no native binaries are published yet. PyGObject/GTK4
+  itself is available on both platforms, but this application requires
+  WebKitGTK 6.0; the current packaging sources do not provide a supported
+  Windows or macOS WebKitGTK runtime. A real port needs a platform-specific
+  WebView boundary (Windows WebView2 and macOS WKWebView) before installers
+  can be produced. The release pipeline intentionally publishes no fake
+  cross-platform artifacts.
 
 ## Licence
 

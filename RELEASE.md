@@ -6,7 +6,10 @@ does not apply. What remains is the licensing, versioning, security, and
 documentation work every erdlabs project owes before its repository goes
 public.
 
-Current version: **0.1.0** (`pyproject.toml`), tagged and released 2026-09-11.
+Current version: **0.2.0** (`pyproject.toml`), release candidate prepared
+2026-09-16. The tag workflow publishes a checksumed Linux source archive;
+native Windows/macOS artifacts are intentionally not produced until the
+WebView backend is ported (see README's Platform support section).
 
 **Version drift risk**: `pyproject.toml`'s `version` and `zeile.py`'s
 `__version__` (shown in the About dialog) are two hand-synced copies, not
@@ -106,6 +109,9 @@ puppeteer @mermaid-js/mermaid-cli`), a real flowchart rendered through
 
 - [x] Repository is private on GitHub (`DnaMes/zeile`) — confirmed as of
       this rename; re-check before any public-listing decision.
+- [ ] Tag `v0.2.0` and cut the automated GitHub release — the release
+      workflow publishes `zeile-0.2.0.tar.gz` and `SHA256SUMS` after all
+      validation checks pass.
 - [x] Tag `v0.1.0` and cut a GitHub release — done 2026-09-11
       (`5ac2795`, https://github.com/DnaMes/zeile/releases/tag/v0.1.0),
       with the print/PDF platform limitation stated in the release notes.

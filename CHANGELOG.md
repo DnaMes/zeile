@@ -5,7 +5,7 @@ All notable changes to this project.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.2.0] — 2026-09-16
 
 ### Added
 
@@ -37,6 +37,10 @@ Versioning: [Semantic Versioning](https://semver.org/).
   are missing (insensitive + explanatory tooltip) instead of silently
   no-oping.
 - About dialog now shows the erdlabs brand mark.
+
+## [Unreleased]
+
+No changes yet.
 
 ### Changed
 

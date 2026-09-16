@@ -41,7 +41,7 @@ from gi.repository import Gdk, Gio, GLib, Gtk, WebKit  # noqa: E402
 from markdown_ext import LanguageGuessExtension, MermaidExtension  # noqa: E402
 
 APP_ID = "com.erdlabs.zeile"
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 # fallback=True: on a system with no compiled translation for the current
 # locale (or none at all, as on this dev machine's default LANG), _() just

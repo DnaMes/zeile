@@ -1,7 +1,7 @@
 # Maintainer: erdlabs <https://erdlabs.com>
 # Contributor: see repository
 pkgname=zeile
-pkgver=0.1.0
+pkgver=0.2.0
 pkgrel=1
 pkgdesc="Small, fast GTK4 markdown viewer with live reload, themes and Mermaid support"
 arch=(any)
@@ -29,7 +29,7 @@ package() {
     # App tree: read_asset() resolves assets relative to zeile.py, so the
     # layout below must keep assets/ and locale/ next to the script.
     install -d "$pkgdir$appdir"
-    install -m 644 zeile.py markdown_ext.py mermaid_render.py "$appdir/"
+    install -m 644 zeile.py code_lang.py markdown_ext.py mermaid_render.py "$appdir/"
     cp -r assets "$appdir/assets"
     install -d "$appdir/locale"
 
