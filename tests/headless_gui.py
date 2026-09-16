@@ -29,9 +29,10 @@ sys.path.insert(0, str(REPO))
 import gi  # noqa: E402
 
 gi.require_version("Gtk", "4.0")
+gi.require_version("Gdk", "4.0")
 gi.require_version("WebKit", "6.0")
 
-from gi.repository import GLib, Gtk  # noqa: E402
+from gi.repository import Gdk, GLib, Gtk  # noqa: E402
 
 import zeile  # noqa: E402
 from zeile import ZeileApp, load_settings, print_backends_available  # noqa: E402
@@ -113,7 +114,25 @@ def run() -> None:
                         f"{len(degraded)} degraded buttons",
                     )
 
-                # 3. live theme switch updates the computed syntax colour
+                # 3. About dialog carries the erdlabs brand logo
+                win._show_about()
+                about = next(
+                    (
+                        w
+                        for w in Gtk.Window.list_toplevels()
+                        if isinstance(w, Gtk.AboutDialog)
+                    ),
+                    None,
+                )
+                check(
+                    "about-logo",
+                    about is not None and about.get_logo() is not None,
+                    "no AboutDialog found" if about is None else "logo present",
+                )
+                if about is not None:
+                    about.close()
+
+                # 4. live theme switch updates the computed syntax colour
                 def style_cb(src, res, _u):
                     try:
                         colour = src.evaluate_javascript_finish(res).to_string()
@@ -137,7 +156,85 @@ def run() -> None:
                 )
 
                 def finish() -> None:
-                    # 4. window-state saver + merge guard (headless: width 0
+                    # 5. copy affordance: link present in the DOM, click
+                    # intercepted via decide-policy (no document JS!), text
+                    # on the GTK clipboard, feedback class flashed.
+                    def dom_cb(src, res, _u):
+                        try:
+                            count = src.evaluate_javascript_finish(res).to_string()
+                        except Exception:  # noqa: BLE001
+                            count = "?"
+                        check(
+                            "copy-link-in-dom",
+                            count == "1",
+                            f"a.code-copy count: {count}",
+                        )
+
+                        def clicked(_s, _r, _u2):
+                            # decide-policy runs on a later main-loop turn;
+                            # give it time before verifying the effects.
+                            def verify() -> bool:
+                                def read_clip(src3, res3, _u3):
+                                    try:
+                                        text = src3.read_text_finish(res3)
+                                    except Exception as exc:  # noqa: BLE001
+                                        text = None
+                                        detail = f"read failed: {exc}"
+                                    else:
+                                        detail = repr(text)
+                                    check(
+                                        "copy-to-clipboard",
+                                        text == "def f(x):\n    return x  # hi\n",
+                                        detail,
+                                    )
+                                    final()
+
+                                clip = Gdk.Display.get_default().get_clipboard()
+                                clip.read_text_async(None, read_clip, None)
+                                return GLib.SOURCE_REMOVE
+
+                            GLib.timeout_add(500, verify)
+                            return GLib.SOURCE_REMOVE
+
+                        win.webview.evaluate_javascript(
+                            "document.querySelector('a.code-copy').click();",
+                            -1,
+                            None,
+                            None,
+                            None,
+                            clicked,
+                            None,
+                        )
+
+                    win.webview.evaluate_javascript(
+                        "document.querySelectorAll('a.code-copy').length",
+                        -1,
+                        None,
+                        None,
+                        None,
+                        dom_cb,
+                        None,
+                    )
+
+                def final() -> None:
+                    # 6. search match-count label: driven at signal level
+                    # (WebKit's own found-text does not fire reliably in a
+                    # headless compositor -- same caveat as counted-matches
+                    # in HANDOFF.md; the handler is what the real signal
+                    # calls).
+                    win._on_found_text(win.find_controller, 3)
+                    three = win._match_label.get_text()
+                    win._on_failed_to_find(win.find_controller)
+                    none_txt = win._match_label.get_text()
+                    win._close_search()
+                    closed = win._match_label.get_text()
+                    check(
+                        "search-match-label",
+                        (three, none_txt, closed) == ("3 matches", "No matches", ""),
+                        f"{three!r} / {none_txt!r} / {closed!r}",
+                    )
+
+                    # 7. window-state saver + merge guard (headless: width 0
                     # means "never mapped" -> the saver must not overwrite)
                     win._save_window_state()
                     saved = load_settings(path=settings_path)

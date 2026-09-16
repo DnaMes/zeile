@@ -31,6 +31,7 @@ from markdown.extensions import Extension
 from markdown.preprocessors import Preprocessor
 
 import mermaid_render
+from code_lang import guess_code_language
 
 FENCE_RE = re.compile(
     r"^(?P<indent>[ \t]*)```mermaid[ \t]*\n"
@@ -137,3 +138,66 @@ class MermaidExtension(Extension):
             else:
                 body = body.replace(nonce, fragment, 1)
         return body
+
+
+class LanguageGuessPreprocessor(Preprocessor):
+    """Add a detected language to *unlabeled* fenced code blocks.
+
+    A fence with no info string renders as plain uncoloured code (codehilite
+    runs with guess_lang deliberately off -- Pygments' guess_lexer misfires
+    badly on short snippets, see code_lang.py). This preprocessor scans
+    fences and, for blocks with an empty info string, runs code_lang's
+    detector over the body and writes the detected alias into the fence line
+    so codehilite highlights the block as if the author had tagged it.
+
+    It mirrors python-markdown's own FENCED_BLOCK_RE acceptance exactly
+    (verified against the installed source): opening fence at column 0,
+    closing fence the *identical* string (` ```` vs ` ``` ` lengths matter)
+    at column 0 with only trailing spaces. A fence shape fenced_code itself
+    would not treat as a block (indented, longer/shorter closer, no closer)
+    is left completely alone -- rewriting a line fenced_code ignores would
+    leak the injected alias into the surrounding paragraph as visible text.
+    Labeled fences and ```mermaid fences are never touched either, and the
+    scanner jumps past each consumed block, so a code block *containing*
+    example fence lines is walked correctly.
+    """
+
+    _FENCE_OPEN = re.compile(r"^(?P<fence>[`~]{3,})[ ]*(?P<info>.*?)[ ]*$")
+
+    def run(self, lines: list[str]) -> list[str]:
+        out = list(lines)
+        n = len(out)
+        i = 0
+        while i < n:
+            m = self._FENCE_OPEN.match(out[i])
+            if not m:
+                i += 1
+                continue
+            info = m.group("info").strip()
+            fence = m.group("fence")
+            # Exact same fence string at column 0, trailing spaces only --
+            # precisely what fenced_code's (?P=fence)[ ]*$ requires.
+            close_re = re.compile(r"^" + re.escape(fence) + r"[ ]*$")
+            j = i + 1
+            while j < n and not close_re.match(out[j]):
+                j += 1
+            if j < n and not info:
+                # fenced_code-recognized block with no language: detect.
+                lang = guess_code_language("\n".join(out[i + 1 : j]))
+                if lang:
+                    out[i] = fence + lang
+            # Jump past the whole block either way: labeled blocks need no
+            # rewrite, and inner lines must not be re-scanned as opens.
+            i = j + 1 if j < n else n
+        return out
+
+
+class LanguageGuessExtension(Extension):
+    """Wire LanguageGuessPreprocessor into the markdown pipeline."""
+
+    def extendMarkdown(self, md) -> None:
+        pre = LanguageGuessPreprocessor(md)
+        # 27: strictly before extra's fenced_code (25) and the mermaid
+        # preprocessor (26) -- same ordering constraint MermaidExtension
+        # documents; ties go to whichever registered first, so be explicit.
+        md.preprocessors.register(pre, "zeile-lang-guess", 27)

@@ -9,3 +9,8 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+# The language-detection battery stores one realistic code sample per line;
+# wrapping them into string concatenation would hurt readability for zero gain.
+"tests/test_code_lang.py" = ["E501"]

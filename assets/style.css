@@ -251,6 +251,75 @@ pre code {
   background: none;
 }
 
+/* Copy-to-clipboard affordance on code blocks. The "button" is an
+   <a href="zeile-copy://N"> -- document JavaScript is structurally
+   disabled, so the click is intercepted in decide-policy instead and
+   the copy happens Python-side (see zeile.py). */
+.code-block {
+  position: relative;
+}
+
+.code-block .code-copy {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.45rem;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--muted);
+  opacity: 0;
+  transition:
+    opacity 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
+  text-decoration: none;
+}
+
+.code-block:hover .code-copy,
+.code-copy:focus-visible {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  /* Touch has no hover to reveal the button with — keep it visible. */
+  .code-block .code-copy {
+    opacity: 0.6;
+  }
+}
+
+.code-copy:hover {
+  color: var(--fg);
+  border-color: var(--accent);
+}
+
+.code-copy .ic {
+  display: block;
+}
+
+.code-copy .ic-check {
+  display: none;
+}
+
+.code-copy.copied {
+  opacity: 1;
+  color: var(--syn-added-fg);
+  border-color: var(--syn-added-fg);
+}
+
+.code-copy.copied .ic-copy {
+  display: none;
+}
+
+.code-copy.copied .ic-check {
+  display: block;
+}
+
 kbd {
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -528,6 +597,11 @@ html {
   .admonition,
   .toc {
     border-color: #d0d7de;
+  }
+
+  /* On-paper copies of the document don't need clickable affordances. */
+  .code-copy {
+    display: none;
   }
 
   @page {

@@ -4,6 +4,84 @@ Created 2026-09-10. Renamed from `mdview` to `zeile` same day (name collision
 research: `mdview` clashes on PyPI, npm, crates.io, AUR and a 144★ GitHub
 project — see the full plan).
 
+## Session 2026-09-16: copy buttons, language detection, match count
+
+Operator ask: "Kopier-Icon in den Code-/Textfeldern", "language richtig
+erkennen", "weitere Optimierungen dieser Art". All three landed, 85 unit
+tests + 8/8 headless GUI checks green, ruff clean, de translations compiled.
+NOT yet committed — the working tree also still carries the earlier
+uncommitted About-logo change.
+
+What landed:
+
+1. **Copy button on every `<pre>` block** (`enhance_code_blocks()` in
+   zeile.py). The button is an `<a href="zeile-copy://N">` injected AFTER
+   sanitize_html() (same post-sanitizer pattern as Mermaid's resolve());
+   the click is a pure HTML navigation that the existing decide-policy
+   handler intercepts, so document JavaScript stays structurally disabled.
+   The plain text of each block is captured at render time (tags stripped,
+   entities unescaped) and returned as render()'s new third value;
+   `_copy_code_block()` puts it on the GTK clipboard via
+   `set_content(Gdk.ContentProvider.new_for_value(str))` — there is NO
+   `set_text` on Gdk.Clipboard (introspected; round trip verified with
+   read_text_async). Feedback (check icon for 1.4 s) is an app-authored
+   IIFE injected with evaluate_javascript — no top-level `const` (the
+   documented redeclaration trap). CSS: hover/focus-visible reveal,
+   `@media (hover:none)` keeps it visible on touch, hidden in print.
+2. **Language detection for untagged fences** (`code_lang.py`, new +
+   `LanguageGuessPreprocessor` in markdown_ext.py). Key measurements that
+   shaped it: Pygments `guess_lexer` misfires badly on snippet sizes real
+   documents have (Python → "Tera Term macro", JSON/SQL → "Text only",
+   YAML → "Transact-SQL"; `PythonLexer.analyse_text` scored a perfect 1.0
+   on JavaScript and Go while 0.0 on Python itself), so detection is fully
+   rule-based: shebang fast paths, json.loads, XML/DOCTYPE/php/diff/
+   Dockerfile checks, YAML/TOML-vs-INI/CSS/HTML/XML/console/SQL structure
+   heuristics, then weighted indicator regexes per language with an
+   absolute threshold (≥2.0) AND a runner-up margin (≥1.3×). Ambiguous or
+   prose → None → plain rendering, on purpose. INI-vs-TOML: with section
+   headers, TOML requires a quoted value or `[[...]]` (git-config-style
+   bare `key = true` → ini). Every returnable alias is asserted against
+   `get_lexer_by_name` in tests ("console" maps to Bash Session — exactly
+   right for `$ cmd` transcripts).
+3. **Preprocessor fence-walking mirrors fenced_code exactly**: read the
+   installed python-markdown source — its FENCED_BLOCK_RE only accepts
+   fences at COLUMN 0 with the IDENTICAL closing fence string. The first
+   draft was laxer (any indent, ≥-length closer) and would have injected
+   visible "python" text into paragraphs for fence shapes fenced_code
+   ignores (caught by the indented-in-list case). Registered at priority
+   27 (before mermaid's 26 and extra's fenced_code 25 — tie behaviour is
+   registration order, so the explicit ordering matters).
+4. **Search match count** next to the search entry (`found-text` /
+   `failed-to-find-text` on the FindController, ngettext pluralised, label
+   reset on close/clear). WebKitGTK has no "current match index", only the
+   total — and counted-matches still doesn't fire headless, so found-text
+   carries the count; the headless matrix drives the handlers at signal
+   level instead.
+
+Verification: 85/85 pytest; headless cage matrix extended to 8/8 — including
+the previously-unproven mechanism, measured live: synthetic
+`document.querySelector('a.code-copy').click()` → decide-policy →
+clipboard read-back EXACTLY `'def f(x):\n    return x  # hi\n'`. i18n:
+zeile.pot regenerated with `--keyword=_n:1,2`, de.po msgmerged + 4 new
+strings, .mo compiled, `LANGUAGE=de` round trip printed the German strings
+("Kopieren", "Code kopieren", "1 Treffer"/"3 Treffer", "Keine Treffer").
+
+Traps found this session (so they don't repeat):
+
+- python-markdown's fenced_code is stricter than CommonMark: column-0
+  fences only, exact-same closer. Anything else silently renders as a
+  paragraph — preprocessor rewrites must mirror that acceptance or the
+  injected alias leaks as visible text.
+- `_hits()` helpers that take the text as a second arg are easy to forget
+  on long regex lines — the LSP caught two of three, grep the third.
+- Registry priorities: HIGHER number runs FIRST (26 mermaid before 25
+  fenced_code); use `md.preprocessors.get_index_for_name(name)` to assert
+  ordering in tests (the `_priority` attribute is private).
+
+Still open: human click-through of the copy button with a real mouse,
+search count on a real desktop (signal-level verified only), commit +
+CHANGELOG/README/pot are updated but unpushed.
+
 ## Session 2026-09-11 (finale): v0.1.0 released, 1.0-readiness done
 
 Operator arc: "premium themes" → "commit/push/merge" → "weiter" (×n) →

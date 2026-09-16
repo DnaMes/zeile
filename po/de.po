@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: zeile 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-10 19:38+0200\n"
+"POT-Creation-Date: 2026-09-16 12:44+0200\n"
 "PO-Revision-Date: 2026-09-10 19:38+0200\n"
 "Last-Translator: erdlabs\n"
 "Language-Team: none\n"
@@ -17,159 +17,217 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: zeile.py:180
+#: zeile.py:406
+msgid "Copy"
+msgstr "Kopieren"
+
+#: zeile.py:407
+msgid "Copy code"
+msgstr "Code kopieren"
+
+#: zeile.py:529
 msgid "Cannot read file"
 msgstr "Datei kann nicht gelesen werden"
 
-#: zeile.py:243
-msgid "Back (Alt+Left)"
-msgstr "Zurück (Alt+Links)"
-
-#: zeile.py:246
-msgid "Forward (Alt+Right)"
-msgstr "Vorwärts (Alt+Rechts)"
-
-#: zeile.py:261
-msgid "Table of contents (Ctrl+T)"
-msgstr "Inhaltsverzeichnis (Strg+T)"
-
-#: zeile.py:265
-msgid "Export PDF…"
-msgstr "PDF exportieren…"
-
-#: zeile.py:268
-msgid "Print (Ctrl+P)"
-msgstr "Drucken (Strg+P)"
-
-#: zeile.py:271
-msgid "About zeile"
-msgstr "Über zeile"
-
-#: zeile.py:280
-msgid "Reload (Ctrl+R)"
-msgstr "Neu laden (Strg+R)"
-
-#: zeile.py:439
-msgid "A small, fast, read-only markdown viewer."
-msgstr "Ein kleiner, schneller, schreibgeschützter Markdown-Betrachter."
-
-#: zeile.py:455
-msgid "Export PDF"
-msgstr "PDF exportieren"
-
+#: zeile.py:574
 msgid "Auto (system)"
 msgstr "Automatisch (System)"
 
-msgid "Theme and fonts"
-msgstr "Theme und Schriften"
-
-msgid "Theme"
-msgstr "Theme"
-
-msgid "Body font"
-msgstr "Schrift (Text)"
-
-msgid "Code font"
-msgstr "Schrift (Code)"
-
-msgid "System"
-msgstr "System"
-
-msgid "System monospace"
-msgstr "System-Monospace"
-
-msgid "JetBrains Mono"
-msgstr "JetBrains Mono"
-
-msgid "Inter"
-msgstr "Inter"
-
-msgid "Atkinson Hyperlegible"
-msgstr "Atkinson Hyperlegible"
-
-msgid "iA Writer Quattro"
-msgstr "iA Writer Quattro"
-
-msgid "Noto Serif"
-msgstr "Noto Serif"
-
-msgid "IBM Plex Sans"
-msgstr "IBM Plex Sans"
-
-msgid "iA Writer Mono"
-msgstr "iA Writer Mono"
-
-msgid "Fira Code"
-msgstr "Fira Code"
-
-msgid "Cascadia Code"
-msgstr "Cascadia Code"
-
+#: zeile.py:575
 msgid "GitHub Light"
 msgstr "GitHub Hell"
 
+#: zeile.py:576
 msgid "GitHub Dark"
 msgstr "GitHub Dunkel"
 
+#: zeile.py:577
 msgid "Catppuccin Latte"
 msgstr "Catppuccin Latte"
 
+#: zeile.py:578
 msgid "Catppuccin Frappé"
 msgstr "Catppuccin Frappé"
 
+#: zeile.py:579
 msgid "Catppuccin Macchiato"
 msgstr "Catppuccin Macchiato"
 
+#: zeile.py:580
 msgid "Catppuccin Mocha"
 msgstr "Catppuccin Mocha"
 
+#: zeile.py:581
 msgid "Solarized Light"
 msgstr "Solarized Hell"
 
+#: zeile.py:582
 msgid "Solarized Dark"
 msgstr "Solarized Dunkel"
 
+#: zeile.py:583
 msgid "Gruvbox Light"
 msgstr "Gruvbox Hell"
 
+#: zeile.py:584
 msgid "Gruvbox Dark"
 msgstr "Gruvbox Dunkel"
 
+#: zeile.py:585
 msgid "Nord"
 msgstr "Nord"
 
+#: zeile.py:586
 msgid "Dracula"
 msgstr "Dracula"
 
+#: zeile.py:587
 msgid "Rosé Pine"
 msgstr "Rosé Pine"
 
+#: zeile.py:588
 msgid "Rosé Pine Dawn"
 msgstr "Rosé Pine Dawn"
 
+#: zeile.py:589
 msgid "Tokyo Night"
 msgstr "Tokyo Night"
 
+#: zeile.py:590
 msgid "Tokyo Night Day"
 msgstr "Tokyo Night Day"
 
-msgid "Open markdown file"
-msgstr "Markdown-Datei öffnen"
+#: zeile.py:598
+msgid "System monospace"
+msgstr "System-Monospace"
 
-msgid "Unavailable: GTK4 print backends are missing on this system"
-msgstr "Nicht verfügbar: GTK4-Druck-Backends fehlen auf diesem System"
+#: zeile.py:599
+msgid "JetBrains Mono"
+msgstr "JetBrains Mono"
 
+#: zeile.py:600
+msgid "iA Writer Mono"
+msgstr "iA Writer Mono"
+
+#: zeile.py:601
+msgid "Fira Code"
+msgstr "Fira Code"
+
+#: zeile.py:602
+msgid "Cascadia Code"
+msgstr "Cascadia Code"
+
+#: zeile.py:607
+msgid "System"
+msgstr "System"
+
+#: zeile.py:608
+msgid "Inter"
+msgstr "Inter"
+
+#: zeile.py:609
+msgid "Atkinson Hyperlegible"
+msgstr "Atkinson Hyperlegible"
+
+#: zeile.py:610
+msgid "iA Writer Quattro"
+msgstr "iA Writer Quattro"
+
+#: zeile.py:611
+msgid "Noto Serif"
+msgstr "Noto Serif"
+
+#: zeile.py:612
+msgid "IBM Plex Sans"
+msgstr "IBM Plex Sans"
+
+#: zeile.py:701
+msgid "Back (Alt+Left)"
+msgstr "Zurück (Alt+Links)"
+
+#: zeile.py:702
 msgid "Back"
 msgstr "Zurück"
 
+#: zeile.py:706
+msgid "Forward (Alt+Right)"
+msgstr "Vorwärts (Alt+Rechts)"
+
+#: zeile.py:707
 msgid "Forward"
 msgstr "Vorwärts"
 
-msgid "Reload"
-msgstr "Neu laden"
+#: zeile.py:725
+msgid "Table of contents (Ctrl+T)"
+msgstr "Inhaltsverzeichnis (Strg+T)"
 
+#: zeile.py:726
 msgid "Table of contents"
 msgstr "Inhaltsverzeichnis"
 
+#: zeile.py:732
+msgid "Export PDF…"
+msgstr "PDF exportieren…"
+
+#: zeile.py:733
+msgid "Print (Ctrl+P)"
+msgstr "Drucken (Strg+P)"
+
+#: zeile.py:734 zeile.py:1219
+msgid "Export PDF"
+msgstr "PDF exportieren"
+
+#: zeile.py:735
 msgid "Print"
 msgstr "Drucken"
+
+#: zeile.py:739
+msgid "Unavailable: GTK4 print backends are missing on this system"
+msgstr "Nicht verfügbar: GTK4-Druck-Backends fehlen auf diesem System"
+
+#: zeile.py:747 zeile.py:748
+msgid "About zeile"
+msgstr "Über zeile"
+
+#: zeile.py:752 zeile.py:753
+msgid "Theme and fonts"
+msgstr "Theme und Schriften"
+
+#: zeile.py:763
+msgid "Reload (Ctrl+R)"
+msgstr "Neu laden (Strg+R)"
+
+#: zeile.py:764
+msgid "Reload"
+msgstr "Neu laden"
+
+#: zeile.py:829
+msgid "Theme"
+msgstr "Theme"
+
+#: zeile.py:845
+msgid "Body font"
+msgstr "Schrift (Text)"
+
+#: zeile.py:862
+msgid "Code font"
+msgstr "Schrift (Code)"
+
+#: zeile.py:1124
+#, python-format
+msgid "%d match"
+msgid_plural "%d matches"
+msgstr[0] "%d Treffer"
+msgstr[1] "%d Treffer"
+
+#: zeile.py:1127
+msgid "No matches"
+msgstr "Keine Treffer"
+
+#: zeile.py:1200
+msgid "A small, fast, read-only markdown viewer."
+msgstr "Ein kleiner, schneller, schreibgeschützter Markdown-Betrachter."
+
+#: zeile.py:1370
+msgid "Open markdown file"
+msgstr "Markdown-Datei öffnen"

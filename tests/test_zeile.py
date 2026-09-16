@@ -14,6 +14,7 @@ from zeile import (
     CODE_FONT_OPTIONS,
     THEME_OPTIONS,
     build_document,
+    enhance_code_blocks,
     flatten_toc,
     load_settings,
     read_asset,
@@ -26,7 +27,7 @@ from zeile import (
 
 def test_frontmatter_stripped():
     doc = "---\ntitle: Test\ndate: 2026-01-01\n---\n\n# Hi\n"
-    out, _toc = render_body(doc, enable_mermaid=False, dark=False)
+    out, _toc, _codes = render_body(doc, enable_mermaid=False, dark=False)
     assert "title: Test" not in out
     assert "date: 2026-01-01" not in out
     assert '<h1 id="hi">Hi</h1>' in out
@@ -34,13 +35,13 @@ def test_frontmatter_stripped():
 
 def test_frontmatter_absent_is_a_no_op():
     doc = "# Hi\n\nNo frontmatter here.\n"
-    out, _toc = render_body(doc, enable_mermaid=False, dark=False)
+    out, _toc, _codes = render_body(doc, enable_mermaid=False, dark=False)
     assert '<h1 id="hi">Hi</h1>' in out
 
 
 def test_tasklist_renders_as_checkboxes():
     doc = "- [ ] todo\n- [x] done\n"
-    out, _toc = render_body(doc, enable_mermaid=False, dark=False)
+    out, _toc, _codes = render_body(doc, enable_mermaid=False, dark=False)
     assert "[ ] todo" not in out
     assert "[x] done" not in out
     assert out.count('type="checkbox"') == 2
@@ -48,20 +49,20 @@ def test_tasklist_renders_as_checkboxes():
 
 
 def test_heading_gets_toc_anchor_id():
-    out, _toc = render_body("# Section One\n", enable_mermaid=False, dark=False)
+    out, _toc, _codes = render_body("# Section One\n", enable_mermaid=False, dark=False)
     assert 'id="section-one"' in out
 
 
 def test_codehilite_preserves_pygments_class():
     doc = "```python\ndef f():\n    return 1\n```\n"
-    out, _toc = render_body(doc, enable_mermaid=False, dark=False)
+    out, _toc, _codes = render_body(doc, enable_mermaid=False, dark=False)
     assert 'class="codehilite"' in out
     assert 'class="k"' in out  # the `def` keyword token
 
 
 def test_render_body_returns_toc_tokens():
     doc = "# Top\n\n## Child\n\nText.\n"
-    _out, toc = render_body(doc, enable_mermaid=False, dark=False)
+    _out, toc, _codes = render_body(doc, enable_mermaid=False, dark=False)
     flat = flatten_toc(toc)
     assert flat == [(0, "top", "Top"), (1, "child", "Child")]
 
@@ -260,16 +261,87 @@ def test_theme_switch_persists_zoom_and_window_keys(tmp_path: Path):
 def test_render_end_to_end(tmp_path: Path):
     md_file = tmp_path / "doc.md"
     md_file.write_text("# Hello\n\nSome *text*.\n", encoding="utf-8")
-    out, toc = render(md_file, enable_mermaid=False, dark=False)
+    out, toc, codes = render(md_file, enable_mermaid=False, dark=False)
     assert out.startswith("<!DOCTYPE html>")
     assert "Content-Security-Policy" in out
     assert '<h1 id="hello">Hello</h1>' in out
     assert flatten_toc(toc) == [(0, "hello", "Hello")]
+    assert codes == []
 
 
 def test_render_missing_file_shows_error_not_traceback(tmp_path: Path):
     missing = tmp_path / "does-not-exist.md"
-    out, toc = render(missing, enable_mermaid=False, dark=False)
+    out, toc, codes = render(missing, enable_mermaid=False, dark=False)
     assert "Cannot read file" in out
     assert out.startswith("<!DOCTYPE html>")
     assert toc == []
+    assert codes == []
+
+
+def test_enhance_code_blocks_wraps_every_pre():
+    body = (
+        "<pre><code>a &lt; 1</code></pre>\n<p>text</p>\n<pre class='x'><code>b</code></pre>"
+    )
+    enhanced, texts = enhance_code_blocks(body)
+    assert enhanced.count('<div class="code-block">') == 2
+    assert 'href="zeile-copy://0"' in enhanced
+    assert 'href="zeile-copy://1"' in enhanced
+    # the original pre content survives untouched inside the wrapper
+    assert "<pre><code>a &lt; 1</code></pre>" in enhanced
+    assert "<p>text</p>" in enhanced
+    # plain text extracted in document order, entities unescaped (the
+    # synthetic input has no trailing newlines; real codehilite output
+    # keeps the source's final \n before </code>)
+    assert texts == ["a < 1", "b"]
+    # copy + check icons are both present, and a title/aria-label exist
+    assert 'class="ic ic-copy"' in enhanced
+    assert 'class="ic ic-check"' in enhanced
+    assert enhanced.count("aria-label=") == 2
+
+
+def test_enhance_code_blocks_no_pre_is_noop():
+    body = "<p>no code here</p>"
+    enhanced, texts = enhance_code_blocks(body)
+    assert enhanced == body
+    assert texts == []
+
+
+def test_render_adds_copy_links_and_code_texts(tmp_path: Path):
+    md_file = tmp_path / "doc.md"
+    md_file.write_text(
+        "```python\nx = 1\n```\n\n```\ndef g():\n    return 2\n```\n",
+        encoding="utf-8",
+    )
+    html_doc, _toc, codes = render(md_file, enable_mermaid=False, dark=False)
+    assert 'href="zeile-copy://0"' in html_doc
+    assert 'href="zeile-copy://1"' in html_doc
+    assert codes == ["x = 1\n", "def g():\n    return 2\n"]
+
+
+def test_unlabeled_code_block_gets_language_detected():
+    doc = "```\ndef f():\n    return 1\n```\n"
+    out, _toc, _codes = render_body(doc, enable_mermaid=False, dark=False)
+    # python detected -> pygments spans present, not just the plain wrapper
+    assert '<span class="k">def</span>' in out
+
+
+def test_unlabeled_prose_stays_plain():
+    doc = "```\nJust prose, nothing codey.\nNo signals at all.\n```\n"
+    out, _toc, _codes = render_body(doc, enable_mermaid=False, dark=False)
+    assert "<pre>" in out
+    assert '<span class="' not in out.split("<pre>")[1].split("</pre>")[0]
+
+
+def test_labeled_code_block_keeps_declared_language():
+    doc = "```bash\necho hi\n```\n"
+    out, _toc, _codes = render_body(doc, enable_mermaid=False, dark=False)
+    assert 'class="codehilite"' in out
+
+
+def test_mermaid_fence_still_disabled_placeholder_with_copy():
+    doc = "```mermaid\ngraph TD\nA-->B\n```\n"
+    out, _toc, codes = render_body(doc, enable_mermaid=False, dark=False)
+    assert "mermaid-disabled" in out
+    # the disabled mermaid source is itself a <pre> and gets a copy button
+    assert 'href="zeile-copy://0"' in out
+    assert codes == ["graph TD\nA-->B\n"]

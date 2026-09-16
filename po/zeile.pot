@@ -1,14 +1,14 @@
 # SOME DESCRIPTIVE TITLE.
-# Copyright (C) YEAR erdlabs
-# This file is distributed under the same license as the zeile package.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: zeile 0.1.0\n"
+"Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-10 19:38+0200\n"
+"POT-Creation-Date: 2026-09-16 12:44+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -16,43 +16,219 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
 
-#: zeile.py:180
+#: zeile.py:406
+msgid "Copy"
+msgstr ""
+
+#: zeile.py:407
+msgid "Copy code"
+msgstr ""
+
+#: zeile.py:529
 msgid "Cannot read file"
 msgstr ""
 
-#: zeile.py:243
+#: zeile.py:574
+msgid "Auto (system)"
+msgstr ""
+
+#: zeile.py:575
+msgid "GitHub Light"
+msgstr ""
+
+#: zeile.py:576
+msgid "GitHub Dark"
+msgstr ""
+
+#: zeile.py:577
+msgid "Catppuccin Latte"
+msgstr ""
+
+#: zeile.py:578
+msgid "Catppuccin Frappé"
+msgstr ""
+
+#: zeile.py:579
+msgid "Catppuccin Macchiato"
+msgstr ""
+
+#: zeile.py:580
+msgid "Catppuccin Mocha"
+msgstr ""
+
+#: zeile.py:581
+msgid "Solarized Light"
+msgstr ""
+
+#: zeile.py:582
+msgid "Solarized Dark"
+msgstr ""
+
+#: zeile.py:583
+msgid "Gruvbox Light"
+msgstr ""
+
+#: zeile.py:584
+msgid "Gruvbox Dark"
+msgstr ""
+
+#: zeile.py:585
+msgid "Nord"
+msgstr ""
+
+#: zeile.py:586
+msgid "Dracula"
+msgstr ""
+
+#: zeile.py:587
+msgid "Rosé Pine"
+msgstr ""
+
+#: zeile.py:588
+msgid "Rosé Pine Dawn"
+msgstr ""
+
+#: zeile.py:589
+msgid "Tokyo Night"
+msgstr ""
+
+#: zeile.py:590
+msgid "Tokyo Night Day"
+msgstr ""
+
+#: zeile.py:598
+msgid "System monospace"
+msgstr ""
+
+#: zeile.py:599
+msgid "JetBrains Mono"
+msgstr ""
+
+#: zeile.py:600
+msgid "iA Writer Mono"
+msgstr ""
+
+#: zeile.py:601
+msgid "Fira Code"
+msgstr ""
+
+#: zeile.py:602
+msgid "Cascadia Code"
+msgstr ""
+
+#: zeile.py:607
+msgid "System"
+msgstr ""
+
+#: zeile.py:608
+msgid "Inter"
+msgstr ""
+
+#: zeile.py:609
+msgid "Atkinson Hyperlegible"
+msgstr ""
+
+#: zeile.py:610
+msgid "iA Writer Quattro"
+msgstr ""
+
+#: zeile.py:611
+msgid "Noto Serif"
+msgstr ""
+
+#: zeile.py:612
+msgid "IBM Plex Sans"
+msgstr ""
+
+#: zeile.py:701
 msgid "Back (Alt+Left)"
 msgstr ""
 
-#: zeile.py:246
+#: zeile.py:702
+msgid "Back"
+msgstr ""
+
+#: zeile.py:706
 msgid "Forward (Alt+Right)"
 msgstr ""
 
-#: zeile.py:261
+#: zeile.py:707
+msgid "Forward"
+msgstr ""
+
+#: zeile.py:725
 msgid "Table of contents (Ctrl+T)"
 msgstr ""
 
-#: zeile.py:265
+#: zeile.py:726
+msgid "Table of contents"
+msgstr ""
+
+#: zeile.py:732
 msgid "Export PDF…"
 msgstr ""
 
-#: zeile.py:268
+#: zeile.py:733
 msgid "Print (Ctrl+P)"
 msgstr ""
 
-#: zeile.py:271
+#: zeile.py:734 zeile.py:1219
+msgid "Export PDF"
+msgstr ""
+
+#: zeile.py:735
+msgid "Print"
+msgstr ""
+
+#: zeile.py:739
+msgid "Unavailable: GTK4 print backends are missing on this system"
+msgstr ""
+
+#: zeile.py:747 zeile.py:748
 msgid "About zeile"
 msgstr ""
 
-#: zeile.py:280
+#: zeile.py:752 zeile.py:753
+msgid "Theme and fonts"
+msgstr ""
+
+#: zeile.py:763
 msgid "Reload (Ctrl+R)"
 msgstr ""
 
-#: zeile.py:439
+#: zeile.py:764
+msgid "Reload"
+msgstr ""
+
+#: zeile.py:829
+msgid "Theme"
+msgstr ""
+
+#: zeile.py:845
+msgid "Body font"
+msgstr ""
+
+#: zeile.py:862
+msgid "Code font"
+msgstr ""
+
+#: zeile.py:1124
+#, python-format
+msgid "%d match"
+msgid_plural "%d matches"
+msgstr[0] ""
+msgstr[1] ""
+
+#: zeile.py:1127
+msgid "No matches"
+msgstr ""
+
+#: zeile.py:1200
 msgid "A small, fast, read-only markdown viewer."
 msgstr ""
 
-#: zeile.py:455
-msgid "Export PDF"
+#: zeile.py:1370
+msgid "Open markdown file"
 msgstr ""

@@ -31,13 +31,14 @@ from pathlib import Path
 import gi
 
 gi.require_version("Gtk", "4.0")
+gi.require_version("Gdk", "4.0")
 gi.require_version("WebKit", "6.0")
 
 import markdown  # noqa: E402
 import nh3  # noqa: E402
-from gi.repository import Gio, GLib, Gtk, WebKit  # noqa: E402
+from gi.repository import Gdk, Gio, GLib, Gtk, WebKit  # noqa: E402
 
-from markdown_ext import MermaidExtension  # noqa: E402
+from markdown_ext import LanguageGuessExtension, MermaidExtension  # noqa: E402
 
 APP_ID = "com.erdlabs.zeile"
 __version__ = "0.1.0"
@@ -45,10 +46,13 @@ __version__ = "0.1.0"
 # fallback=True: on a system with no compiled translation for the current
 # locale (or none at all, as on this dev machine's default LANG), _() just
 # returns the original English string instead of raising -- translation is
-# additive, never a hard requirement to run.
-_ = gettext.translation(
+# additive, never a hard requirement to run. ngettext is exposed as _n for
+# the search-bar match count.
+_translation = gettext.translation(
     "zeile", localedir=Path(__file__).resolve().parent / "locale", fallback=True
-).gettext
+)
+_ = _translation.gettext
+_n = _translation.ngettext
 
 
 EXTENSIONS = [
@@ -348,6 +352,65 @@ def sanitize_html(body: str) -> str:
     return nh3.clean(body, tags=_ALLOWED_TAGS, attributes=_ALLOWED_ATTRIBUTES)
 
 
+# Code blocks are <pre>...</pre> (codehilite wraps some in a .codehilite
+# div, plain/indented ones are bare). Non-greedy so each block maps to one
+# match; a <pre> can never nest inside another in valid HTML.
+_PRE_BLOCK_RE = re.compile(r"<pre\b[^>]*>.*?</pre>", re.S)
+
+# Copy affordance for code blocks. The button is an <a> with a zeile-copy:
+# URI, NOT a <button> with JS: document JavaScript is structurally disabled
+# (enable_javascript-markup=False), so an in-page click handler could never
+# run. Clicking the link fires decide-policy instead (a navigation attempt
+# is pure HTML, no script involved), where the scheme is intercepted and
+# the block's plain text -- captured here at render time -- is put on the
+# GTK clipboard. The markup is injected *after* sanitize_html() (the same
+# post-sanitizer pattern MermaidExtension.resolve uses) and contains only
+# our own static strings plus an int index, so it widens the sanitizer's
+# attack surface by nothing. A hostile .md embedding its own zeile-copy:
+# link can at worst copy a block of its own content.
+_COPY_ICONS = (
+    '<svg class="ic ic-copy" viewBox="0 0 16 16" width="14" height="14"'
+    ' aria-hidden="true"><rect x="5.5" y="5.5" width="8.5" height="8.5" rx="1.6"'
+    ' fill="none" stroke="currentColor" stroke-width="1.4"/>'
+    '<path d="M10.5 5.5V3.9A1.4 1.4 0 0 0 9.1 2.5H3.9A1.4 1.4 0 0 0 2.5 3.9'
+    'v5.2a1.4 1.4 0 0 0 1.4 1.4h1.6" fill="none" stroke="currentColor"'
+    ' stroke-width="1.4"/></svg>'
+    '<svg class="ic ic-check" viewBox="0 0 16 16" width="14" height="14"'
+    ' aria-hidden="true"><path d="M3 8.5 6.5 12 13 4.5" fill="none"'
+    ' stroke="currentColor" stroke-width="1.8" stroke-linecap="round"'
+    ' stroke-linejoin="round"/></svg>'
+)
+
+
+def _pre_plain_text(pre_html: str) -> str:
+    """Plain text content of a rendered <pre> block (tags stripped,
+    entities unescaped). The input came out of the sanitizer, so no raw
+    unescaped '<' can hide in a text node."""
+    return html.unescape(re.sub(r"<[^>]+>", "", pre_html))
+
+
+def enhance_code_blocks(body: str) -> tuple[str, list[str]]:
+    """Wrap every <pre> block with a copy affordance.
+
+    Returns (new_body, plain_texts): plain_texts[i] is what clicking the
+    i-th block's copy link puts on the clipboard, in document order.
+    """
+    texts: list[str] = []
+
+    def _wrap(match: re.Match[str]) -> str:
+        idx = len(texts)
+        texts.append(_pre_plain_text(match.group(0)))
+        return (
+            '<div class="code-block">'
+            f'<a class="code-copy" href="zeile-copy://{idx}"'
+            f' title="{html.escape(_("Copy"))}"'
+            f' aria-label="{html.escape(_("Copy code"))}">'
+            f"{_COPY_ICONS}</a>{match.group(0)}</div>"
+        )
+
+    return _PRE_BLOCK_RE.sub(_wrap, body), texts
+
+
 def read_asset(name: str) -> str:
     """Return the contents of an asset shipped next to this script."""
     return (Path(__file__).resolve().parent / "assets" / name).read_text(encoding="utf-8")
@@ -385,13 +448,15 @@ def render_body(
     theme_id: str = "auto",
     body_font_id: str = "system",
     code_font_id: str = "system",
-) -> tuple[str, list[dict]]:
+) -> tuple[str, list[dict], list[str]]:
     """Convert markdown text to sanitized HTML body content.
 
     Pure function -- no file I/O, no GTK -- so it's unit-testable directly.
-    Returns (body, toc_tokens): the `toc` extension already computes a
-    heading tree for anchor generation, so the TOC overlay reuses it instead
-    of re-deriving it from the rendered HTML.
+    Returns (body, toc_tokens, code_texts): the `toc` extension already
+    computes a heading tree for anchor generation, so the TOC overlay reuses
+    it instead of re-deriving it from the rendered HTML; code_texts is the
+    plain text of each code block in document order (see
+    enhance_code_blocks), consumed by the copy-to-clipboard handler.
 
     body_font_id/code_font_id don't change the body HTML -- fonts are applied
     purely in CSS via data-font-* attributes on <html> (see build_document) --
@@ -404,13 +469,14 @@ def render_body(
     text = _strip_frontmatter(text)
     mermaid_ext = MermaidExtension(enable_mermaid=enable_mermaid, dark=theme_dark)
     md = markdown.Markdown(
-        extensions=[*EXTENSIONS, mermaid_ext],
+        extensions=[*EXTENSIONS, mermaid_ext, LanguageGuessExtension()],
         extension_configs=EXTENSION_CONFIGS,
     )
     body = md.convert(text)
     body = sanitize_html(body)
     body = mermaid_ext.resolve(body)
-    return body, md.toc_tokens  # type: ignore[attr-defined]
+    body, code_texts = enhance_code_blocks(body)
+    return body, md.toc_tokens, code_texts  # type: ignore[attr-defined]
 
 
 def build_document(
@@ -450,15 +516,20 @@ def render(
     theme_id: str = "auto",
     body_font_id: str = "system",
     code_font_id: str = "system",
-) -> tuple[str, list[dict]]:
-    """Read `path`, render and sanitize markdown, return (html_doc, toc_tokens)."""
+) -> tuple[str, list[dict], list[str]]:
+    """Read `path`, render and sanitize markdown.
+
+    Returns (html_doc, toc_tokens, code_texts) -- code_texts being the
+    plain text of each code block in document order, for the clipboard.
+    """
+    code_texts: list[str] = []
     try:
         text = path.read_text(encoding="utf-8")
     except OSError as exc:
         body = f"<h1>{_('Cannot read file')}</h1><pre>{html.escape(str(exc))}</pre>"
         toc_tokens: list[dict] = []
     else:
-        body, toc_tokens = render_body(
+        body, toc_tokens, code_texts = render_body(
             text,
             enable_mermaid=enable_mermaid,
             dark=dark,
@@ -476,6 +547,7 @@ def render(
             code_font_id=code_font_id,
         ),
         toc_tokens,
+        code_texts,
     )
 
 
@@ -581,6 +653,9 @@ class Viewer(Gtk.ApplicationWindow):
         self._scroll_to_restore = 0
         self._back_stack: list[Path] = []
         self._forward_stack: list[Path] = []
+        # Plain text of each rendered code block, index-aligned with the
+        # zeile-copy://N links in the current document (see enhance_code_blocks).
+        self._code_texts: list[str] = []
 
         # GTK preference is used for Mermaid defaults and to seed "Auto" theme.
         self.dark = Gtk.Settings.get_default().get_property(
@@ -706,8 +781,21 @@ class Viewer(Gtk.ApplicationWindow):
             "previous-match", lambda *_: self.find_controller.search_previous()
         )
         self.search_entry.connect("stop-search", lambda *_: self._close_search())
+        # Live match count next to the entry (WebKitGTK has no "current
+        # match index", only the total -- still answers "are there any?").
+        # failed-to-find-text is the reliable "zero matches" signal;
+        # counted-matches does not fire on all builds, so found-text
+        # (which fires on search()) carries the count.
+        self.find_controller.connect("found-text", self._on_found_text)
+        self.find_controller.connect("failed-to-find-text", self._on_failed_to_find)
+        self._match_label = Gtk.Label()
+        self._match_label.add_css_class("dim-label")
+        self._match_label.set_margin_end(6)
+        search_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        search_box.append(self.search_entry)
+        search_box.append(self._match_label)
         self.search_bar = Gtk.SearchBar()
-        self.search_bar.set_child(self.search_entry)
+        self.search_bar.set_child(search_box)
         self.search_bar.connect_entry(self.search_entry)
 
         scroller = Gtk.ScrolledWindow()
@@ -927,7 +1015,14 @@ class Viewer(Gtk.ApplicationWindow):
         uri = decision.get_navigation_action().get_request().get_uri()
         gfile = Gio.File.new_for_uri(uri)
         local_path = gfile.get_path()
-        if gfile.get_uri_scheme() == "file" and local_path is not None:
+        scheme = (gfile.get_uri_scheme() or "").lower()
+        if scheme == "zeile-copy":
+            # Copy-button click (see enhance_code_blocks): the link is pure
+            # HTML navigation -- document JavaScript stays structurally off.
+            decision.ignore()
+            self._copy_code_block(uri)
+            return True
+        if scheme == "file" and local_path is not None:
             target = Path(local_path).resolve()
             if target.is_relative_to(self.path.parent):
                 if target != self.path and target.suffix.lower() in _MARKDOWN_SUFFIXES:
@@ -943,6 +1038,49 @@ class Viewer(Gtk.ApplicationWindow):
         decision.ignore()
         Gio.AppInfo.launch_default_for_uri(uri)
         return True
+
+    _COPY_URI_RE = re.compile(r"zeile-copy://(\d+)")
+
+    def _copy_code_block(self, uri: str) -> None:
+        """Put code block N's plain text on the system clipboard.
+
+        Index comes from our own injected href; a hostile document
+        spoofing a zeile-copy: link can only ever copy text of a block
+        that already exists in that same document, and an out-of-range
+        index is a silent no-op.
+        """
+        match = self._COPY_URI_RE.fullmatch(uri)
+        if match is None:
+            return
+        index = int(match.group(1))
+        if not 0 <= index < len(self._code_texts):
+            return
+        display = Gdk.Display.get_default()
+        if display is not None:
+            # set_content(new_for_value(str)) is the GTK4 way -- there is no
+            # set_text on Gdk.Clipboard (verified via introspection); the
+            # round trip was verified with read_text_async.
+            display.get_clipboard().set_content(
+                Gdk.ContentProvider.new_for_value(self._code_texts[index])
+            )
+        self._flash_copy_feedback(index)
+
+    def _flash_copy_feedback(self, index: int) -> None:
+        """Briefly mark the clicked copy button as done (check icon).
+
+        The script is app-authored and constant apart from a validated int,
+        wrapped in an IIFE so no top-level bindings persist across
+        evaluate_javascript() calls (the const-redeclaration trap documented
+        in HANDOFF.md).
+        """
+        selector = json.dumps(f"a.code-copy[href='zeile-copy://{index}']")
+        js = (
+            "(function(){var el=document.querySelector("
+            + selector
+            + ");if(el){el.classList.add('copied');"
+            "window.setTimeout(function(){el.classList.remove('copied');},1400);}})();"
+        )
+        self.webview.evaluate_javascript(js, -1, None, None, None, None, None)
 
     def navigate_to(self, path: Path, *, record_history: bool = True) -> None:
         """Switch the currently displayed document, without opening a new window."""
@@ -977,12 +1115,20 @@ class Viewer(Gtk.ApplicationWindow):
         text = entry.get_text()
         if not text:
             self.find_controller.search_finish()
+            self._match_label.set_text("")
             return
         options = WebKit.FindOptions.CASE_INSENSITIVE | WebKit.FindOptions.WRAP_AROUND
         self.find_controller.search(text, options, 1000)
 
+    def _on_found_text(self, _controller: WebKit.FindController, match_count: int) -> None:
+        self._match_label.set_text(_n("%d match", "%d matches", match_count) % match_count)
+
+    def _on_failed_to_find(self, _controller: WebKit.FindController) -> None:
+        self._match_label.set_text(_("No matches"))
+
     def _close_search(self) -> None:
         self.find_controller.search_finish()
+        self._match_label.set_text("")
         self.search_bar.set_search_mode(False)
 
     def _toggle_search(self) -> bool:
@@ -992,6 +1138,7 @@ class Viewer(Gtk.ApplicationWindow):
             self.search_entry.grab_focus()
         else:
             self.find_controller.search_finish()
+            self._match_label.set_text("")
         return True
 
     def _on_load_changed(self, _webview: WebKit.WebView, event: WebKit.LoadEvent) -> None:
@@ -1054,6 +1201,9 @@ class Viewer(Gtk.ApplicationWindow):
         about.set_license_type(Gtk.License.GPL_3_0)
         about.set_website("https://erdlabs.com")
         about.set_website_label("erdlabs.com")
+        logo_path = Path(__file__).resolve().parent / "assets" / "logo_erdlabs.png"
+        if logo_path.is_file():
+            about.set_logo(Gdk.Texture.new_from_filename(str(logo_path)))
         about.present()
 
     def _print_dialog(self) -> bool:
@@ -1145,7 +1295,7 @@ class Viewer(Gtk.ApplicationWindow):
             self.dark = Gtk.Settings.get_default().get_property(
                 "gtk-application-prefer-dark-theme"
             )
-            html_doc, toc_tokens = render(
+            html_doc, toc_tokens, code_texts = render(
                 self.path,
                 enable_mermaid=self.enable_mermaid,
                 dark=self.dark,
@@ -1154,6 +1304,7 @@ class Viewer(Gtk.ApplicationWindow):
                 code_font_id=self.code_font_id,
             )
             self._toc_flat = flatten_toc(toc_tokens)
+            self._code_texts = code_texts
             self._pending_restore_scroll = True
             self.webview.load_html(html_doc, self.path.as_uri())
             self._sync_theme_with_gtk()

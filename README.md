@@ -84,7 +84,18 @@ one `Alt+Left` away.
   keycaps, themed text selection, focus outlines, print/PDF always renders
   on a light palette
 - Tables, footnotes, definition lists, admonitions, TOC anchors
-- Syntax highlighting via Pygments
+- Copy button on every code block (top-right on hover, keyboard-focusable,
+  always visible on touch): clicking it copies the block's plain text to
+  the system clipboard and flashes a check mark — implemented without any
+  document JavaScript (see Security)
+- Syntax highlighting via Pygments, plus automatic language detection for
+  code blocks with no language tag: a rule-based detector (shebangs, JSON/
+  YAML/TOML/INI/Dockerfile/diff structure, weighted per-language indicators)
+  picks the language before rendering, so untagged fences still get
+  coloured. Conservative by design — ambiguous or plain-text blocks stay
+  unhighlighted instead of getting a confidently wrong colour
+- Find-in-page shows a live match count next to the search entry
+  ("No matches" when the term isn't in the document)
 - Mermaid diagrams: fenced ` ```mermaid ` blocks render as real
   diagrams, opt-in via `--enable-mermaid`. Pre-rendered to static SVG by the
   `mmdc` CLI (`@mermaid-js/mermaid-cli`) at render time, cached by content
@@ -156,6 +167,11 @@ API, not assumed:
   both off, so a `.md` file can't plant an identifier that survives across
   opens.
 - **Developer tools are off by default**, behind `--debug`/`ZEILE_DEBUG`.
+- **The code-copy button uses no document script.** It is an `<a>` with a
+  `zeile-copy://` URI injected after sanitization; the click arrives as a
+  plain HTML navigation attempt in the policy handler, which puts the
+  block's text on the GTK clipboard. A document forging its own
+  `zeile-copy:` link can at worst copy a block of its own content.
 
 ## Internationalization
 
@@ -167,7 +183,8 @@ them to `locale/<lang>/LC_MESSAGES/zeile.mo` if `gettext` is available.
 
 ```
 zeile.py                the app
-markdown_ext.py          mermaid fence extraction (python-markdown preprocessor)
+markdown_ext.py          mermaid fence extraction + unlabeled-fence language hints (markdown preprocessor)
+code_lang.py             rule-based language detection for untagged code blocks
 mermaid_render.py        mmdc subprocess wrapper, content-hash cache
 assets/style.css         rendering stylesheet
 assets/themes.css        theme + font variable definitions

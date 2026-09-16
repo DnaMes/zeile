@@ -9,6 +9,23 @@ Versioning: [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Copy button on every code block: hover the block (or focus the button
+  with the keyboard; always visible on touch) and a small copy affordance
+  appears top-right — click copies the block's plain text to the system
+  clipboard and flashes a check mark. Implemented entirely without document
+  JavaScript: the button is an `<a href="zeile-copy://N">` whose click is
+  intercepted in the WebKit policy handler (verified end-to-end in the
+  headless GUI matrix: click → clipboard round trip).
+- Automatic language detection for code blocks without a language tag.
+  Pygments' `guess_lexer` was measured to misfire badly on realistic
+  snippet sizes (Python → "Tera Term macro", JSON/SQL → plain text,
+  PythonLexer scoring 1.0 _on JavaScript_), so detection is a new
+  rule-based module (`code_lang.py`): shebang fast paths, JSON/YAML/TOML/
+  INI/Dockerfile/diff structure checks, weighted per-language indicators
+  with threshold + runner-up margin. Untagged fences now highlight;
+  ambiguous or prose blocks deliberately stay plain.
+- Find-in-page shows a live match count next to the search entry, with a
+  clear "No matches" state (closes a HANDOFF backlog item).
 - Launching without a file (app menu / launcher) now opens a markdown file
   chooser instead of exiting with a usage error.
 - Window size, maximized state and zoom level persist across sessions
@@ -19,6 +36,7 @@ Versioning: [Semantic Versioning](https://semver.org/).
 - Print and PDF-export buttons degrade visibly when GTK4 print backends
   are missing (insensitive + explanatory tooltip) instead of silently
   no-oping.
+- About dialog now shows the erdlabs brand mark.
 
 ### Changed
 

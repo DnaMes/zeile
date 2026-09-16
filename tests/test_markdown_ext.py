@@ -14,7 +14,7 @@ import markdown
 import pytest
 
 import mermaid_render
-from markdown_ext import MermaidExtension
+from markdown_ext import LanguageGuessExtension, MermaidExtension
 from zeile import EXTENSION_CONFIGS, EXTENSIONS, sanitize_html
 
 
@@ -86,3 +86,93 @@ def test_mermaid_unavailable_error_is_clear():
     out = render("```mermaid\ngraph TD; A-->B;\n```\n", enable_mermaid=True)
     assert "mmdc" in out
     assert "not found on PATH" in out
+
+
+# --- LanguageGuessPreprocessor -----------------------------------------------
+
+
+def render_lang(text: str) -> str:
+    """Render with the language-guess preprocessor in the pipeline, mirroring
+    render_body's extension order (lang-guess is registered at priority 27,
+    before mermaid at 26 and extra's fenced_code at 25)."""
+    mer = MermaidExtension(enable_mermaid=False, dark=False)
+    md = markdown.Markdown(
+        extensions=[*EXTENSIONS, mer, LanguageGuessExtension()],
+        extension_configs=EXTENSION_CONFIGS,
+    )
+    body = md.convert(text)
+    return mer.resolve(sanitize_html(body))
+
+
+def test_unlabeled_python_block_gets_highlighted():
+    out = render_lang("```\ndef f():\n    return 1\n```\n")
+    assert '<span class="k">def</span>' in out
+
+
+def test_unlabeled_bash_block_gets_highlighted():
+    out = render_lang('```\nfor f in *.md; do\n  echo "$f"\ndone\n```\n')
+    assert '<span class="' in out  # pygments spans present
+
+
+def test_unlabeled_prose_stays_plain():
+    out = render_lang("```\nJust some prose\nwithout code\n```\n")
+    assert "<pre>" in out
+    assert '<span class="' not in out
+
+
+def test_labeled_block_keeps_declared_language():
+    out = render_lang("```bash\necho hi\n```\n")
+    assert 'class="codehilite"' in out
+
+
+def test_closing_fence_of_labeled_block_not_mistaken_for_open():
+    """The killer state-machine case: the closer after a labeled block looks
+    exactly like an unlabeled opener. It must close the python block, not
+    open a new one -- and must never gain an injected alias."""
+    doc = "```python\ncode\n```\n\nParagraph.\n"
+    out = render_lang(doc)
+    assert 'class="codehilite"' in out
+    assert "<p>Paragraph.</p>" in out
+
+
+def test_fence_lookalikes_inside_block_are_skipped():
+    """A block containing example fence lines must be walked as one block."""
+    doc = "```\nexample:\n```python\nfake\n```\nreal end\n```\n"
+    out = render_lang(doc)
+    assert out.count("<pre>") == 1
+
+
+def test_tilde_fences_supported():
+    out = render_lang("~~~\ndef f():\n    return 1\n~~~\n")
+    assert '<span class="k">def</span>' in out
+
+
+def test_mermaid_fence_untouched():
+    out = render_lang("```mermaid\ngraph TD\nA-->B\n```\n")
+    assert "mermaid-disabled" in out
+
+
+def test_indented_fence_left_alone():
+    """python-markdown's fenced_code only accepts column-0 fences; an
+    indented fence it ignores must not be rewritten either -- the injected
+    alias would leak into the paragraph as visible text."""
+    out = render_lang("- item\n\n  ```\n  def f():\n      return 1\n  ```\n")
+    assert "python" not in out.replace("```python", "")  # no injected alias
+    assert "<li>item</li>" in out
+
+
+def test_mismatched_close_left_alone():
+    """A longer closing fence means fenced_code won't treat the block as a
+    fence at all -- the opener must stay unrewritten."""
+    out = render_lang("```\nsome text\n````\n")
+    assert "```python" not in out
+
+
+def test_priority_registered_before_fenced_code():
+    """The preprocessor must run strictly before extra's fenced_code (25)
+    and mermaid (26) or it never sees the fence lines at all."""
+    md = markdown.Markdown(extensions=["extra", LanguageGuessExtension()])
+    idx_guess = md.preprocessors.get_index_for_name("zeile-lang-guess")
+    idx_fenced = md.preprocessors.get_index_for_name("fenced_code_block")
+    # lower index == higher priority == runs first
+    assert idx_guess < idx_fenced
