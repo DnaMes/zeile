@@ -19,7 +19,8 @@ jobs:
             python3-gi \
             gir1.2-gtk-4.0 \
             gir1.2-webkit-6.0 \
-            shellcheck
+            shellcheck \
+            python3-pip
 
       - name: Python dependencies
         run: |
