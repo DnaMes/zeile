@@ -109,9 +109,14 @@ puppeteer @mermaid-js/mermaid-cli`), a real flowchart rendered through
 
 - [x] Repository is private on GitHub (`DnaMes/zeile`) — confirmed as of
       this rename; re-check before any public-listing decision.
-- [ ] Tag `v0.2.0` and cut the automated GitHub release — the release
-      workflow publishes `zeile-0.2.0.tar.gz` and `SHA256SUMS` after all
-      validation checks pass.
+- [x] Tag `v0.2.0` and cut a GitHub release — done 2026-09-24
+      (https://github.com/DnaMes/zeile/releases/tag/v0.2.0). Built and
+      published locally (`git archive` tarball + `SHA256SUMS`, notes from
+      CHANGELOG) because GitHub Actions is blocked by an account budget
+      limit, which also keeps the release workflow from running. All
+      checks were run locally first: 86 pytest (incl. the real headless
+      GUI matrix), ruff, shellcheck, msgfmt, `check_version.py`; the
+      extracted tarball passes 86 tests on its own.
 - [x] Tag `v0.1.0` and cut a GitHub release — done 2026-09-11
       (`5ac2795`, https://github.com/DnaMes/zeile/releases/tag/v0.1.0),
       with the print/PDF platform limitation stated in the release notes.
