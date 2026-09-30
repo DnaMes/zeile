@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    runs-on: [self-hosted, linux, x64, homelab]
+    runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["self-hosted","linux","x64","homelab"]') }}
     steps:
       - uses: actions/checkout@v4
 
