@@ -7,7 +7,13 @@ Versioning: [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-No functional change since v0.2.0. Changes since the v0.2.0 tag are CI, docs
+### Added
+
+- Start sequence: the first time zeile starts, the erdlabs mark fades in and out (about 3 seconds, once per install), then the zeile logo fades in and out on every start (about 1.4 seconds). Press any key or click to skip all of it; with GTK animations turned off the frames show without fades. The version number is shown only in the About dialog.
+
+### Changed
+
+Apart from that, no functional change since v0.2.0. Changes since the v0.2.0 tag are CI, docs
 and policy only: CI reads runs-on from the CI_RUNNER_LABELS repository
 variable (default self-hosted homelab runner, PR #4), AGENTS.md and repo
 policy files, and HANDOFF and docs updates. No release is planned: there is

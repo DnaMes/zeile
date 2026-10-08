@@ -76,6 +76,7 @@ def run() -> None:
             debug=False,
             settings={"theme": "auto", "body_font": "system", "code_font": "system"},
             settings_path=settings_path,
+            launch_sequence=False,  # the matrix drives its own Viewer
         )
 
         def on_activate(a) -> None:
@@ -244,6 +245,34 @@ def run() -> None:
                         f"theme={saved['theme']} zoom={saved['zoom']} "
                         f"w={saved['window_w']}",
                     )
+                    # 8. launch sequence: intro once (flag in settings.json),
+                    # logo every start, any key or click skips the whole thing.
+                    seq_path = tmp / "seq-settings.json"
+                    done: list[int] = []
+                    first = zeile.play_launch_sequence(a, seq_path, lambda: done.append(1))
+                    check(
+                        "launch-first-start",
+                        [p.asset for p in first._phases]
+                        == ["logo_erdlabs.png", "zeile.svg"]
+                        and load_settings(path=seq_path)["intro_seen"] == "true",
+                        f"phases={[p.asset for p in first._phases]}",
+                    )
+                    first._key.emit("key-pressed", Gdk.KEY_Return, 0, Gdk.ModifierType(0))
+                    check(
+                        "launch-key-skips-all",
+                        done == [1] and first._finished,
+                        f"done={done}",
+                    )
+                    second = zeile.play_launch_sequence(a, seq_path, lambda: done.append(2))
+                    check(
+                        "launch-later-start-logo-only",
+                        [p.asset for p in second._phases] == ["zeile.svg"],
+                        f"phases={[p.asset for p in second._phases]}",
+                    )
+                    second._click.emit("pressed", 1, 0.0, 0.0)
+                    second.skip()  # a second skip must not call on_done again
+                    check("launch-click-skips-once", done == [1, 2], f"done={done}")
+
                     a.quit()
                     return GLib.SOURCE_REMOVE
 

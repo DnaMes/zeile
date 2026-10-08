@@ -75,7 +75,14 @@ one `Alt+Left` away.
   Gruvbox ×2, Nord, Dracula, Rosé Pine ×2, Tokyo Night ×2) plus an
   "Auto" mode following the system; pick in the header-bar palette button
   or via `--theme`. The selection persists in `~/.config/zeile/settings.json`
-  (theme + body/code font, nothing else).
+  (theme, fonts, zoom, window size and whether the erdlabs intro has played;
+  no document content).
+- Start sequence: on the first start after install the erdlabs mark fades in
+  and out (about 3 s, once, remembered as `intro_seen` in `settings.json`),
+  then the zeile logo fades in and out (1.4 s) on every start. Any key or
+  click skips the whole sequence; with GTK animations off the frames show
+  without fades. The version number appears only in the About dialog
+  (header-bar help button). No sound, no network, no tracking.
 - Body and code font pickers with graceful fallback stacks: Inter, Atkinson
   Hyperlegible, iA Writer Quattro, Noto Serif, IBM Plex Sans; JetBrains Mono,
   iA Writer Mono, Fira Code, Cascadia Code. Fonts are used if installed and

@@ -25,6 +25,7 @@ import json
 import os
 import re
 import sys
+from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
 
@@ -195,6 +196,7 @@ _DEFAULT_SETTINGS = {
     "window_w": "900",
     "window_h": "1000",
     "window_maximized": "false",
+    "intro_seen": "false",  # the erdlabs intro plays once per install (#5)
 }
 
 
@@ -294,6 +296,12 @@ def load_settings(*, path: Path | None = None) -> dict[str, str]:
     elif maximized in ("true", "false"):
         settings["window_maximized"] = maximized
 
+    intro_seen = data.get("intro_seen")
+    if isinstance(intro_seen, bool):
+        settings["intro_seen"] = "true" if intro_seen else "false"
+    elif intro_seen in ("true", "false"):
+        settings["intro_seen"] = intro_seen
+
     return settings
 
 
@@ -330,6 +338,12 @@ def save_settings(settings: dict[str, str], *, path: Path | None = None) -> None
             "window_maximized": (
                 "true"
                 if settings.get("window_maximized", _DEFAULT_SETTINGS["window_maximized"])
+                in (True, "true")
+                else "false"
+            ),
+            "intro_seen": (
+                "true"
+                if settings.get("intro_seen", _DEFAULT_SETTINGS["intro_seen"])
                 in (True, "true")
                 else "false"
             ),
@@ -612,6 +626,137 @@ def _font_label(font_id: str, *, is_code: bool) -> str:
         "ibmplex-sans": _("IBM Plex Sans"),
     }
     return mapping.get(font_id, font_id)
+
+
+@dataclass(frozen=True)
+class LaunchPhase:
+    """One frame of the launch sequence; durations in milliseconds."""
+
+    asset: str
+    fade_in: int
+    hold: int
+    fade_out: int
+
+    @property
+    def total(self) -> int:
+        return self.fade_in + self.hold + self.fade_out
+
+
+# docs/SPLASH.md in the erdlabs label repo: the erdlabs mark plays once per
+# install (~2.8 s), the product logo on every start (1.4 s).
+_INTRO_PHASE = LaunchPhase("logo_erdlabs.png", 800, 1200, 800)
+_LOGO_PHASE = LaunchPhase("zeile.svg", 400, 600, 400)
+
+
+def plan_launch_sequence(*, intro_seen: bool, animations: bool) -> list[LaunchPhase]:
+    """Phases to play. With animations off the frames stay but the fades go."""
+    phases = [_LOGO_PHASE] if intro_seen else [_INTRO_PHASE, _LOGO_PHASE]
+    if animations:
+        return phases
+    return [LaunchPhase(p.asset, 0, p.hold, 0) for p in phases]
+
+
+def phase_opacity(phase: LaunchPhase, t_ms: float) -> float:
+    """Linear fade in, hold, fade out; 0 outside the phase."""
+    if t_ms < 0 or t_ms >= phase.total:
+        return 0.0
+    if t_ms < phase.fade_in:
+        return t_ms / phase.fade_in
+    if t_ms < phase.fade_in + phase.hold:
+        return 1.0
+    return (phase.total - t_ms) / phase.fade_out
+
+
+class LaunchSplash(Gtk.Window):
+    """Undecorated window that plays the phases, then calls `on_done` once.
+
+    Any key press or click skips the WHOLE sequence, not just the current
+    phase. The window holds no other state and is destroyed when done.
+    """
+
+    def __init__(
+        self,
+        app: Gtk.Application,
+        phases: list[LaunchPhase],
+        on_done,
+        *,
+        on_phase=None,
+    ) -> None:
+        super().__init__(application=app, decorated=False, resizable=False)
+        self.set_default_size(360, 280)
+        self._phases = phases
+        self._on_done = on_done
+        self._on_phase = on_phase
+        self._index = -1
+        self._start_us: int | None = None
+        self._finished = False
+        self.picture = Gtk.Picture(can_shrink=False)
+        self.picture.set_size_request(160, 160)
+        self.picture.set_halign(Gtk.Align.CENTER)
+        self.picture.set_valign(Gtk.Align.CENTER)
+        self.picture.set_opacity(0.0)
+        self.set_child(self.picture)
+        self._key = Gtk.EventControllerKey()
+        self._key.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+        self._key.connect("key-pressed", lambda *_a: self.skip() or True)
+        self.add_controller(self._key)
+        self._click = Gtk.GestureClick()
+        self._click.set_button(0)  # any mouse button
+        self._click.connect("pressed", lambda *_a: self.skip())
+        self.add_controller(self._click)
+        self.add_tick_callback(self._tick)
+
+    def _load(self, index: int) -> None:
+        self._index = index
+        self._start_us = None
+        asset = Path(__file__).resolve().parent / "assets" / self._phases[index].asset
+        self.picture.set_paintable(Gdk.Texture.new_from_filename(str(asset)))
+        if self._on_phase is not None:
+            self._on_phase(self._phases[index])
+
+    def _tick(self, _widget, clock) -> bool:
+        if self._finished:
+            return GLib.SOURCE_REMOVE
+        now = clock.get_frame_time()
+        if self._index < 0 or self._start_us is None:
+            if self._index < 0:
+                self._load(0)
+            self._start_us = now
+        t_ms = (now - self._start_us) / 1000
+        phase = self._phases[self._index]
+        if t_ms >= phase.total:
+            if self._index + 1 >= len(self._phases):
+                self.skip()
+                return GLib.SOURCE_REMOVE
+            self._load(self._index + 1)
+            self._start_us = now
+            t_ms = 0
+        self.picture.set_opacity(phase_opacity(self._phases[self._index], t_ms))
+        return GLib.SOURCE_CONTINUE
+
+    def skip(self) -> None:
+        if self._finished:
+            return
+        self._finished = True
+        self._on_done()  # next window first, so the app never has zero windows
+        self.destroy()
+
+
+def play_launch_sequence(
+    app: Gtk.Application, settings_path: Path, on_done
+) -> LaunchSplash:
+    """Show the launch sequence, record the intro as seen, call `on_done` after."""
+    settings = load_settings(path=settings_path)
+    intro_seen = settings["intro_seen"] == "true"
+    animations = bool(Gtk.Settings.get_default().get_property("gtk-enable-animations"))
+    phases = plan_launch_sequence(intro_seen=intro_seen, animations=animations)
+    if not intro_seen:
+        # Recorded at the start: a crash or kill mid-intro must not replay it.
+        settings["intro_seen"] = "true"
+        save_settings(settings, path=settings_path)
+    splash = LaunchSplash(app, phases, on_done)
+    splash.present()
+    return splash
 
 
 class Viewer(Gtk.ApplicationWindow):
@@ -1354,8 +1499,10 @@ class ZeileApp(Gtk.Application):
         debug: bool,
         settings: dict[str, str],
         settings_path: Path,
+        launch_sequence: bool = True,
     ) -> None:
         super().__init__(application_id=APP_ID, flags=Gio.ApplicationFlags.NON_UNIQUE)
+        self.launch_sequence = launch_sequence
         self.path = path
         self.enable_mermaid = enable_mermaid
         self.debug = debug
@@ -1363,6 +1510,12 @@ class ZeileApp(Gtk.Application):
         self.settings_path = settings_path
 
     def do_activate(self) -> None:
+        if self.launch_sequence:
+            play_launch_sequence(self, self.settings_path, self._open_initial)
+        else:
+            self._open_initial()
+
+    def _open_initial(self) -> None:
         if self.path is None:
             # Launched without a file (app menu / launcher with no %f):
             # offer a picker instead of erroring out. Cancel = quit.
