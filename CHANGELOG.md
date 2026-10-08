@@ -5,6 +5,14 @@ All notable changes to this project.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+No functional change since v0.2.0. Changes since the v0.2.0 tag are CI, docs
+and policy only: CI reads runs-on from the CI_RUNNER_LABELS repository
+variable (default self-hosted homelab runner, PR #4), AGENTS.md and repo
+policy files, and HANDOFF and docs updates. No release is planned: there is
+nothing to ship.
+
 ## [0.2.0] — 2026-09-16
 
 ### Added
@@ -37,10 +45,6 @@ Versioning: [Semantic Versioning](https://semver.org/).
   are missing (insensitive + explanatory tooltip) instead of silently
   no-oping.
 - About dialog now shows the erdlabs brand mark.
-
-## [Unreleased]
-
-No changes yet.
 
 ### Changed
 

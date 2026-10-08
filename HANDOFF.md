@@ -4,6 +4,18 @@ Created 2026-09-10. Renamed from `mdview` to `zeile` same day (name collision
 research: `mdview` clashes on PyPI, npm, crates.io, AUR and a 144★ GitHub
 project — see the full plan).
 
+## Session 2026-10-08: current release state
+
+- v0.2.0 is shipped and tagged: tag `v0.2.0` exists, and GitHub release `v0.2.0` is published (2026-09-24).
+- Since the tag there are 8 commits, all CI, docs and policy.
+- PR #4 (merge `0157787`, 2026-09-30) makes CI read `runs-on` from the `CI_RUNNER_LABELS` repository variable, default self-hosted homelab runner.
+- CI runs are green on main since 2026-09-30.
+- No functional code change since v0.2.0 (`git diff --stat v0.2.0 HEAD` touches no source files).
+- `release.yml` still runs on `ubuntu-latest`; PR #4 did not change it.
+- Decision: no release now, nothing to ship; `CHANGELOG.md` has an Unreleased block saying so.
+
+## History
+
 ## Session 2026-09-16: v0.2.0 release preparation
 
 ### Goal
