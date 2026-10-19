@@ -157,6 +157,36 @@ h6 {
   color: var(--muted);
 }
 
+/* Heading anchor links (permalink) */
+.headerlink {
+  display: inline-block;
+  opacity: 0;
+  margin-left: 0.35em;
+  padding: 0 0.15em;
+  font-weight: normal;
+  font-size: 0.8em;
+  color: var(--muted);
+  text-decoration: none;
+  border-bottom: none;
+  transition: opacity 0.15s ease-in-out, color 0.15s ease-in-out;
+  user-select: none;
+}
+
+h1:hover .headerlink,
+h2:hover .headerlink,
+h3:hover .headerlink,
+h4:hover .headerlink,
+h5:hover .headerlink,
+h6:hover .headerlink,
+.headerlink:focus-visible {
+  opacity: 0.45;
+}
+
+.headerlink:hover {
+  opacity: 1 !important;
+  color: var(--accent);
+}
+
 .markdown-body > :first-child {
   margin-top: 0;
 }

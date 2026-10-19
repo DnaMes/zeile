@@ -267,15 +267,48 @@ def run() -> None:
                         win._link_preview_revealer.get_reveal_child()
                         and win._link_preview_label.get_text() == "https://erdlabs.com"
                     )
+                    win._on_mouse_target_changed(
+                        win.webview,
+                        MockHitTest(True, win.path.as_uri() + "#heading-anchor"),
+                        0,
+                    )
+                    anchor_shown = (
+                        win._link_preview_revealer.get_reveal_child()
+                        and win._link_preview_label.get_text() == "#heading-anchor"
+                    )
                     win._on_mouse_target_changed(win.webview, MockHitTest(False), 0)
                     unhover_hidden = not win._link_preview_revealer.get_reveal_child()
                     check(
                         "link-preview",
-                        init_hidden and hover_shown and unhover_hidden,
-                        f"init={init_hidden} hover={hover_shown} unhover={unhover_hidden}",
+                        init_hidden and hover_shown and anchor_shown and unhover_hidden,
+                        f"init={init_hidden} hover={hover_shown} "
+                        f"anchor={anchor_shown} unhover={unhover_hidden}",
                     )
 
-                    # 9. fullscreen toggle
+                    # 9. TOC stats & filtering
+                    win._populate_toc()
+                    stats_text = win.toc_stats_label.get_text()
+                    has_stats = "words" in stats_text and "min read" in stats_text
+                    win.toc_filter_entry.set_text("Head")
+                    child = win.toc_list.get_first_child()
+                    matched_head = (
+                        isinstance(child, Gtk.ListBoxRow)
+                        and win._toc_filter_func(child)
+                    )
+                    win.toc_filter_entry.set_text("nonexistent")
+                    matched_none = (
+                        not win._toc_filter_func(child)
+                        if isinstance(child, Gtk.ListBoxRow)
+                        else True
+                    )
+                    win.toc_filter_entry.set_text("")
+                    check(
+                        "toc-stats-and-filter",
+                        has_stats and matched_head and matched_none,
+                        f"stats={stats_text!r} head={matched_head} none={matched_none}",
+                    )
+
+                    # 10. fullscreen toggle
                     check(
                         "fullscreen-init",
                         not win.is_fullscreen(),

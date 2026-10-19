@@ -13,7 +13,9 @@ from zeile import (
     BODY_FONT_OPTIONS,
     CODE_FONT_OPTIONS,
     THEME_OPTIONS,
+    DocumentStats,
     build_document,
+    compute_document_stats,
     enhance_code_blocks,
     flatten_toc,
     load_settings,
@@ -30,13 +32,14 @@ def test_frontmatter_stripped():
     out, _toc, _codes = render_body(doc, enable_mermaid=False, dark=False)
     assert "title: Test" not in out
     assert "date: 2026-01-01" not in out
-    assert '<h1 id="hi">Hi</h1>' in out
+    assert '<h1 id="hi">Hi' in out
+    assert 'class="headerlink"' in out
 
 
 def test_frontmatter_absent_is_a_no_op():
     doc = "# Hi\n\nNo frontmatter here.\n"
     out, _toc, _codes = render_body(doc, enable_mermaid=False, dark=False)
-    assert '<h1 id="hi">Hi</h1>' in out
+    assert '<h1 id="hi">Hi' in out
 
 
 def test_tasklist_renders_as_checkboxes():
@@ -264,7 +267,8 @@ def test_render_end_to_end(tmp_path: Path):
     out, toc, codes = render(md_file, enable_mermaid=False, dark=False)
     assert out.startswith("<!DOCTYPE html>")
     assert "Content-Security-Policy" in out
-    assert '<h1 id="hello">Hello</h1>' in out
+    assert '<h1 id="hello">Hello' in out
+    assert 'class="headerlink"' in out
     assert flatten_toc(toc) == [(0, "hello", "Hello")]
     assert codes == []
 
@@ -356,4 +360,61 @@ def test_gfm_alerts_rendered_through_render_body():
     assert '<div class="admonition tip">' in out
     assert '<p class="admonition-title">Pro Tip</p>' in out
     assert "<p>Tip body.</p>" in out
+
+
+def test_compute_document_stats_empty():
+    stats = compute_document_stats("")
+    assert stats == DocumentStats(words=0, chars=0, reading_time_minutes=0)
+
+
+def test_compute_document_stats_frontmatter_stripped():
+    doc = (
+        "---\n"
+        "title: Ignore Frontmatter\n"
+        "author: Someone\n"
+        "---\n\n"
+        "# Real Heading\n\n"
+        "Some body text here.\n"
+    )
+    stats = compute_document_stats(doc)
+    assert stats.words == 6
+    assert stats.reading_time_minutes == 1
+
+
+def test_compute_document_stats_reading_time_estimation():
+    words = "word " * 250
+    stats = compute_document_stats(words)
+    assert stats.words == 250
+    assert stats.reading_time_minutes == 2
+
+    words_450 = "word " * 450
+    stats_450 = compute_document_stats(words_450)
+    assert stats_450.words == 450
+    assert stats_450.reading_time_minutes == 3
+
+
+def test_compute_document_stats_unicode():
+    doc = "Schöne Grüße aus München! 42 Tests bestanden."
+    stats = compute_document_stats(doc)
+    assert stats.words == 7
+    assert stats.reading_time_minutes == 1
+
+
+def test_heading_anchor_permalinks():
+    doc = "# Introduction\n\nParagraph\n\n## Section Two\n"
+    out, toc, _codes = render_body(doc, enable_mermaid=False, dark=False)
+    assert (
+        '<h1 id="introduction">Introduction<a class="headerlink" href="#introduction"'
+        in out
+    )
+    assert (
+        '<h2 id="section-two">Section Two<a class="headerlink" href="#section-two"'
+        in out
+    )
+    assert 'title="Link to this section"' in out
+    assert flatten_toc(toc) == [
+        (0, "introduction", "Introduction"),
+        (1, "section-two", "Section Two"),
+    ]
+
 

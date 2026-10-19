@@ -22,9 +22,11 @@ import argparse
 import gettext
 import html
 import json
+import math
 import os
 import re
 import sys
+from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
 
@@ -71,7 +73,7 @@ EXTENSIONS = [
 
 EXTENSION_CONFIGS = {
     "codehilite": {"guess_lang": False, "noclasses": False},
-    "toc": {"permalink": False},
+    "toc": {"permalink": "#", "permalink_title": _("Link to this section")},
     "pymdownx.tasklist": {"custom_checkbox": False},
 }
 
@@ -86,6 +88,26 @@ _FRONTMATTER_RE = re.compile(r"\A---\n.*?\n---\n?", re.DOTALL)
 
 def _strip_frontmatter(text: str) -> str:
     return _FRONTMATTER_RE.sub("", text, count=1)
+
+
+@dataclass(frozen=True)
+class DocumentStats:
+    words: int
+    chars: int
+    reading_time_minutes: int
+
+
+def compute_document_stats(text: str) -> DocumentStats:
+    """Compute word count, character count, and estimated reading time.
+
+    Frontmatter is stripped prior to counting. Words are counted via Unicode
+    word tokens. Estimated reading time assumes standard 200 WPM silent reading speed.
+    """
+    clean_text = _strip_frontmatter(text)
+    words = len(re.findall(r"\b\w+\b", clean_text))
+    chars = len(clean_text)
+    reading_time = max(1, math.ceil(words / 200)) if words > 0 else 0
+    return DocumentStats(words=words, chars=chars, reading_time_minutes=reading_time)
 
 
 # No script-src entry: enable-javascript-markup=False (set on the WebView
@@ -752,15 +774,39 @@ class Viewer(Gtk.ApplicationWindow):
         self._update_nav_sensitivity()
 
         self._toc_flat: list[tuple[int, str, str]] = []
+        self._doc_stats = DocumentStats(words=0, chars=0, reading_time_minutes=0)
+
+        toc_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        toc_box.set_margin_start(8)
+        toc_box.set_margin_end(8)
+        toc_box.set_margin_top(8)
+        toc_box.set_margin_bottom(8)
+
+        self.toc_stats_label = Gtk.Label(xalign=0)
+        self.toc_stats_label.add_css_class("dim-label")
+        self.toc_stats_label.set_margin_start(4)
+        self.toc_stats_label.set_margin_end(4)
+        self.toc_stats_label.set_margin_top(2)
+        self.toc_stats_label.set_margin_bottom(2)
+        toc_box.append(self.toc_stats_label)
+
+        self.toc_filter_entry = Gtk.SearchEntry()
+        self.toc_filter_entry.set_placeholder_text(_("Filter headings…"))
+        self.toc_filter_entry.connect("search-changed", self._on_toc_filter_changed)
+        self.toc_filter_entry.connect("activate", self._on_toc_filter_activate)
+        toc_box.append(self.toc_filter_entry)
+
         self.toc_list = Gtk.ListBox()
         self.toc_list.connect("row-activated", self._on_toc_row_activated)
+        self.toc_list.set_filter_func(self._toc_filter_func)
         toc_scroller = Gtk.ScrolledWindow()
         toc_scroller.set_min_content_height(300)
-        toc_scroller.set_min_content_width(240)
+        toc_scroller.set_min_content_width(260)
         toc_scroller.set_child(self.toc_list)
+        toc_box.append(toc_scroller)
 
         self.toc_popover = Gtk.Popover()
-        self.toc_popover.set_child(toc_scroller)
+        self.toc_popover.set_child(toc_box)
         self.toc_popover.connect("show", self._populate_toc)
 
         self.toc_button = Gtk.MenuButton(icon_name="view-list-symbolic")
@@ -1235,27 +1281,97 @@ class Viewer(Gtk.ApplicationWindow):
             self.toc_list.remove(child)
             child = following
 
-        for depth, _heading_id, name in self._toc_flat:
+        self.toc_filter_entry.set_text("")
+
+        stats = self._doc_stats
+        headings_count = len(self._toc_flat)
+        if stats.words > 0:
+            words_str = f"{stats.words:,}".replace(",", ".")
+            words_text = _n("%s word", "%s words", stats.words) % words_str
+            reading_text = (
+                _n("~%d min read", "~%d min read", stats.reading_time_minutes)
+                % stats.reading_time_minutes
+            )
+            sections_text = (
+                _n("%d section", "%d sections", headings_count) % headings_count
+            )
+            self.toc_stats_label.set_text(
+                f"{words_text} · {reading_text} · {sections_text}"
+            )
+            self.toc_stats_label.set_visible(True)
+        else:
+            self.toc_stats_label.set_visible(False)
+
+        if not self._toc_flat:
+            self.toc_filter_entry.set_visible(False)
+            placeholder = Gtk.Label(label=_("No headings found"), xalign=0.5)
+            placeholder.add_css_class("dim-label")
+            placeholder.set_margin_top(24)
+            placeholder.set_margin_bottom(24)
+            row = Gtk.ListBoxRow()
+            row.set_selectable(False)
+            row.set_activatable(False)
+            row.set_child(placeholder)
+            self.toc_list.append(row)
+            return True
+
+        self.toc_filter_entry.set_visible(True)
+        for depth, heading_id, name in self._toc_flat:
+            row = Gtk.ListBoxRow()
+            row._heading_id = heading_id
+            row._heading_text = name
             label = Gtk.Label(label=name, xalign=0)
-            label.set_margin_start(12 + depth * 16)
+            label.set_margin_start(8 + depth * 14)
             label.set_margin_top(4)
             label.set_margin_bottom(4)
-            self.toc_list.append(label)
+            label.set_ellipsize(Pango.EllipsizeMode.END)
+            row.set_child(label)
+            self.toc_list.append(row)
         return True
 
+    def _on_toc_filter_changed(self, _entry: Gtk.SearchEntry) -> None:
+        self.toc_list.invalidate_filter()
+
+    def _toc_filter_func(self, row: Gtk.ListBoxRow) -> bool:
+        query = self.toc_filter_entry.get_text().strip().lower()
+        if not query:
+            return True
+        heading_text = getattr(row, "_heading_text", "")
+        return query in heading_text.lower()
+
+    def _scroll_to_heading(self, heading_id: str) -> None:
+        self.webview.evaluate_javascript(
+            f"document.getElementById({json.dumps(heading_id)}).scrollIntoView();",
+            -1,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+
+    def _on_toc_filter_activate(self, _entry: Gtk.SearchEntry) -> None:
+        child = self.toc_list.get_first_child()
+        while child is not None:
+            if (
+                isinstance(child, Gtk.ListBoxRow)
+                and child.is_visible()
+                and child.get_child_visible()
+            ):
+                heading_id = getattr(child, "_heading_id", None)
+                if heading_id:
+                    self._scroll_to_heading(heading_id)
+                    self.toc_popover.popdown()
+                    break
+            child = child.get_next_sibling()
+
     def _on_toc_row_activated(self, _listbox: Gtk.ListBox, row: Gtk.ListBoxRow) -> None:
-        index = row.get_index()
-        if 0 <= index < len(self._toc_flat):
-            _depth, heading_id, _name = self._toc_flat[index]
-            self.webview.evaluate_javascript(
-                f"document.getElementById({json.dumps(heading_id)}).scrollIntoView();",
-                -1,
-                None,
-                None,
-                None,
-                None,
-                None,
-            )
+        heading_id = getattr(row, "_heading_id", None)
+        if heading_id:
+            self._scroll_to_heading(heading_id)
+        elif 0 <= row.get_index() < len(self._toc_flat):
+            _depth, fallback_id, _name = self._toc_flat[row.get_index()]
+            self._scroll_to_heading(fallback_id)
         self.toc_popover.popdown()
 
     def _show_about(self) -> None:
@@ -1339,6 +1455,14 @@ class Viewer(Gtk.ApplicationWindow):
             self.fullscreen()
         return True
 
+    def _format_preview_uri(self, uri: str) -> str:
+        current_uri = self.path.as_uri()
+        if uri == current_uri:
+            return "#top"
+        if uri.startswith(current_uri + "#"):
+            return uri[len(current_uri) :]
+        return uri
+
     def _on_mouse_target_changed(
         self,
         _webview: WebKit.WebView,
@@ -1348,7 +1472,7 @@ class Viewer(Gtk.ApplicationWindow):
         if hit_test_result.context_is_link():
             uri = hit_test_result.get_link_uri()
             if uri:
-                self._link_preview_label.set_text(uri)
+                self._link_preview_label.set_text(self._format_preview_uri(uri))
                 self._link_preview_revealer.set_reveal_child(True)
                 return
         self._link_preview_revealer.set_reveal_child(False)
@@ -1392,11 +1516,18 @@ class Viewer(Gtk.ApplicationWindow):
                 body_font_id=self.body_font_id,
                 code_font_id=self.code_font_id,
             )
+            try:
+                raw_text = self.path.read_text(encoding="utf-8")
+            except OSError:
+                raw_text = ""
+            self._doc_stats = compute_document_stats(raw_text)
             self._toc_flat = flatten_toc(toc_tokens)
             self._code_texts = code_texts
             self._pending_restore_scroll = True
             self.webview.load_html(html_doc, self.path.as_uri())
             self._sync_theme_with_gtk()
+            if self.toc_popover.get_visible():
+                self._populate_toc()
 
         self.webview.evaluate_javascript(
             "window.scrollY | 0", -1, None, None, None, _got_scroll, None

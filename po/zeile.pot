@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-16 12:44+0200\n"
+"POT-Creation-Date: 2026-10-20 01:36+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,217 +18,250 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
 
-#: zeile.py:406
+#: zeile.py:76
+msgid "Link to this section"
+msgstr ""
+
+#: zeile.py:432
 msgid "Copy"
 msgstr ""
 
-#: zeile.py:407
+#: zeile.py:433
 msgid "Copy code"
 msgstr ""
 
-#: zeile.py:529
+#: zeile.py:560
 msgid "Cannot read file"
 msgstr ""
 
-#: zeile.py:574
+#: zeile.py:605
 msgid "Auto (system)"
 msgstr ""
 
-#: zeile.py:575
+#: zeile.py:606
 msgid "GitHub Light"
 msgstr ""
 
-#: zeile.py:576
+#: zeile.py:607
 msgid "GitHub Dark"
 msgstr ""
 
-#: zeile.py:577
+#: zeile.py:608
 msgid "Catppuccin Latte"
 msgstr ""
 
-#: zeile.py:578
+#: zeile.py:609
 msgid "Catppuccin Frappé"
 msgstr ""
 
-#: zeile.py:579
+#: zeile.py:610
 msgid "Catppuccin Macchiato"
 msgstr ""
 
-#: zeile.py:580
+#: zeile.py:611
 msgid "Catppuccin Mocha"
 msgstr ""
 
-#: zeile.py:581
+#: zeile.py:612
 msgid "Solarized Light"
 msgstr ""
 
-#: zeile.py:582
+#: zeile.py:613
 msgid "Solarized Dark"
 msgstr ""
 
-#: zeile.py:583
+#: zeile.py:614
 msgid "Gruvbox Light"
 msgstr ""
 
-#: zeile.py:584
+#: zeile.py:615
 msgid "Gruvbox Dark"
 msgstr ""
 
-#: zeile.py:585
+#: zeile.py:616
 msgid "Nord"
 msgstr ""
 
-#: zeile.py:586
+#: zeile.py:617
 msgid "Dracula"
 msgstr ""
 
-#: zeile.py:587
+#: zeile.py:618
 msgid "Rosé Pine"
 msgstr ""
 
-#: zeile.py:588
+#: zeile.py:619
 msgid "Rosé Pine Dawn"
 msgstr ""
 
-#: zeile.py:589
+#: zeile.py:620
 msgid "Tokyo Night"
 msgstr ""
 
-#: zeile.py:590
+#: zeile.py:621
 msgid "Tokyo Night Day"
 msgstr ""
 
-#: zeile.py:598
+#: zeile.py:629
 msgid "System monospace"
 msgstr ""
 
-#: zeile.py:599
+#: zeile.py:630
 msgid "JetBrains Mono"
 msgstr ""
 
-#: zeile.py:600
+#: zeile.py:631
 msgid "iA Writer Mono"
 msgstr ""
 
-#: zeile.py:601
+#: zeile.py:632
 msgid "Fira Code"
 msgstr ""
 
-#: zeile.py:602
+#: zeile.py:633
 msgid "Cascadia Code"
 msgstr ""
 
-#: zeile.py:607
+#: zeile.py:638
 msgid "System"
 msgstr ""
 
-#: zeile.py:608
+#: zeile.py:639
 msgid "Inter"
 msgstr ""
 
-#: zeile.py:609
+#: zeile.py:640
 msgid "Atkinson Hyperlegible"
 msgstr ""
 
-#: zeile.py:610
+#: zeile.py:641
 msgid "iA Writer Quattro"
 msgstr ""
 
-#: zeile.py:611
+#: zeile.py:642
 msgid "Noto Serif"
 msgstr ""
 
-#: zeile.py:612
+#: zeile.py:643
 msgid "IBM Plex Sans"
 msgstr ""
 
-#: zeile.py:701
+#: zeile.py:765
 msgid "Back (Alt+Left)"
 msgstr ""
 
-#: zeile.py:702
+#: zeile.py:766
 msgid "Back"
 msgstr ""
 
-#: zeile.py:706
+#: zeile.py:770
 msgid "Forward (Alt+Right)"
 msgstr ""
 
-#: zeile.py:707
+#: zeile.py:771
 msgid "Forward"
 msgstr ""
 
-#: zeile.py:725
+#: zeile.py:794
+msgid "Filter headings…"
+msgstr ""
+
+#: zeile.py:813
 msgid "Table of contents (Ctrl+T)"
 msgstr ""
 
-#: zeile.py:726
+#: zeile.py:814
 msgid "Table of contents"
 msgstr ""
 
-#: zeile.py:732
+#: zeile.py:820
 msgid "Export PDF…"
 msgstr ""
 
-#: zeile.py:733
+#: zeile.py:821
 msgid "Print (Ctrl+P)"
 msgstr ""
 
-#: zeile.py:734 zeile.py:1219
+#: zeile.py:822 zeile.py:1402
 msgid "Export PDF"
 msgstr ""
 
-#: zeile.py:735
+#: zeile.py:823
 msgid "Print"
 msgstr ""
 
-#: zeile.py:739
+#: zeile.py:827
 msgid "Unavailable: GTK4 print backends are missing on this system"
 msgstr ""
 
-#: zeile.py:747 zeile.py:748
+#: zeile.py:835 zeile.py:836
 msgid "About zeile"
 msgstr ""
 
-#: zeile.py:752 zeile.py:753
+#: zeile.py:840 zeile.py:841
 msgid "Theme and fonts"
 msgstr ""
 
-#: zeile.py:763
+#: zeile.py:851
 msgid "Reload (Ctrl+R)"
 msgstr ""
 
-#: zeile.py:764
+#: zeile.py:852
 msgid "Reload"
 msgstr ""
 
-#: zeile.py:829
+#: zeile.py:942
 msgid "Theme"
 msgstr ""
 
-#: zeile.py:845
+#: zeile.py:958
 msgid "Body font"
 msgstr ""
 
-#: zeile.py:862
+#: zeile.py:975
 msgid "Code font"
 msgstr ""
 
-#: zeile.py:1124
+#: zeile.py:1237
 #, python-format
 msgid "%d match"
 msgid_plural "%d matches"
 msgstr[0] ""
 msgstr[1] ""
 
-#: zeile.py:1127
+#: zeile.py:1240
 msgid "No matches"
 msgstr ""
 
-#: zeile.py:1200
+#: zeile.py:1290
+#, python-format
+msgid "%s word"
+msgid_plural "%s words"
+msgstr[0] ""
+msgstr[1] ""
+
+#: zeile.py:1292
+#, python-format
+msgid "~%d min read"
+msgid_plural "~%d min read"
+msgstr[0] ""
+msgstr[1] ""
+
+#: zeile.py:1296
+#, python-format
+msgid "%d section"
+msgid_plural "%d sections"
+msgstr[0] ""
+msgstr[1] ""
+
+#: zeile.py:1307
+msgid "No headings found"
+msgstr ""
+
+#: zeile.py:1383
 msgid "A small, fast, read-only markdown viewer."
 msgstr ""
 
-#: zeile.py:1370
+#: zeile.py:1590
 msgid "Open markdown file"
 msgstr ""

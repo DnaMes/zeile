@@ -9,6 +9,16 @@ Versioning: [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Document reading statistics: Table of Contents (`Ctrl+T`) popover displays total
+  word count, section count, and estimated reading time (`~X min read`) at the top
+  of the outline.
+- Filterable Table of Contents: an instant search filter in the TOC popover allows
+  quickly filtering through headings in long outlines, with `Enter` jumping directly
+  to the first match. Friendly empty state placeholder when no headings exist.
+- Heading anchor permalinks: headings (`h1`–`h6`) display a subtle `#` anchor link on hover,
+  matching the GitHub/GitLab reading experience.
+- Clean intra-document link previews: hovering over heading anchors or internal hash links
+  displays a clean `#section-name` in the bottom link preview pill rather than full file URIs.
 - GitHub-Flavored Markdown (GFM) Alerts: blockquotes formatted with `> [!NOTE]`,
   `> [!TIP]`, `> [!IMPORTANT]`, `> [!WARNING]`, and `> [!CAUTION]` render as
   styled admonition containers with theme-matching SVG icons, distinct left

@@ -56,7 +56,7 @@ zeile --code-font jetbrains-mono README.md
 | `Ctrl+0`                 | reset zoom                                                |
 | `Ctrl+F`                 | find in page                                              |
 | `Alt+Left` / `Alt+Right` | back / forward through visited local links                |
-| `Ctrl+T`                 | table of contents overlay (click a heading to jump to it) |
+| `Ctrl+T`                 | table of contents overlay (filter outline, stats, jump)   |
 | `Ctrl+P`                 | print                                                     |
 | `F11`                    | toggle fullscreen mode                                    |
 
@@ -84,7 +84,8 @@ one `Alt+Left` away.
 - Readability polish: tinted blockquotes, zebra table rows, styled `kbd`
   keycaps, themed text selection, focus outlines, print/PDF always renders
   on a light palette
-- Tables, footnotes, definition lists, admonitions, GFM alerts (`> [!NOTE]`, `> [!TIP]`, etc.), TOC anchors
+- Tables, footnotes, definition lists, admonitions, GFM alerts (`> [!NOTE]`, `> [!TIP]`, etc.), TOC anchors and hover `#` permalinks
+- Document statistics (word count, reading time) and real-time heading filter in the TOC popover
 - Copy button on every code block (top-right on hover, keyboard-focusable,
   always visible on touch): clicking it copies the block's plain text to
   the system clipboard and flashes a check mark — implemented without any
