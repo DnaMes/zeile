@@ -271,7 +271,7 @@ code {
   background: var(--inline-code-bg);
   border-radius: 5px;
   border: 1px solid var(--border);
-  color: var(--syn-keyword);
+  color: var(--fg);
 }
 
 pre {
@@ -699,6 +699,16 @@ html {
   .admonition,
   .toc {
     border-color: #d0d7de;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  :not(pre) > code {
+    color: #24292f;
   }
 
   /* On-paper copies of the document don't need clickable affordances. */
