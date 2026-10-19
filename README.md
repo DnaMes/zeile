@@ -72,8 +72,8 @@ one `Alt+Left` away.
 ## Features
 
 - GitHub-style CSS, light and dark following `prefers-color-scheme`
-- 16 curated themes (GitHub Light/Dark, Catppuccin ×4, Solarized ×2,
-  Gruvbox ×2, Nord, Dracula, Rosé Pine ×2, Tokyo Night ×2) plus an
+- 17 curated themes (GitHub Light/Dark, Catppuccin ×4, Solarized ×2,
+  Gruvbox ×2, Nord, Dracula, Rosé Pine ×2, Tokyo Night ×2, Cyberpunk) plus an
   "Auto" mode following the system; pick in the header-bar palette button
   or via `--theme`. The selection persists in `~/.config/zeile/settings.json`
   (theme + body/code font, nothing else).
@@ -81,9 +81,10 @@ one `Alt+Left` away.
   Hyperlegible, iA Writer Quattro, Noto Serif, IBM Plex Sans; JetBrains Mono,
   iA Writer Mono, Fira Code, Cascadia Code. Fonts are used if installed and
   silently fall back if not.
-- Readability polish: tinted blockquotes, zebra table rows, styled `kbd`
-  keycaps, themed text selection, focus outlines, print/PDF always renders
-  on a light palette
+- Readability polish: color-coded heading hierarchy (`h1`–`h6`), accent-bordered
+  code blocks (`3.5px solid var(--accent)`), tinted blockquotes, zebra table rows
+  with accent headers, accent `hr` gradients, styled `kbd` keycaps, themed text
+  selection, focus outlines, print/PDF always renders on a light palette
 - Tables, footnotes, definition lists, admonitions, GFM alerts (`> [!NOTE]`, `> [!TIP]`, etc.), TOC anchors and hover `#` permalinks
 - Document statistics (word count, reading time) and real-time heading filter in the TOC popover
 - Copy button on every code block (top-right on hover, keyboard-focusable,

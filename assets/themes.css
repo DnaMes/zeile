@@ -632,6 +632,45 @@ html[data-theme="tokyo-night-day"] {
   --syn-removed-bg: #fed3d7;
 }
 
+html[data-theme="cyberpunk"] {
+  --color-scheme: dark;
+  --bg: #0d0e15;
+  --fg: #f0f0ff;
+  --muted: #727b94;
+  --border: #2d2645;
+  --link: #00f0ff;
+  --code-bg: #151624;
+  --quote-border: #ff007f;
+  --quote-bg: #181428;
+  --selection: #3d2a60;
+  --note: #00f0ff;
+  --warning: #ffe600;
+  --danger: #ff0055;
+  --accent: #ff007f;
+  --focus: #00f0ff;
+  --table-zebra: #121320;
+  --table-hover: #1f1d35;
+  --inline-code-bg: #1c1830;
+  --syn-comment: #5c637a;
+  --syn-keyword: #ff007f;
+  --syn-type: #00f0ff;
+  --syn-string: #ffe600;
+  --syn-number: #00ff9f;
+  --syn-name: #f0f0ff;
+  --syn-function: #38bdf8;
+  --syn-class: #ff8b3d;
+  --syn-builtin: #a855f7;
+  --syn-tag: #ff007f;
+  --syn-attr: #00f0ff;
+  --syn-operator: #ff007f;
+  --syn-punctuation: #d4d4f7;
+  --syn-error: #ff0055;
+  --syn-added-fg: #00ff9f;
+  --syn-added-bg: #003322;
+  --syn-removed-fg: #ff0055;
+  --syn-removed-bg: #330015;
+}
+
 html[data-font-body="system"] { --font-body: "-apple-system", "Segoe UI", "Adwaita Sans", "Noto Sans", "Helvetica Neue", Arial, sans-serif; }
 html[data-font-body="inter"] { --font-body: "Inter", "Inter Variable", -apple-system, "Segoe UI", sans-serif; }
 html[data-font-body="atkinson"] { --font-body: "Atkinson Hyperlegible", "Inter", -apple-system, sans-serif; }

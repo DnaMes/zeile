@@ -18,6 +18,7 @@ from zeile import (
     compute_document_stats,
     enhance_code_blocks,
     flatten_toc,
+    is_theme_dark,
     load_settings,
     read_asset,
     render,
@@ -431,5 +432,18 @@ def test_heading_anchor_permalinks():
         (0, "introduction", "Introduction"),
         (1, "section-two", "Section Two"),
     ]
+
+
+def test_style_css_heading_and_code_colors():
+    css = read_asset("style.css")
+    assert "color: var(--syn-function);" in css
+    assert "color: var(--syn-type);" in css
+    assert "border-left: 3.5px solid var(--accent);" in css
+    assert "border-bottom: 2px solid var(--accent);" in css
+
+
+def test_cyberpunk_theme_registered():
+    assert "cyberpunk" in THEME_OPTIONS
+    assert is_theme_dark("cyberpunk", fallback=False) is True
 
 

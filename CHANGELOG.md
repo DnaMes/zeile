@@ -9,6 +9,15 @@ Versioning: [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Cyberpunk theme: vivid neon-accented dark theme featuring cyan, magenta, and electric
+  green accents against a deep dark navy background.
+- Enhanced heading color hierarchy & section separation: headings `h1`–`h6` now use
+  theme syntax tokens (`--syn-function`, `--syn-type`, `--syn-keyword`, `--syn-builtin`)
+  with clean `h1`/`h2` bottom borders and generous vertical spacing for effortless section scanning.
+- Styled code blocks and table headers: `<pre>` code blocks feature an accent-colored
+  left border (`3.5px solid var(--accent)`), inline code snippets are distinctively badged
+  with subtle borders, table headers feature an accent bottom line, and `hr` dividers use
+  an accent gradient.
 - Document reading statistics: Table of Contents (`Ctrl+T`) popover displays total
   word count, section count, and estimated reading time (`~X min read`) at the top
   of the outline.

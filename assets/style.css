@@ -122,34 +122,40 @@ h3,
 h4,
 h5,
 h6 {
-  margin: 1.6em 0 0.6em;
+  margin: 1.8em 0 0.6em;
   font-weight: 650;
   line-height: 1.25;
   letter-spacing: 0.01em;
 }
 
 h1 {
-  font-size: 2em;
+  font-size: 2.1em;
+  color: var(--fg);
+  padding-bottom: 0.35em;
+  border-bottom: 2px solid var(--accent);
 }
 
 h2 {
-  font-size: 1.5em;
-  padding-bottom: 0.35em;
+  font-size: 1.45em;
+  margin-top: 2.2em;
+  padding-bottom: 0.3em;
+  color: var(--syn-function);
   border-bottom: 1px solid var(--border);
 }
 
 h3 {
-  font-size: 1.25em;
-  color: var(--link);
+  font-size: 1.2em;
+  color: var(--syn-type);
 }
 
 h4 {
   font-size: 1.05em;
-  color: var(--note);
+  color: var(--syn-keyword);
 }
 
 h5 {
-  font-size: 0.875em;
+  font-size: 0.9em;
+  color: var(--syn-builtin);
 }
 
 h6 {
@@ -239,12 +245,12 @@ blockquote p:last-child {
 
 hr {
   border: 0;
-  height: 1px;
-  margin: 1.8em 0;
+  height: 2px;
+  margin: 2em 0;
   background-image: linear-gradient(
     to right,
     transparent,
-    var(--border),
+    var(--accent),
     transparent
   );
 }
@@ -261,19 +267,21 @@ code {
 }
 
 :not(pre) > code {
-  padding: 0.18em 0.38em;
+  padding: 0.18em 0.4em;
   background: var(--inline-code-bg);
-  border-radius: 6px;
-  color: var(--fg);
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  color: var(--syn-keyword);
 }
 
 pre {
-  padding: 1em;
+  padding: 1em 1.2em;
   overflow-x: auto;
   background: var(--code-bg);
   border-radius: 8px;
   border: 1px solid var(--border);
-  line-height: 1.45;
+  border-left: 3.5px solid var(--accent);
+  line-height: 1.5;
 }
 
 pre code {
@@ -379,6 +387,8 @@ th {
   font-weight: 650;
   text-align: left;
   background: var(--table-hover);
+  border-bottom: 2px solid var(--accent);
+  color: var(--fg);
 }
 
 tr:nth-child(even) {

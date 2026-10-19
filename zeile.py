@@ -191,6 +191,7 @@ THEME_OPTIONS = (
     "rose-pine-dawn",
     "tokyo-night",
     "tokyo-night-day",
+    "cyberpunk",
 )
 
 THEME_DARKNESS: dict[str, bool | None] = {
@@ -211,6 +212,7 @@ THEME_DARKNESS: dict[str, bool | None] = {
     "rose-pine-dawn": False,
     "tokyo-night": True,
     "tokyo-night-day": False,
+    "cyberpunk": True,
 }
 
 
@@ -637,6 +639,7 @@ def _theme_label(theme_id: str) -> str:
         "rose-pine-dawn": _("Rosé Pine Dawn"),
         "tokyo-night": _("Tokyo Night"),
         "tokyo-night-day": _("Tokyo Night Day"),
+        "cyberpunk": _("Cyberpunk"),
     }
     return mapping.get(theme_id, theme_id)
 
