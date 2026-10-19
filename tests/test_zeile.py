@@ -403,12 +403,15 @@ def test_compute_document_stats_unicode():
 def test_compute_document_stats_ignores_link_urls_and_markup():
     doc = (
         "Check [this guide](https://example.com/very/long/url/with/many/path/tokens) "
-        "and <https://erdlabs.com/docs> for details.\n\n"
-        "![Diagram](https://example.com/img.png)\n"
+        "and <https://erdlabs.com/docs> for details.<br>Word two.\n\n"
+        "![Inline diagram](https://example.com/img.png)\n"
+        "![Reference diagram][ref-img]\n\n"
+        "[ref-img]: https://example.com/ref.png\n"
     )
     stats = compute_document_stats(doc)
-    # Visible words: "Check", "this", "guide", "and", "for", "details" -> 6 words
-    assert stats.words == 6
+    # Visible words: "Check", "this", "guide", "and", "for", "details",
+    # "Word", "two" -> 8 words
+    assert stats.words == 8
     assert stats.reading_time_minutes == 1
 
 

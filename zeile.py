@@ -99,9 +99,10 @@ def _visible_text(text: str) -> str:
     clean = _strip_frontmatter(text)
     clean = re.sub(r"^\s*\[[^\]]+\]:\s*\S+.*$", "", clean, flags=re.MULTILINE)
     clean = re.sub(r"!\[([^\]]*)\]\([^)]+\)", "", clean)
+    clean = re.sub(r"!\[([^\]]*)\]\[[^\]]*\]", "", clean)
     clean = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", clean)
     clean = re.sub(r"\[([^\]]+)\]\[[^\]]*\]", r"\1", clean)
-    clean = re.sub(r"<[^>]+>", "", clean)
+    clean = re.sub(r"<[^>]+>", " ", clean)
     clean = re.sub(r"https?://\S+", "", clean)
     return clean
 
