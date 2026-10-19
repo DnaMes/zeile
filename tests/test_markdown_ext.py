@@ -14,7 +14,7 @@ import markdown
 import pytest
 
 import mermaid_render
-from markdown_ext import LanguageGuessExtension, MermaidExtension
+from markdown_ext import GfmAlertExtension, LanguageGuessExtension, MermaidExtension
 from zeile import EXTENSION_CONFIGS, EXTENSIONS, sanitize_html
 
 
@@ -176,3 +176,77 @@ def test_priority_registered_before_fenced_code():
     idx_fenced = md.preprocessors.get_index_for_name("fenced_code_block")
     # lower index == higher priority == runs first
     assert idx_guess < idx_fenced
+
+
+# --- GfmAlertExtension -------------------------------------------------------
+
+
+def render_alert(text: str) -> str:
+    md = markdown.Markdown(
+        extensions=[*EXTENSIONS, GfmAlertExtension()],
+        extension_configs=EXTENSION_CONFIGS,
+    )
+    return sanitize_html(md.convert(text))
+
+
+def test_gfm_alert_simple_note():
+    doc = "> [!NOTE]\n> This is a helpful note.\n"
+    out = render_alert(doc)
+    assert '<div class="admonition note">' in out
+    assert '<p class="admonition-title">Note</p>' in out
+    assert "<p>This is a helpful note.</p>" in out
+    assert "<blockquote>" not in out
+
+
+def test_gfm_alert_all_five_types():
+    types = ["NOTE", "TIP", "IMPORTANT", "WARNING", "CAUTION"]
+    for t in types:
+        doc = f"> [!{t}]\n> Body for {t}.\n"
+        out = render_alert(doc)
+        assert f'<div class="admonition {t.lower()}">' in out
+        assert f'<p class="admonition-title">{t.capitalize()}</p>' in out
+        assert f"<p>Body for {t}.</p>" in out
+
+
+def test_gfm_alert_custom_title():
+    doc = "> [!TIP] Pro Tip\n> You can customize titles.\n"
+    out = render_alert(doc)
+    assert '<div class="admonition tip">' in out
+    assert '<p class="admonition-title">Pro Tip</p>' in out
+    assert "<p>You can customize titles.</p>" in out
+
+
+def test_gfm_alert_case_insensitive():
+    doc = "> [!note]\n> Lowercase marker works.\n"
+    out = render_alert(doc)
+    assert '<div class="admonition note">' in out
+    assert '<p class="admonition-title">Note</p>' in out
+
+
+def test_gfm_alert_with_formatting_and_links():
+    doc = "> [!IMPORTANT]\n> An alert with **bold**, *italic*, and [link](https://example.com).\n"
+    out = render_alert(doc)
+    assert '<div class="admonition important">' in out
+    assert "<strong>bold</strong>" in out
+    assert "<em>italic</em>" in out
+    assert 'href="https://example.com"' in out
+    assert ">link</a>" in out
+
+
+def test_gfm_alert_multiparagraph_and_lists():
+    doc = "> [!WARNING]\n>\n> First warning paragraph.\n>\n> - Item 1\n> - Item 2\n"
+    out = render_alert(doc)
+    assert '<div class="admonition warning">' in out
+    assert '<p class="admonition-title">Warning</p>' in out
+    assert "<p>First warning paragraph.</p>" in out
+    assert "<ul>" in out
+    assert "<li>Item 1</li>" in out
+
+
+def test_regular_blockquote_untouched():
+    doc = "> This is just a regular quote.\n> Second line.\n"
+    out = render_alert(doc)
+    assert "<blockquote>" in out
+    assert "admonition" not in out
+    assert "regular quote." in out
+

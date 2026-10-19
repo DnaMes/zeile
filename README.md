@@ -83,7 +83,7 @@ one `Alt+Left` away.
 - Readability polish: tinted blockquotes, zebra table rows, styled `kbd`
   keycaps, themed text selection, focus outlines, print/PDF always renders
   on a light palette
-- Tables, footnotes, definition lists, admonitions, TOC anchors
+- Tables, footnotes, definition lists, admonitions, GFM alerts (`> [!NOTE]`, `> [!TIP]`, etc.), TOC anchors
 - Copy button on every code block (top-right on hover, keyboard-focusable,
   always visible on touch): clicking it copies the block's plain text to
   the system clipboard and flashes a check mark — implemented without any

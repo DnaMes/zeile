@@ -26,9 +26,11 @@ import html
 import re
 import secrets
 import subprocess
+import xml.etree.ElementTree as etree
 
 from markdown.extensions import Extension
 from markdown.preprocessors import Preprocessor
+from markdown.treeprocessors import Treeprocessor
 
 import mermaid_render
 from code_lang import guess_code_language
@@ -201,3 +203,91 @@ class LanguageGuessExtension(Extension):
         # preprocessor (26) -- same ordering constraint MermaidExtension
         # documents; ties go to whichever registered first, so be explicit.
         md.preprocessors.register(pre, "zeile-lang-guess", 27)
+
+
+GFM_ALERT_RE = re.compile(
+    r"^\[!(?P<kind>NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][ \t]*"
+    r"(?P<title>[^\n]*)(?:\n(?P<rest>.*))?$",
+    re.DOTALL | re.IGNORECASE,
+)
+
+
+class GfmAlertTreeprocessor(Treeprocessor):
+    """Transform GitHub-Flavored Markdown alert blockquotes into admonitions.
+
+    Matches blockquotes whose paragraphs begin with `[!NOTE]`, `[!TIP]`,
+    `[!IMPORTANT]`, `[!WARNING]`, or `[!CAUTION]`. Converts each alert section
+    into `<div class="admonition {kind}">` and prepends an admonition title
+    (`<p class="admonition-title">Title</p>`).
+
+    Handles adjacent alerts and mixed blockquote/alert sections by splitting
+    them into distinct sibling blocks in their parent container.
+
+    Runs at priority 25 (before `inline` at 20), so inline markup in the body
+    and title is parsed naturally afterwards and the first paragraph's text has
+    not yet been partitioned into child elements.
+    """
+
+    def run(self, root: etree.Element) -> None:
+        self._process_element(root)
+
+    def _process_element(self, parent: etree.Element) -> None:
+        new_children: list[etree.Element] = []
+        for child in parent:
+            if child.tag == "blockquote":
+                sub_blocks = self._split_blockquote(child)
+                for sb in sub_blocks:
+                    self._process_element(sb)
+                new_children.extend(sub_blocks)
+            else:
+                self._process_element(child)
+                new_children.append(child)
+        parent[:] = new_children
+
+    def _split_blockquote(self, bq: etree.Element) -> list[etree.Element]:
+        has_alert = any(
+            c.tag == "p" and c.text and GFM_ALERT_RE.match(c.text) for c in bq
+        )
+        if not has_alert:
+            return [bq]
+
+        blocks: list[etree.Element] = []
+        current_block: etree.Element | None = None
+
+        for c in bq:
+            m = GFM_ALERT_RE.match(c.text) if (c.tag == "p" and c.text) else None
+            if m:
+                kind = m.group("kind").lower()
+                custom_title = m.group("title").strip()
+                rest = m.group("rest")
+                title = custom_title if custom_title else kind.capitalize()
+
+                current_block = etree.Element("div", {"class": f"admonition {kind}"})
+                title_el = etree.Element("p", {"class": "admonition-title"})
+                title_el.text = title
+                current_block.append(title_el)
+
+                if rest is not None and rest.strip():
+                    c.text = rest.lstrip("\n")
+                    current_block.append(c)
+                blocks.append(current_block)
+            else:
+                if current_block is not None:
+                    current_block.append(c)
+                else:
+                    if not blocks or blocks[-1].tag != "blockquote":
+                        current_block = etree.Element("blockquote")
+                        blocks.append(current_block)
+                    else:
+                        current_block = blocks[-1]
+                    current_block.append(c)
+
+        return blocks
+
+
+class GfmAlertExtension(Extension):
+    """Wire GfmAlertTreeprocessor into the markdown pipeline."""
+
+    def extendMarkdown(self, md) -> None:
+        md.treeprocessors.register(GfmAlertTreeprocessor(md), "zeile-gfm-alerts", 25)
+

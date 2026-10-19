@@ -345,3 +345,15 @@ def test_mermaid_fence_still_disabled_placeholder_with_copy():
     # the disabled mermaid source is itself a <pre> and gets a copy button
     assert 'href="zeile-copy://0"' in out
     assert codes == ["graph TD\nA-->B\n"]
+
+
+def test_gfm_alerts_rendered_through_render_body():
+    doc = "> [!NOTE]\n> Note body.\n\n> [!TIP] Pro Tip\n> Tip body.\n"
+    out, _toc, _codes = render_body(doc, enable_mermaid=False, dark=False)
+    assert '<div class="admonition note">' in out
+    assert '<p class="admonition-title">Note</p>' in out
+    assert "<p>Note body.</p>" in out
+    assert '<div class="admonition tip">' in out
+    assert '<p class="admonition-title">Pro Tip</p>' in out
+    assert "<p>Tip body.</p>" in out
+

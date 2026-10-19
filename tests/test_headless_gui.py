@@ -38,7 +38,12 @@ def _can_run() -> bool:
 def test_headless_gui_matrix() -> None:
     repo = Path(__file__).resolve().parent.parent
     script = repo / "tests" / "headless_gui.py"
-    env = dict(os.environ, WLR_BACKENDS="headless", WLR_LIBINPUT_NO_DEVICES="1")
+    env = dict(
+        os.environ,
+        WLR_BACKENDS="headless",
+        WLR_LIBINPUT_NO_DEVICES="1",
+        WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS="1",
+    )
     result = subprocess.run(
         ["timeout", "150", "cage", "-d", sys.executable, str(script)],
         capture_output=True,

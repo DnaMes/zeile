@@ -38,7 +38,11 @@ import markdown  # noqa: E402
 import nh3  # noqa: E402
 from gi.repository import Gdk, Gio, GLib, Gtk, WebKit  # noqa: E402
 
-from markdown_ext import LanguageGuessExtension, MermaidExtension  # noqa: E402
+from markdown_ext import (  # noqa: E402
+    GfmAlertExtension,
+    LanguageGuessExtension,
+    MermaidExtension,
+)
 
 APP_ID = "com.erdlabs.zeile"
 __version__ = "0.2.0"
@@ -469,7 +473,12 @@ def render_body(
     text = _strip_frontmatter(text)
     mermaid_ext = MermaidExtension(enable_mermaid=enable_mermaid, dark=theme_dark)
     md = markdown.Markdown(
-        extensions=[*EXTENSIONS, mermaid_ext, LanguageGuessExtension()],
+        extensions=[
+            *EXTENSIONS,
+            mermaid_ext,
+            LanguageGuessExtension(),
+            GfmAlertExtension(),
+        ],
         extension_configs=EXTENSION_CONFIGS,
     )
     body = md.convert(text)
