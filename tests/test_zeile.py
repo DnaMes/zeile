@@ -400,6 +400,18 @@ def test_compute_document_stats_unicode():
     assert stats.reading_time_minutes == 1
 
 
+def test_compute_document_stats_ignores_link_urls_and_markup():
+    doc = (
+        "Check [this guide](https://example.com/very/long/url/with/many/path/tokens) "
+        "and <https://erdlabs.com/docs> for details.\n\n"
+        "![Diagram](https://example.com/img.png)\n"
+    )
+    stats = compute_document_stats(doc)
+    # Visible words: "Check", "this", "guide", "and", "for", "details" -> 6 words
+    assert stats.words == 6
+    assert stats.reading_time_minutes == 1
+
+
 def test_heading_anchor_permalinks():
     doc = "# Introduction\n\nParagraph\n\n## Section Two\n"
     out, toc, _codes = render_body(doc, enable_mermaid=False, dark=False)

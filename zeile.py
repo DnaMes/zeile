@@ -90,6 +90,22 @@ def _strip_frontmatter(text: str) -> str:
     return _FRONTMATTER_RE.sub("", text, count=1)
 
 
+def _visible_text(text: str) -> str:
+    """Extract visible document text for reading statistics.
+
+    Strips frontmatter, link URLs (keeping visible anchor text), image definitions,
+    HTML tags, reference-style links, and bare URLs so only readable words are counted.
+    """
+    clean = _strip_frontmatter(text)
+    clean = re.sub(r"^\s*\[[^\]]+\]:\s*\S+.*$", "", clean, flags=re.MULTILINE)
+    clean = re.sub(r"!\[([^\]]*)\]\([^)]+\)", "", clean)
+    clean = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", clean)
+    clean = re.sub(r"\[([^\]]+)\]\[[^\]]*\]", r"\1", clean)
+    clean = re.sub(r"<[^>]+>", "", clean)
+    clean = re.sub(r"https?://\S+", "", clean)
+    return clean
+
+
 @dataclass(frozen=True)
 class DocumentStats:
     words: int
@@ -100,12 +116,13 @@ class DocumentStats:
 def compute_document_stats(text: str) -> DocumentStats:
     """Compute word count, character count, and estimated reading time.
 
-    Frontmatter is stripped prior to counting. Words are counted via Unicode
-    word tokens. Estimated reading time assumes standard 200 WPM silent reading speed.
+    Frontmatter, link destinations, images, and markup are stripped prior to counting.
+    Words are counted via Unicode word tokens. Estimated reading time assumes
+    standard 200 WPM silent reading speed.
     """
-    clean_text = _strip_frontmatter(text)
-    words = len(re.findall(r"\b\w+\b", clean_text))
-    chars = len(clean_text)
+    visible = _visible_text(text)
+    words = len(re.findall(r"\b\w+\b", visible))
+    chars = len(visible)
     reading_time = max(1, math.ceil(words / 200)) if words > 0 else 0
     return DocumentStats(words=words, chars=chars, reading_time_minutes=reading_time)
 
@@ -1353,11 +1370,7 @@ class Viewer(Gtk.ApplicationWindow):
     def _on_toc_filter_activate(self, _entry: Gtk.SearchEntry) -> None:
         child = self.toc_list.get_first_child()
         while child is not None:
-            if (
-                isinstance(child, Gtk.ListBoxRow)
-                and child.is_visible()
-                and child.get_child_visible()
-            ):
+            if isinstance(child, Gtk.ListBoxRow) and self._toc_filter_func(child):
                 heading_id = getattr(child, "_heading_id", None)
                 if heading_id:
                     self._scroll_to_heading(heading_id)
