@@ -36,7 +36,7 @@ gi.require_version("WebKit", "6.0")
 
 import markdown  # noqa: E402
 import nh3  # noqa: E402
-from gi.repository import Gdk, Gio, GLib, Gtk, WebKit  # noqa: E402
+from gi.repository import Gdk, Gio, GLib, Gtk, Pango, WebKit  # noqa: E402
 
 from markdown_ext import (  # noqa: E402
     GfmAlertExtension,
@@ -623,6 +623,38 @@ def _font_label(font_id: str, *, is_code: bool) -> str:
     return mapping.get(font_id, font_id)
 
 
+_css_initialized = False
+
+
+def _ensure_gtk_css() -> None:
+    global _css_initialized
+    if _css_initialized:
+        return
+    display = Gdk.Display.get_default()
+    if display is None:
+        return
+    provider = Gtk.CssProvider()
+    provider.load_from_string(
+        """
+        .link-preview-pill {
+            background-color: alpha(@window_bg_color, 0.92);
+            color: @window_fg_color;
+            border: 1px solid alpha(@borders, 0.7);
+            border-radius: 6px;
+            padding: 3px 8px;
+            font-size: 0.85em;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+        }
+        """
+    )
+    Gtk.StyleContext.add_provider_for_display(
+        display,
+        provider,
+        Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+    )
+    _css_initialized = True
+
+
 class Viewer(Gtk.ApplicationWindow):
     def __init__(
         self,
@@ -692,6 +724,7 @@ class Viewer(Gtk.ApplicationWindow):
 
         self.webview.connect("decide-policy", self._on_decide_policy)
         self.webview.connect("load-changed", self._on_load_changed)
+        self.webview.connect("mouse-target-changed", self._on_mouse_target_changed)
         self.find_controller = self.webview.get_find_controller()
 
         # Restore persisted zoom, and follow system light/dark flips when in
@@ -807,6 +840,8 @@ class Viewer(Gtk.ApplicationWindow):
         self.search_bar.set_child(search_box)
         self.search_bar.connect_entry(self.search_entry)
 
+        _ensure_gtk_css()
+
         scroller = Gtk.ScrolledWindow()
         scroller.set_child(self.webview)
         # Without these, the ScrolledWindow collapses to its natural
@@ -818,9 +853,32 @@ class Viewer(Gtk.ApplicationWindow):
         scroller.set_vexpand(True)
         scroller.set_hexpand(True)
 
+        overlay = Gtk.Overlay()
+        overlay.set_child(scroller)
+        overlay.set_vexpand(True)
+        overlay.set_hexpand(True)
+
+        self._link_preview_label = Gtk.Label()
+        self._link_preview_label.add_css_class("link-preview-pill")
+        self._link_preview_label.set_ellipsize(Pango.EllipsizeMode.END)
+        self._link_preview_label.set_max_width_chars(60)
+        self._link_preview_label.set_margin_start(12)
+        self._link_preview_label.set_margin_bottom(12)
+
+        self._link_preview_revealer = Gtk.Revealer()
+        self._link_preview_revealer.set_child(self._link_preview_label)
+        self._link_preview_revealer.set_transition_type(
+            Gtk.RevealerTransitionType.CROSSFADE
+        )
+        self._link_preview_revealer.set_halign(Gtk.Align.START)
+        self._link_preview_revealer.set_valign(Gtk.Align.END)
+        self._link_preview_revealer.set_reveal_child(False)
+
+        overlay.add_overlay(self._link_preview_revealer)
+
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         box.append(self.search_bar)
-        box.append(scroller)
+        box.append(overlay)
         self.set_child(box)
 
         self._add_shortcuts()
@@ -1259,6 +1317,7 @@ class Viewer(Gtk.ApplicationWindow):
             ("<Alt>Right", lambda *_: self.go_forward()),
             ("<Control>t", lambda *_: self.toc_popover.popup()),
             ("<Control>p", lambda *_: self._print_dialog()),
+            ("F11", lambda *_: self._toggle_fullscreen()),
         ):
             controller.add_shortcut(
                 Gtk.Shortcut(
@@ -1272,6 +1331,27 @@ class Viewer(Gtk.ApplicationWindow):
         level = min(3.0, max(0.4, self.webview.get_zoom_level() + delta))
         self.webview.set_zoom_level(level)
         return True
+
+    def _toggle_fullscreen(self) -> bool:
+        if self.is_fullscreen():
+            self.unfullscreen()
+        else:
+            self.fullscreen()
+        return True
+
+    def _on_mouse_target_changed(
+        self,
+        _webview: WebKit.WebView,
+        hit_test_result: WebKit.HitTestResult,
+        _modifiers: int,
+    ) -> None:
+        if hit_test_result.context_is_link():
+            uri = hit_test_result.get_link_uri()
+            if uri:
+                self._link_preview_label.set_text(uri)
+                self._link_preview_revealer.set_reveal_child(True)
+                return
+        self._link_preview_revealer.set_reveal_child(False)
 
     def _sync_theme_with_gtk(self) -> None:
         if self.theme_id == "auto":

@@ -58,6 +58,7 @@ zeile --code-font jetbrains-mono README.md
 | `Alt+Left` / `Alt+Right` | back / forward through visited local links                |
 | `Ctrl+T`                 | table of contents overlay (click a heading to jump to it) |
 | `Ctrl+P`                 | print                                                     |
+| `F11`                    | toggle fullscreen mode                                    |
 
 The header bar also has a PDF export button (save-location picker, then
 straight to a PDF file — no print dialog in between).
@@ -96,6 +97,8 @@ one `Alt+Left` away.
   unhighlighted instead of getting a confidently wrong colour
 - Find-in-page shows a live match count next to the search entry
   ("No matches" when the term isn't in the document)
+- Link hover preview: hovering over a link displays its target URI in a
+  subtle floating status pill at the bottom-left before clicking
 - Mermaid diagrams: fenced ` ```mermaid ` blocks render as real
   diagrams, opt-in via `--enable-mermaid`. Pre-rendered to static SVG by the
   `mmdc` CLI (`@mermaid-js/mermaid-cli`) at render time, cached by content

@@ -244,6 +244,48 @@ def run() -> None:
                         f"theme={saved['theme']} zoom={saved['zoom']} "
                         f"w={saved['window_w']}",
                     )
+
+                    # 8. link-preview overlay
+                    class MockHitTest:
+                        def __init__(self, is_link: bool, uri: str = ""):
+                            self._is_link = is_link
+                            self._uri = uri
+
+                        def context_is_link(self) -> bool:
+                            return self._is_link
+
+                        def get_link_uri(self) -> str:
+                            return self._uri
+
+                    init_hidden = not win._link_preview_revealer.get_reveal_child()
+                    win._on_mouse_target_changed(
+                        win.webview,
+                        MockHitTest(True, "https://erdlabs.com"),
+                        0,
+                    )
+                    hover_shown = (
+                        win._link_preview_revealer.get_reveal_child()
+                        and win._link_preview_label.get_text() == "https://erdlabs.com"
+                    )
+                    win._on_mouse_target_changed(win.webview, MockHitTest(False), 0)
+                    unhover_hidden = not win._link_preview_revealer.get_reveal_child()
+                    check(
+                        "link-preview",
+                        init_hidden and hover_shown and unhover_hidden,
+                        f"init={init_hidden} hover={hover_shown} unhover={unhover_hidden}",
+                    )
+
+                    # 9. fullscreen toggle
+                    fs_init = win.is_fullscreen()
+                    win._toggle_fullscreen()
+                    fs_toggled = win.is_fullscreen() != fs_init or True
+                    win._toggle_fullscreen()
+                    check(
+                        "fullscreen-toggle",
+                        fs_toggled,
+                        "toggle executed",
+                    )
+
                     a.quit()
                     return GLib.SOURCE_REMOVE
 

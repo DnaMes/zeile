@@ -13,6 +13,11 @@ Versioning: [Semantic Versioning](https://semver.org/).
   `> [!TIP]`, `> [!IMPORTANT]`, `> [!WARNING]`, and `> [!CAUTION]` render as
   styled admonition containers with theme-matching SVG icons, distinct left
   accent borders, and optional custom titles.
+- Link hover URL preview: hovering over any link reveals a floating status
+  pill at the bottom-left showing the destination URI before clicking, providing
+  clear visual feedback for external vs. local document links.
+- Fullscreen mode: toggle fullscreen view with `F11` for focused, distraction-free
+  reading.
 
 
 ## [0.2.0] — 2026-09-16
