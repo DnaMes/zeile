@@ -276,17 +276,31 @@ def run() -> None:
                     )
 
                     # 9. fullscreen toggle
-                    fs_init = win.is_fullscreen()
-                    win._toggle_fullscreen()
-                    fs_toggled = win.is_fullscreen() != fs_init or True
-                    win._toggle_fullscreen()
                     check(
-                        "fullscreen-toggle",
-                        fs_toggled,
-                        "toggle executed",
+                        "fullscreen-init",
+                        not win.is_fullscreen(),
+                        "initially windowed",
                     )
+                    win._toggle_fullscreen()
 
-                    a.quit()
+                    def check_fs_after_enter() -> None:
+                        is_fs = win.is_fullscreen()
+                        win._toggle_fullscreen()
+
+                        def check_fs_after_leave() -> None:
+                            is_unfs = not win.is_fullscreen()
+                            check(
+                                "fullscreen-toggle",
+                                is_fs and is_unfs,
+                                f"fullscreen={is_fs} restored={is_unfs}",
+                            )
+                            a.quit()
+                            return GLib.SOURCE_REMOVE
+
+                        GLib.timeout_add(150, check_fs_after_leave)
+                        return GLib.SOURCE_REMOVE
+
+                    GLib.timeout_add(150, check_fs_after_enter)
                     return GLib.SOURCE_REMOVE
 
                 return GLib.SOURCE_REMOVE
