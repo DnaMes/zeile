@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: zeile 0.2.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-20 01:51+0200\n"
+"POT-Creation-Date: 2026-10-25 07:37+0100\n"
 "PO-Revision-Date: 2026-09-10 19:38+0200\n"
 "Last-Translator: erdlabs\n"
 "Language-Team: none\n"
@@ -185,7 +185,7 @@ msgstr "PDF exportieren…"
 msgid "Print (Ctrl+P)"
 msgstr "Drucken (Strg+P)"
 
-#: zeile.py:843 zeile.py:1419
+#: zeile.py:843 zeile.py:1475
 msgid "Export PDF"
 msgstr "PDF exportieren"
 
@@ -197,7 +197,7 @@ msgstr "Drucken"
 msgid "Unavailable: GTK4 print backends are missing on this system"
 msgstr "Nicht verfügbar: GTK4-Druck-Backends fehlen auf diesem System"
 
-#: zeile.py:856 zeile.py:857
+#: zeile.py:856 zeile.py:857 zeile.py:1396
 msgid "About zeile"
 msgstr "Über zeile"
 
@@ -262,9 +262,22 @@ msgid "No headings found"
 msgstr "Keine Überschriften vorhanden"
 
 #: zeile.py:1400
+msgid "_Close"
+msgstr "_Schließen"
+
+#: zeile.py:1429
+#, python-brace-format
+msgid "Version {version}"
+msgstr "Version {version}"
+
+#: zeile.py:1434
 msgid "A small, fast, read-only markdown viewer."
 msgstr "Ein kleiner, schneller, schreibgeschützter Markdown-Betrachter."
 
-#: zeile.py:1607
+#: zeile.py:1454
+msgid "GNU General Public License, version 3"
+msgstr "GNU General Public License, Version 3"
+
+#: zeile.py:1663
 msgid "Open markdown file"
 msgstr "Markdown-Datei öffnen"

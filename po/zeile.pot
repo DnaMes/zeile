@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-20 01:51+0200\n"
+"POT-Creation-Date: 2026-10-25 07:37+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -186,7 +186,7 @@ msgstr ""
 msgid "Print (Ctrl+P)"
 msgstr ""
 
-#: zeile.py:843 zeile.py:1419
+#: zeile.py:843 zeile.py:1475
 msgid "Export PDF"
 msgstr ""
 
@@ -198,7 +198,7 @@ msgstr ""
 msgid "Unavailable: GTK4 print backends are missing on this system"
 msgstr ""
 
-#: zeile.py:856 zeile.py:857
+#: zeile.py:856 zeile.py:857 zeile.py:1396
 msgid "About zeile"
 msgstr ""
 
@@ -263,9 +263,22 @@ msgid "No headings found"
 msgstr ""
 
 #: zeile.py:1400
+msgid "_Close"
+msgstr ""
+
+#: zeile.py:1429
+#, python-brace-format
+msgid "Version {version}"
+msgstr ""
+
+#: zeile.py:1434
 msgid "A small, fast, read-only markdown viewer."
 msgstr ""
 
-#: zeile.py:1607
+#: zeile.py:1454
+msgid "GNU General Public License, version 3"
+msgstr ""
+
+#: zeile.py:1663
 msgid "Open markdown file"
 msgstr ""

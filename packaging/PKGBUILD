@@ -73,6 +73,14 @@ MimeType=text/markdown;text/x-markdown;
 StartupWMClass=com.erdlabs.zeile
 EOF
 
-    install -Dm 644 assets/zeile.svg \
+    # Icon set: the scalable SVG plus one PNG per hicolor size. The desktop
+    # entry's Icon=zeile resolves against this tree (freedesktop directory
+    # names, <size>x<size>/apps, as hicolor/index.theme declares them).
+    local size
+    for size in 16 24 32 48 64 128 256 512; do
+        install -Dm 644 "icons/hicolor/${size}x${size}/apps/zeile.png" \
+            "$pkgdir/usr/share/icons/hicolor/${size}x${size}/apps/zeile.png"
+    done
+    install -Dm 644 icons/hicolor/scalable/apps/zeile.svg \
         "$pkgdir/usr/share/icons/hicolor/scalable/apps/zeile.svg"
 }

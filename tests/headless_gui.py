@@ -114,22 +114,65 @@ def run() -> None:
                         f"{len(degraded)} degraded buttons",
                     )
 
-                # 3. About dialog carries the erdlabs brand logo
+                # 3. About dialog carries the app icon, version, and
+                # erdlabs brand logo.
                 win._show_about()
                 about = next(
                     (
                         w
                         for w in Gtk.Window.list_toplevels()
-                        if isinstance(w, Gtk.AboutDialog)
+                        if isinstance(w, Gtk.Dialog)
+                        and w.get_title() == "About zeile"
                     ),
                     None,
                 )
-                check(
-                    "about-logo",
-                    about is not None and about.get_logo() is not None,
-                    "no AboutDialog found" if about is None else "logo present",
-                )
+                detail = "no About dialog found" if about is None else "dialog present"
+                check("about-dialog", about is not None, detail)
                 if about is not None:
+                    logo_path = (
+                        Path(__file__).resolve().parent.parent
+                        / "assets"
+                        / "logo_erdlabs.png"
+                    )
+                    has_logo_image = False
+                    has_app_icon = False
+                    version_seen = False
+
+                    def walk(widget):
+                        nonlocal has_logo_image, has_app_icon, version_seen
+                        if isinstance(widget, Gtk.Image):
+                            paintable = widget.get_paintable()
+                            if paintable is not None:
+                                px = widget.get_pixel_size()
+                                if px == 128:
+                                    has_app_icon = True
+                                elif px == 192:
+                                    has_logo_image = True
+                        if isinstance(widget, Gtk.Label):
+                            text = widget.get_text() or ""
+                            if zeile.__version__ in text:
+                                version_seen = True
+                        child = widget.get_first_child()
+                        while child is not None:
+                            walk(child)
+                            child = child.get_next_sibling()
+
+                    walk(about)
+                    check(
+                        "about-app-icon",
+                        has_app_icon,
+                        "zeile icon image found" if has_app_icon else "missing",
+                    )
+                    check(
+                        "about-version",
+                        version_seen,
+                        f"version {zeile.__version__} shown" if version_seen else "missing",
+                    )
+                    check(
+                        "about-erdlabs-logo",
+                        has_logo_image and logo_path.is_file(),
+                        "logo_erdlabs.png referenced" if has_logo_image else "missing",
+                    )
                     about.close()
 
                 # 4. live theme switch updates the computed syntax colour

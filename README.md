@@ -31,6 +31,7 @@ Writes:
 | `~/.local/bin/zeile`                                   | launcher (pins `/usr/bin/python3`) |
 | `~/.local/share/applications/zeile.desktop`            | desktop entry + mime association   |
 | `~/.local/share/icons/hicolor/scalable/apps/zeile.svg` | icon                               |
+| `~/.local/share/icons/hicolor/*/apps/zeile.png`        | PNG icon sizes 16×16 to 512×512    |
 
 Then sets itself as the default handler for `text/markdown`, so double-clicking
 a `.md` file in the file manager opens it.

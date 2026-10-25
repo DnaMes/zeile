@@ -1392,19 +1392,75 @@ class Viewer(Gtk.ApplicationWindow):
         self.toc_popover.popdown()
 
     def _show_about(self) -> None:
-        about = Gtk.AboutDialog()
-        about.set_transient_for(self)
-        about.set_modal(True)
-        about.set_program_name("zeile")
-        about.set_version(__version__)
-        about.set_comments(_("A small, fast, read-only markdown viewer."))
-        about.set_license_type(Gtk.License.GPL_3_0)
-        about.set_website("https://erdlabs.com")
-        about.set_website_label("erdlabs.com")
+        dialog = Gtk.Dialog(
+            title=_("About zeile"),
+            transient_for=self,
+            modal=True,
+        )
+        dialog.add_button(_("_Close"), Gtk.ResponseType.CLOSE)
+        dialog.set_default_response(Gtk.ResponseType.CLOSE)
+
+        content = dialog.get_content_area()
+        content.set_spacing(18)
+        content.set_margin_top(24)
+        content.set_margin_bottom(24)
+        content.set_margin_start(24)
+        content.set_margin_end(24)
+
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        box.set_halign(Gtk.Align.CENTER)
+        box.set_valign(Gtk.Align.START)
+
+        # App icon: load the shipped SVG first so the dialog works before
+        # the icon theme has been installed system-wide.
+        app_icon_path = Path(__file__).resolve().parent / "assets" / "zeile.svg"
+        if app_icon_path.is_file():
+            app_icon = Gtk.Image.new_from_file(str(app_icon_path))
+        else:
+            app_icon = Gtk.Image.new_from_icon_name("zeile")
+        app_icon.set_pixel_size(128)
+        box.append(app_icon)
+
+        name_label = Gtk.Label()
+        name_label.set_markup("<span size='x-large' weight='bold'>zeile</span>")
+        box.append(name_label)
+
+        version_label = Gtk.Label(
+            label=_("Version {version}").format(version=__version__)
+        )
+        box.append(version_label)
+
+        comments_label = Gtk.Label(
+            label=_("A small, fast, read-only markdown viewer.")
+        )
+        comments_label.set_wrap(True)
+        comments_label.set_max_width_chars(40)
+        comments_label.set_justify(Gtk.Justification.CENTER)
+        box.append(comments_label)
+
+        # erdlabs brand mark shown below the app metadata.
         logo_path = Path(__file__).resolve().parent / "assets" / "logo_erdlabs.png"
         if logo_path.is_file():
-            about.set_logo(Gdk.Texture.new_from_filename(str(logo_path)))
-        about.present()
+            logo = Gtk.Image.new_from_file(str(logo_path))
+            logo.set_pixel_size(192)
+            box.append(logo)
+
+        link = Gtk.LinkButton.new_with_label("https://erdlabs.com", "erdlabs.com")
+        box.append(link)
+
+        license_label = Gtk.Label()
+        license_label.set_markup(
+            '<a href="https://www.gnu.org/licenses/gpl-3.0.html">'
+            + _("GNU General Public License, version 3")
+            + "</a>"
+        )
+        license_label.set_wrap(True)
+        license_label.set_max_width_chars(50)
+        box.append(license_label)
+
+        content.append(box)
+        dialog.connect("response", lambda _d, _response: dialog.destroy())
+        dialog.present()
 
     def _print_dialog(self) -> bool:
         """Interactive Ctrl+P: the OS print dialog, printer/copies/etc."""

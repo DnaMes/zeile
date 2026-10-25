@@ -37,6 +37,14 @@ Versioning: [Semantic Versioning](https://semver.org/).
   clear visual feedback for external vs. local document links.
 - Fullscreen mode: toggle fullscreen view with `F11` for focused, distraction-free
   reading.
+- Freedesktop app icon set: PNG icons from 16×16 up to 512×512 and a scalable
+  SVG under `icons/hicolor/`, installed by `install.sh` and packaged in
+  `packaging/PKGBUILD`.
+
+### Changed
+
+- About dialog now shows the app icon, the current version, and the erdlabs
+  logo, replacing the stock About dialog.
 
 
 ## [0.2.0] — 2026-09-16
