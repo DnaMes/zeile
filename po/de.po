@@ -281,3 +281,11 @@ msgstr "GNU General Public License, Version 3"
 #: zeile.py:1663
 msgid "Open markdown file"
 msgstr "Markdown-Datei öffnen"
+
+#: zeile.py:750
+msgid "Start sequence"
+msgstr "Startsequenz"
+
+#: zeile.py:753
+msgid "Press any key or click to skip"
+msgstr "Beliebige Taste oder Klick zum Überspringen"

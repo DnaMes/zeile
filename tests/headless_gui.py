@@ -76,6 +76,7 @@ def run() -> None:
             debug=False,
             settings={"theme": "auto", "body_font": "system", "code_font": "system"},
             settings_path=settings_path,
+            launch_sequence=False,  # the matrix drives its own Viewer
         )
 
         def on_activate(a) -> None:
@@ -288,7 +289,32 @@ def run() -> None:
                         f"w={saved['window_w']}",
                     )
 
-                    # 8. link-preview overlay
+                    # 8. launch sequence: intro once (flag in settings.json),
+                    # logo every start, any key or click skips the whole thing.
+                    seq_path = tmp / "seq-settings.json"
+                    done: list[int] = []
+                    first = zeile.play_launch_sequence(a, seq_path, lambda: done.append(1))
+                    check(
+                        "launch-first-start",
+                        [p.asset for p in first._phases]
+                        == ["logo_erdlabs.png", "zeile.png"]
+                        and load_settings(path=seq_path)["intro_seen"] == "true",
+                        f"phases={[p.asset for p in first._phases]}",
+                    )
+                    first._key.emit("key-pressed", Gdk.KEY_Return, 0, Gdk.ModifierType(0))
+                    check(
+                        "launch-key-skips-all",
+                        done == [1] and first._finished,
+                        f"done={done}",
+                    )
+                    second = zeile.play_launch_sequence(a, seq_path, lambda: done.append(2))
+                    check(
+                        "launch-later-start-skipped",
+                        second is None and done == [1, 2],
+                        f"splash={second!r} done={done}",
+                    )
+
+                    # 9. link-preview overlay
                     class MockHitTest:
                         def __init__(self, is_link: bool, uri: str = ""):
                             self._is_link = is_link
@@ -328,7 +354,7 @@ def run() -> None:
                         f"anchor={anchor_shown} unhover={unhover_hidden}",
                     )
 
-                    # 9. TOC stats & filtering
+                    # 10. TOC stats & filtering
                     win._populate_toc()
                     stats_text = win.toc_stats_label.get_text()
                     has_stats = "words" in stats_text and "min read" in stats_text
@@ -351,7 +377,7 @@ def run() -> None:
                         f"stats={stats_text!r} head={matched_head} none={matched_none}",
                     )
 
-                    # 10. fullscreen toggle
+                    # 11. fullscreen toggle
                     check(
                         "fullscreen-init",
                         not win.is_fullscreen(),

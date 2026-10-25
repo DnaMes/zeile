@@ -9,6 +9,7 @@ Versioning: [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Start sequence: the first time zeile starts after install, the erdlabs mark fades in and out (about 3 seconds), then the zeile logo fades in and out (about 1.4 seconds) as a skippable overlay while the viewer opens behind it; later starts show no title card (BRAND.md §7). Press any key or click to skip all of it; with GTK animations turned off the frames show without fades. Screen readers get “Start sequence” and “Press any key or click to skip”. The version number is shown only in the About dialog.
 - Cyberpunk theme: vivid neon-accented dark theme featuring cyan, magenta, and electric
   green accents against a deep dark navy background.
 - Enhanced heading color hierarchy & section separation: headings `h1`–`h6` now use

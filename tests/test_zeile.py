@@ -214,6 +214,7 @@ def test_load_settings_roundtrip_and_validation(tmp_path: Path):
         "window_w": "1200",
         "window_h": "800",
         "window_maximized": "true",
+        "intro_seen": "false",
     }
 
     loaded["theme"] = "not-a-theme"
@@ -243,6 +244,7 @@ def test_load_settings_returns_default_on_broken_file(tmp_path: Path):
         "window_w": "900",
         "window_h": "1000",
         "window_maximized": "false",
+        "intro_seen": "false",
     }
 
 
