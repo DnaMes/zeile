@@ -17,8 +17,6 @@ depends=(
     python-pymdown-extensions
 )
 optdepends=('mermaid-cli: render ```mermaid fences (npm install -g @mermaid-js/mermaid-cli)')
-# NOTE: the repository is currently private -- this source URL resolves once
-# it goes public. Until then, build from a local checkout instead.
 source=("$pkgname-$pkgver.tar.gz::https://github.com/DnaMes/zeile/archive/refs/tags/v$pkgver.tar.gz")
 sha256sums=('7ffab2ae9bceae3f8317d770c3c45c1bfbdface21ad8ac08d3e19c94de29eb20')  # v0.3.0 tag archive
 
