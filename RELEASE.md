@@ -6,8 +6,8 @@ does not apply. What remains is the licensing, versioning, security, and
 documentation work every erdlabs project owes before its repository goes
 public.
 
-Current version: **0.2.0** (`pyproject.toml`), release candidate prepared
-2026-09-16. The tag workflow publishes a checksumed Linux source archive;
+Current version: **0.3.0** (`pyproject.toml`), first public release, prepared
+2026-10-26. The tag workflow publishes a checksumed Linux source archive;
 native Windows/macOS artifacts are intentionally not produced until the
 WebView backend is ported (see README's Platform support section).
 
@@ -104,6 +104,17 @@ puppeteer @mermaid-js/mermaid-cli`), a real flowchart rendered through
       window (headless compositor, widget-level): tooltips and titles show
       the German strings ("Theme und Schriften", "Inhaltsverzeichnis
       (Strg+T)"); the About dialog shows name/version.
+
+## Going public (v0.3.0)
+
+- [x] History audited 2026-10-26: 45 commits, one author (the public security contact),
+      no secrets, no private hosts; kept as is (no rewrite).
+- [ ] gitleaks over the full history: 0 findings.
+- [ ] Self-hosted runner removed and old workflow runs deleted before the visibility change.
+- [ ] Repository public; private vulnerability reporting on; `main` protected against force-push.
+- [ ] First hosted CI run green, including the distro matrix.
+- [ ] Tag `v0.3.0`; release assets verified with `sha256sum -c`; `PKGBUILD` checksum set to the
+      GitHub tag archive and built with `makepkg`.
 
 ## Publishing
 

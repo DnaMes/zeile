@@ -2,6 +2,9 @@
 
 A small GTK4 markdown viewer for Linux, with Mermaid diagram support.
 
+[![CI](https://github.com/DnaMes/zeile/actions/workflows/ci.yml/badge.svg)](https://github.com/DnaMes/zeile/actions/workflows/ci.yml)
+![Licence: GPL-3.0-or-later](https://img.shields.io/badge/licence-GPL--3.0--or--later-blue)
+
 > **No advertising. No tracking. No analytics. No unnecessary permissions.**
 
 ## Why
@@ -20,11 +23,15 @@ handing a clicked link to your actual browser. See Security below.
 
 ## Install
 
+Zeile needs GTK4, WebKitGTK 6.0 and a few Python libraries (see
+[Requirements](#requirements)). Then, from a checkout or a release archive:
+
 ```bash
 ./install.sh
 ```
 
-Writes:
+`install.sh` checks the dependencies first and prints the exact package line for
+your package manager if one is missing. It writes:
 
 | Path                                                   | What                               |
 | ------------------------------------------------------ | ---------------------------------- |
@@ -33,8 +40,11 @@ Writes:
 | `~/.local/share/icons/hicolor/scalable/apps/zeile.svg` | icon                               |
 | `~/.local/share/icons/hicolor/*/apps/zeile.png`        | PNG icon sizes 16×16 to 512×512    |
 
-Then sets itself as the default handler for `text/markdown`, so double-clicking
-a `.md` file in the file manager opens it.
+Then it sets itself as the default handler for `text/markdown`, so double-clicking
+a `.md` file in the file manager opens it. `./install.sh --uninstall` removes it again.
+
+Arch users can also build `packaging/PKGBUILD` (installs system-wide and never
+claims the markdown default handler on its own).
 
 ## Usage
 
@@ -121,10 +131,23 @@ one `Alt+Left` away.
 
 ## Requirements
 
-Arch packages (`python-gobject` is usually already pulled in by the desktop):
+Python 3.11+, GTK4 and WebKitGTK 6.0 with their GObject bindings, plus
+python-markdown, Pygments, nh3 and pymdown-extensions. Every line below is
+exercised by the distro matrix in CI (Arch, Debian 13, Ubuntu 24.04, Fedora 43).
 
 ```bash
+# Arch
 sudo pacman -S --needed python-gobject webkitgtk-6.0 python-markdown python-pygments python-nh3 python-pymdown-extensions
+
+# Debian 13
+sudo apt install python3-gi gir1.2-gtk-4.0 gir1.2-webkit-6.0 python3-markdown python3-pygments python3-nh3 python3-pymdownx
+
+# Ubuntu 24.04 (no python3-nh3 package: install it with pip)
+sudo apt install python3-gi gir1.2-gtk-4.0 gir1.2-webkit-6.0 python3-markdown python3-pygments python3-pymdownx
+python3 -m pip install --user nh3
+
+# Fedora
+sudo dnf install python3-gobject gtk4 webkitgtk6.0 python3-markdown python3-pygments python3-pymdown-extensions python3-nh3
 ```
 
 The launcher hardcodes `/usr/bin/python3` on purpose: a `brew` or `mise`
@@ -145,12 +168,10 @@ clear error instead of silently failing.
 
 #### Print / PDF export
 
-The print dialog and PDF export need GTK4's print backends (the `file`
-backend for PDF). Recent GTK 4 releases (e.g. Arch's `gtk4 1:4.22.4`) no
-longer ship them, and no follow-up package provides them — on such systems
-both buttons exist but produce nothing (verified 2026-09-11). Everything
-else is unaffected. View rendered markdown as PDF via any other tool in
-the meantime.
+The print dialog and PDF export need GTK4's print backends. Some recent GTK 4
+builds (e.g. Arch's `gtk4 1:4.22.4`) no longer ship them; on such systems zeile
+detects that at start-up and shows both buttons disabled with a tooltip instead of
+failing silently. Everything else is unaffected.
 
 ## Security
 
@@ -173,7 +194,9 @@ API, not assumed:
 - **A Content-Security-Policy** (`default-src 'none'`) is set on the
   generated document, closing the one vector that needs no script at all —
   an `<img src=http://tracker/pixel>` beacon.
-- **No network access.** The WebView uses an ephemeral `NetworkSession` (no
+- **No network access** (with `--enable-mermaid` the opt-in `mmdc` helper, which
+  runs a headless Chromium, is the one external process and is not network-isolated
+  by zeile). The WebView uses an ephemeral `NetworkSession` (no
   persisted cookies or cache), and a navigation-policy handler only allows
   `file://` links under the open document's own directory — anything else
   (`http(s)`, or a `file://` path outside that tree) is handed to your
@@ -219,9 +242,9 @@ a checksumed Linux source archive to the GitHub Release.
 
 - `packaging/PKGBUILD` — Arch/AUR package template (installs to
   `/usr/share/zeile`, never claims the markdown default handler on its
-  own; users opt in via `xdg-mime`). The `source` URL resolves once the
-  repository is public; until then build from a local checkout.
-- `.github/workflows/ci.yml` — ruff, pytest and shellcheck on every push.
+  own; users opt in via `xdg-mime`).
+- `.github/workflows/ci.yml` — ruff, pytest and shellcheck on every push, plus the distro matrix
+  (`scripts/distro-check.sh` in Arch, Debian 13, Ubuntu 24.04 and Fedora 43 containers).
 - `.github/workflows/release.yml` — validates SemVer/tag consistency, runs the
   full test/lint/package checks, and publishes `zeile-VERSION.tar.gz` plus
   `SHA256SUMS` for every `vX.Y.Z` tag.
@@ -240,11 +263,23 @@ a checksumed Linux source archive to the GitHub Release.
   can be produced. The release pipeline intentionally publishes no fake
   cross-platform artifacts.
 
+## Contributing
+
+Issues and pull requests are welcome. Branches are named `<type>/<issue-nr>-<topic>`,
+commits follow Conventional Commits, and a change is ready when `ruff check .`,
+`ruff format --check .`, `pytest` and `shellcheck install.sh scripts/*.sh` pass.
+User-visible strings go through `po/` (English and German). Report security
+problems privately, see [SECURITY.md](SECURITY.md).
+
 ## Licence
 
 GPL-3.0-or-later. Copyright (c) 2026 erdlabs.
 
 See also: [CHANGELOG.md](CHANGELOG.md), [PRIVACY.md](PRIVACY.md),
 [RELEASE.md](RELEASE.md), [ASSETS.md](ASSETS.md).
+
+**Trademarks.** The GPL covers the code and the shipped icon files. The names
+"erdlabs" and "zeile" and the erdlabs mark are not licensed for use as the name or
+logo of a modified version: forks should pick their own name and logo.
 
 Part of [erdlabs](https://erdlabs.com).

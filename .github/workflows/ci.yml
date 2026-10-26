@@ -6,9 +6,12 @@ on:
     tags: ["*"]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   test:
-    runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["self-hosted","linux","x64","homelab"]') }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -28,10 +31,27 @@ jobs:
             markdown nh3 pymdown-extensions pygments pytest ruff
 
       - name: ruff (lint)
-        run: python3 -m ruff check zeile.py tests/ mermaid_render.py markdown_ext.py
+        run: python3 -m ruff check .
+
+      - name: ruff (format)
+        run: python3 -m ruff format --check .
 
       - name: pytest
         run: python3 -m pytest -q
 
-      - name: shellcheck (install.sh)
-        run: shellcheck install.sh
+      - name: shellcheck
+        run: shellcheck install.sh scripts/*.sh
+
+  distro:
+    name: distro (${{ matrix.image }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["archlinux:base", "debian:13", "ubuntu:24.04", "fedora:43"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Dependencies, tests, headless GUI, install round trip
+        run: |
+          docker run --rm -v "$PWD:/src:ro" "${{ matrix.image }}" /src/scripts/distro-check.sh

@@ -7,6 +7,8 @@ Versioning: [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-10-26
+
 ### Added
 
 - Start sequence: the first time zeile starts after install, the erdlabs mark fades in and out (about 3 seconds), then the zeile logo fades in and out (about 1.4 seconds) as a skippable overlay while the viewer opens behind it; later starts show no title card (BRAND.md §7). Press any key or click to skip all of it; with GTK animations turned off the frames show without fades. Screen readers get “Start sequence” and “Press any key or click to skip”. The version number is shown only in the About dialog.
@@ -42,8 +44,20 @@ Versioning: [Semantic Versioning](https://semver.org/).
   SVG under `icons/hicolor/`, installed by `install.sh` and packaged in
   `packaging/PKGBUILD`.
 
+### Security
+
+- A link to a local file other than a markdown file or an image (for example `.html`
+  or `.svg`) is now handed to the system opener instead of being loaded inside the
+  viewer, where it would have rendered without the document's Content-Security-Policy.
+
 ### Changed
 
+- `install.sh` prints the fix line for apt and dnf as well as pacman, and no longer
+  fails when `xdg-mime` is missing.
+- The Arch `PKGBUILD` now installs under `$pkgdir` (it wrote to the build host before).
+- Release checksums (`SHA256SUMS`) list bare file names, so `sha256sum -c` works
+  next to the downloaded archive.
+- CI runs on GitHub-hosted runners and tests Arch, Debian 13, Ubuntu 24.04 and Fedora 43.
 - About dialog now shows the app icon, the current version, and the erdlabs
   logo, replacing the stock About dialog.
 

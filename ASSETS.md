@@ -29,3 +29,16 @@ repo does not apply here. This file is maintained by hand.
 as an external subprocess the user installs separately (`npm install -g
 @mermaid-js/mermaid-cli`) — it is never copied into this repository or the
 built application.
+
+## Trademarks
+
+The copyright licence of the icon files and `assets/logo_erdlabs.png` is
+GPL-3.0-or-later, as stated above. Separately, the names "erdlabs" and "zeile" and
+the erdlabs mark identify the original project: a modified version should use its
+own name and logo.
+
+## Historical note: Mermaid bundle
+
+Commits before `8f2f129` contain `assets/mermaid.min.js` (Mermaid 12.0.0, MIT). Its
+licence notices are inside the bundle itself. No third-party code ships in the
+current tree.

@@ -63,7 +63,8 @@ the same check.
 If you use `--enable-mermaid`, it invokes `mmdc` (mermaid-cli) as a local
 subprocess to render a diagram to a temporary SVG file, deleted immediately
 after being read. No diagram source or output is written anywhere
-persistent.
+persistent. zeile does not sandbox or network-isolate `mmdc` (it runs a headless
+Chromium): enable the flag only for documents you trust.
 
 ## Third parties
 
