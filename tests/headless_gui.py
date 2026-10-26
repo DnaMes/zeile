@@ -313,6 +313,23 @@ def run() -> None:
                         f"splash={second!r} done={done}",
                     )
 
+                    # 8b. a missing launch image skips the sequence instead of raising
+                    real_asset_path = zeile.launch_asset_path
+                    zeile.launch_asset_path = lambda _asset: tmp / "missing.png"
+                    try:
+                        gone: list[int] = []
+                        broken = zeile.play_launch_sequence(
+                            a, tmp / "broken-settings.json", lambda: gone.append(1)
+                        )
+                        broken._load(0)
+                        check(
+                            "launch-missing-asset-skips",
+                            gone == [1] and broken._finished,
+                            f"done={gone}",
+                        )
+                    finally:
+                        zeile.launch_asset_path = real_asset_path
+
                     # 9. link-preview overlay
                     class MockHitTest:
                         def __init__(self, is_link: bool, uri: str = ""):

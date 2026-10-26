@@ -794,7 +794,15 @@ class LaunchSplash(Gtk.Window):
         self._index = index
         self._start_us = None
         asset = launch_asset_path(self._phases[index].asset)
-        self.picture.set_paintable(Gdk.Texture.new_from_filename(str(asset)))
+        try:
+            texture = Gdk.Texture.new_from_filename(str(asset))
+        except GLib.Error as exc:
+            # A package that did not ship the image must not strand the viewer
+            # behind an overlay: skip the whole sequence and open the document.
+            print(f"zeile: start sequence skipped ({exc.message})", file=sys.stderr)
+            self.skip()
+            return
+        self.picture.set_paintable(texture)
         if self._on_phase is not None:
             self._on_phase(self._phases[index])
 
@@ -805,6 +813,8 @@ class LaunchSplash(Gtk.Window):
         if self._index < 0 or self._start_us is None:
             if self._index < 0:
                 self._load(0)
+                if self._finished:
+                    return GLib.SOURCE_REMOVE
             self._start_us = now
         t_ms = (now - self._start_us) / 1000
         phase = self._phases[self._index]
@@ -813,6 +823,8 @@ class LaunchSplash(Gtk.Window):
                 self.skip()
                 return GLib.SOURCE_REMOVE
             self._load(self._index + 1)
+            if self._finished:
+                return GLib.SOURCE_REMOVE
             self._start_us = now
             t_ms = 0
         self.picture.set_opacity(phase_opacity(self._phases[self._index], t_ms))
