@@ -4,6 +4,16 @@ Created 2026-09-10. Renamed from `mdview` to `zeile` same day (name collision
 research: `mdview` clashes on PyPI, npm, crates.io, AUR and a 144★ GitHub
 project — see the full plan).
 
+## Session 2026-10-27: screenshots, Flatpak/deb/rpm packages, v0.3.1
+
+- v0.3.1 released with tarball, `.deb` (Debian 13), `.rpm` (Fedora 43) and SHA256SUMS. Release workflow builds the packages (`packages`, `attach-packages` jobs).
+- Packaging: `packaging/stage.sh` is the shared layout (PKGBUILD, deb, rpm); `packaging/flatpak/` has the manifest (GNOME 50), metainfo, desktop entry and `python-deps.json` (`regenerate-deps.sh`); `scripts/package-check.sh deb|rpm|arch` builds, installs and starts the viewer headless in a clean container (all exit 0); the Flatpak was built and started locally.
+- Bugs found by that testing: the start-sequence logo was missing from installed packages (now shipped; a missing image skips the sequence instead of raising).
+- README has screenshots (`scripts/screenshots.py`) and a Packages section. The website catalogue entry got the screenshots (erdlabs.com `e014761`, merged, NOT deployed).
+- Ready for the owner: `~/aur-staging/zeile/` (PKGBUILD + .SRCINFO) and `~/flathub-submission/com.erdlabs.zeile/` (manifest with archive source + python-deps.json).
+- Decided against: Homebrew (WebKitGTK there is GTK3-only), Snap, AppImage, PyPI. Nix/COPR/PPA only on demand.
+- NOT VERIFIED: Flatpak on a real desktop (portal file access, print), the `.deb` on Ubuntu 24.04 (no `python3-nh3` there), AUR upload, Flathub review.
+
 ## Session 2026-10-26: repository public, v0.3.0 released
 
 - `DnaMes/zeile` is public; release https://github.com/DnaMes/zeile/releases/tag/v0.3.0 (tarball + SHA256SUMS).

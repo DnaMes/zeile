@@ -128,7 +128,12 @@ puppeteer @mermaid-js/mermaid-cli`), a real flowchart rendered through
 - [x] `.deb` (Debian 13), `.rpm` (Fedora 43), Arch `PKGBUILD`: each built in a clean container,
       installed and started headless by `scripts/package-check.sh` (all three exit 0).
 - [x] The release workflow builds the `.deb` and `.rpm` and adds them and their checksums to the release.
-- [ ] Flathub submission (needs the owner's GitHub account), AUR upload (needs an AUR account and key).
+- [x] Release v0.3.1 (2026-10-27): tarball, `.deb`, `.rpm`, SHA256SUMS; `sha256sum -c` OK. The first tag run failed
+      (Debian container without CA certificates), so the incomplete release and tag were deleted and recreated
+      on the fixed commit (`8c1deb4`) a few minutes later.
+- [x] `PKGBUILD` checksum = v0.3.1 tag archive; `makepkg` builds it. AUR files (`PKGBUILD`, `.SRCINFO`) are ready in `~/aur-staging/zeile/`.
+- [x] Flathub variant of the manifest (archive source) is built and started from the release tag; copy in `~/flathub-submission/com.erdlabs.zeile/`.
+- [ ] AUR upload (needs an AUR account and SSH key) and the Flathub pull request (needs the owner's GitHub account).
 - Not packaged on purpose: Homebrew (its WebKitGTK is GTK3-only and Linux-only), Snap, AppImage, PyPI.
 
 ## Publishing

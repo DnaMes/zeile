@@ -18,7 +18,7 @@ depends=(
 )
 optdepends=('mermaid-cli: render ```mermaid fences (npm install -g @mermaid-js/mermaid-cli)')
 source=("$pkgname-$pkgver.tar.gz::https://github.com/DnaMes/zeile/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('SKIP')  # replaced by the release step once the v0.3.1 tag archive exists
+sha256sums=('facb082a1634079d55c7713fd660fa2643b334217c1ff681aa195e4ac1f87d96')  # v0.3.1 tag archive
 
 package() {
     cd "$pkgname-$pkgver"
