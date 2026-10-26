@@ -105,16 +105,22 @@ puppeteer @mermaid-js/mermaid-cli`), a real flowchart rendered through
       the German strings ("Theme und Schriften", "Inhaltsverzeichnis
       (Strg+T)"); the About dialog shows name/version.
 
-## Going public (v0.3.0)
+## Going public (v0.3.0) — done 2026-10-26
 
-- [x] History audited 2026-10-26: 45 commits, one author (the public security contact),
-      no secrets, no private hosts; kept as is (no rewrite).
-- [ ] gitleaks over the full history: 0 findings.
-- [ ] Self-hosted runner removed and old workflow runs deleted before the visibility change.
-- [ ] Repository public; private vulnerability reporting on; `main` protected against force-push.
-- [ ] First hosted CI run green, including the distro matrix.
-- [ ] Tag `v0.3.0`; release assets verified with `sha256sum -c`; `PKGBUILD` checksum set to the
-      GitHub tag archive and built with `makepkg`.
+- [x] History audited: 45 commits, one author (the public security contact), no secrets,
+      no private hosts; kept as is (no rewrite). gitleaks over the full history: one false
+      positive (`keyCount` in the removed Mermaid bundle), listed in `.gitleaksignore`.
+- [x] Self-hosted runner deregistered (and its unit disabled) and the 27 old workflow runs
+      deleted before the visibility change.
+- [x] Repository public; private vulnerability reporting on; fork-PR workflows need approval;
+      default `GITHUB_TOKEN` read-only; ruleset `protect-main` blocks force-push and deletion.
+- [x] First hosted CI run green on Arch, Debian 13, Ubuntu 24.04 and Fedora 43
+      (run 40401840489).
+- [x] Tag `v0.3.0` (`ecf4feb`); release run 40402099984 green; `sha256sum -c SHA256SUMS` OK;
+      the extracted archive passes 116 tests.
+- [x] `PKGBUILD` checksum = GitHub tag archive hash; `makepkg` builds the package and every
+      file lands under `/usr`.
+- [ ] AUR upload (needs an AUR account and key), Flathub manifest, erdlabs.com product page.
 
 ## Publishing
 

@@ -4,6 +4,15 @@ Created 2026-09-10. Renamed from `mdview` to `zeile` same day (name collision
 research: `mdview` clashes on PyPI, npm, crates.io, AUR and a 144★ GitHub
 project — see the full plan).
 
+## Session 2026-10-26: repository public, v0.3.0 released
+
+- `DnaMes/zeile` is public; release https://github.com/DnaMes/zeile/releases/tag/v0.3.0 (tarball + SHA256SUMS).
+- Second opinions before the flip: Codex gpt-6.1-sol and DeepSeek v4-pro, both GO-WITH-CHANGES; their findings (PKGBUILD `$pkgdir`, SHA256SUMS prefix, local `.html`/`.svg` loaded without CSP, runner before visibility, public Actions logs) are fixed.
+- Code: `classify_local_target` hands non-image local files to the system opener; About icon falls back to the PNG when no SVG loader exists; `install.sh` hints for pacman/apt/dnf.
+- CI: GitHub-hosted runners; `scripts/distro-check.sh` runs tests, the headless GUI matrix and an install round trip on Arch, Debian 13, Ubuntu 24.04, Fedora 43 (all green locally and in CI).
+- Open: AUR upload (no AUR key), Flathub manifest, erdlabs.com product page (production deploy needs the owner), human check of file-manager double-click and print/PDF (#2).
+- NOT VERIFIED: Windows/macOS (not supported by design), real hardware, namcap without `--nodeps`.
+
 ## Session 2026-10-25: chore/branding-icon-about
 
 - Branch: `chore/branding-icon-about`  
