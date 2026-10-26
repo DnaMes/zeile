@@ -144,7 +144,7 @@ sudo apt install python3-gi gir1.2-gtk-4.0 gir1.2-webkit-6.0 python3-markdown py
 
 # Ubuntu 24.04 (no python3-nh3 package: install it with pip)
 sudo apt install python3-gi gir1.2-gtk-4.0 gir1.2-webkit-6.0 python3-markdown python3-pygments python3-pymdownx
-python3 -m pip install --user nh3
+python3 -m pip install --user --break-system-packages nh3
 
 # Fedora
 sudo dnf install python3-gobject gtk4 webkitgtk6.0 python3-markdown python3-pygments python3-pymdown-extensions python3-nh3

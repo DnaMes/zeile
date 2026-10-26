@@ -20,7 +20,9 @@ optdepends=('mermaid-cli: render ```mermaid fences (npm install -g @mermaid-js/m
 # NOTE: the repository is currently private -- this source URL resolves once
 # it goes public. Until then, build from a local checkout instead.
 source=("$pkgname-$pkgver.tar.gz::https://github.com/DnaMes/zeile/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('76573177fd106c22b35c9a2905baae6cbe72d97b683d66ce5323e9fecda54419')
+# SKIP in the repository: GitHub generates the tag archive after the tag exists,
+# so its checksum is filled in by the release step (see RELEASE.md) and in the AUR copy.
+sha256sums=('SKIP')
 
 package() {
     local appdir="/usr/share/$pkgname"
