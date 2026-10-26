@@ -40,7 +40,7 @@ jobs:
         run: python3 -m pytest -q
 
       - name: shellcheck
-        run: shellcheck install.sh scripts/*.sh
+        run: shellcheck install.sh scripts/*.sh packaging/*.sh packaging/*/*.sh
 
   distro:
     name: distro (${{ matrix.image }})

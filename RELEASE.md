@@ -6,8 +6,7 @@ does not apply. What remains is the licensing, versioning, security, and
 documentation work every erdlabs project owes before its repository goes
 public.
 
-Current version: **0.3.0** (`pyproject.toml`), first public release, prepared
-2026-10-26. The tag workflow publishes a checksumed Linux source archive;
+Current version: **0.3.1** (`pyproject.toml`); 0.3.0 was the first public release (2026-10-26). The tag workflow publishes a checksumed Linux source archive;
 native Windows/macOS artifacts are intentionally not produced until the
 WebView backend is ported (see README's Platform support section).
 
@@ -121,6 +120,16 @@ puppeteer @mermaid-js/mermaid-cli`), a real flowchart rendered through
 - [x] `PKGBUILD` checksum = GitHub tag archive hash; `makepkg` builds the package and every
       file lands under `/usr`.
 - [ ] AUR upload (needs an AUR account and key), Flathub manifest, erdlabs.com product page.
+
+## Packages (v0.3.1)
+
+- [x] Flatpak (GNOME 50): built with `flatpak-builder`, installed, started headless; imports and
+      first-start sequence verified (2026-10-27). `appstreamcli validate` and `desktop-file-validate` clean.
+- [x] `.deb` (Debian 13), `.rpm` (Fedora 43), Arch `PKGBUILD`: each built in a clean container,
+      installed and started headless by `scripts/package-check.sh` (all three exit 0).
+- [x] The release workflow builds the `.deb` and `.rpm` and adds them and their checksums to the release.
+- [ ] Flathub submission (needs the owner's GitHub account), AUR upload (needs an AUR account and key).
+- Not packaged on purpose: Homebrew (its WebKitGTK is GTK3-only and Linux-only), Snap, AppImage, PyPI.
 
 ## Publishing
 

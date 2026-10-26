@@ -49,7 +49,7 @@ jobs:
         run: |
           python3 -m ruff check .
           python3 -m pytest -q
-          shellcheck install.sh
+          shellcheck install.sh scripts/*.sh packaging/*.sh packaging/*/*.sh
           msgfmt --check -o /dev/null po/de.po
 
       - name: Build source archive and checksum
@@ -95,3 +95,65 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --title "zeile ${version}" \
             --notes-file dist/RELEASE_NOTES.md
+
+  packages:
+    name: Build ${{ matrix.kind }} package
+    needs: validate-and-package
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - kind: deb
+            image: debian:13
+            setup: apt-get update -qq && apt-get install -y -qq --no-install-recommends git gettext
+            build: packaging/debian/build-deb.sh
+          - kind: rpm
+            image: fedora:43
+            setup: dnf install -y -q rpm-build git gettext
+            build: packaging/rpm/build-rpm.sh
+    container: ${{ matrix.image }}
+    steps:
+      - name: Install build tools
+        run: ${{ matrix.setup }}
+
+      - name: Check out tagged source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Build package
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          ${{ matrix.build }}
+
+      - name: Keep the package
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-${{ matrix.kind }}
+          path: dist/*
+          if-no-files-found: error
+
+  attach-packages:
+    name: Attach packages to the release
+    needs: packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download the built packages
+        uses: actions/download-artifact@v4
+        with:
+          pattern: package-*
+          path: pkgs
+          merge-multiple: true
+
+      - name: Add them and their checksums to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern SHA256SUMS --dir pkgs
+          (cd pkgs && sha256sum *.deb *.rpm >> SHA256SUMS)
+          gh release upload "$RELEASE_TAG" pkgs/*.deb pkgs/*.rpm pkgs/SHA256SUMS \
+            --repo "$GITHUB_REPOSITORY" --clobber

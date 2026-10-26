@@ -52,8 +52,25 @@ your package manager if one is missing. It writes:
 Then it sets itself as the default handler for `text/markdown`, so double-clicking
 a `.md` file in the file manager opens it. `./install.sh --uninstall` removes it again.
 
-Arch users can also build `packaging/PKGBUILD` (installs system-wide and never
-claims the markdown default handler on its own).
+### Packages
+
+Each release also carries a `.deb` (Debian 13) and a `.rpm` (Fedora) built in CI. System
+packages install under `/usr` and never claim the markdown default handler; opt in with
+`xdg-mime default zeile.desktop text/markdown text/x-markdown`.
+
+| Target | How |
+| ------ | --- |
+| Arch | `packaging/PKGBUILD` (`makepkg -si`) |
+| Debian 13 | `sudo apt install ./zeile_VERSION_all.deb` (build it yourself with `packaging/debian/build-deb.sh`). Ubuntu 24.04 has no `python3-nh3` package, so install `nh3` with pip first and use `./install.sh` instead of the `.deb`. |
+| Fedora | `sudo dnf install ./zeile-VERSION-1.fc43.noarch.rpm` (build it with `packaging/rpm/build-rpm.sh`) |
+| Flatpak | `flatpak-builder --user --install --force-clean build-dir packaging/flatpak/com.erdlabs.zeile.yml`. Flathub is not published yet. |
+
+The Flatpak has read-only access to your home directory (so a document can show the images
+next to it) and no network access. `--enable-mermaid` is not available in the Flatpak: the
+`mmdc` helper lives outside the sandbox.
+
+`scripts/package-check.sh deb|rpm|arch` builds a package in a clean container, installs it and
+starts the viewer headless; the Flatpak is built and started with the command above.
 
 ## Usage
 
@@ -239,6 +256,7 @@ assets/zeile.svg         icon
 po/de.po                 German translation
 install.sh               installer (also: --uninstall)
 scripts/screenshots.py   renders the README screenshots headless (docs/screenshots/)
+packaging/               PKGBUILD, Flatpak manifest, deb and rpm builds, shared stage.sh
 ```
 
 ## Build
