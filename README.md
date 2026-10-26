@@ -7,6 +7,15 @@ A small GTK4 markdown viewer for Linux, with Mermaid diagram support.
 
 > **No advertising. No tracking. No analytics. No unnecessary permissions.**
 
+<p align="center">
+  <img src="docs/screenshots/github-light.png" alt="zeile with the GitHub Light theme" width="49%">
+  <img src="docs/screenshots/github-dark.png" alt="zeile with the GitHub Dark theme" width="49%">
+</p>
+<p align="center">
+  <img src="docs/screenshots/catppuccin-mocha.png" alt="zeile with the Catppuccin Mocha theme" width="49%">
+  <img src="docs/screenshots/cyberpunk.png" alt="zeile with the Cyberpunk theme" width="49%">
+</p>
+
 ## Why
 
 Markdown viewers are either terminal-only (no diagrams), full editors, or
@@ -229,6 +238,7 @@ assets/themes.css        theme + font variable definitions
 assets/zeile.svg         icon
 po/de.po                 German translation
 install.sh               installer (also: --uninstall)
+scripts/screenshots.py   renders the README screenshots headless (docs/screenshots/)
 ```
 
 ## Build
