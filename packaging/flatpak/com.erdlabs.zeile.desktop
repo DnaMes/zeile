@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=zeile
+GenericName=Markdown Viewer
+Comment=View markdown files with live reload
+Exec=zeile %f
+Icon=com.erdlabs.zeile
+Terminal=false
+Categories=Utility;Viewer;
+Keywords=markdown;viewer;reader;mermaid;
+MimeType=text/markdown;text/x-markdown;
+StartupWMClass=com.erdlabs.zeile

@@ -7,6 +7,22 @@ Versioning: [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.1] — 2026-10-27
+
+### Added
+
+- Flatpak manifest (`packaging/flatpak/`, GNOME 50 runtime, read-only access to the home
+  directory, no network), AppStream metainfo and a desktop entry under the id `com.erdlabs.zeile`.
+- Debian/Ubuntu `.deb` and Fedora `.rpm` build scripts (`packaging/debian/`, `packaging/rpm/`);
+  all system packages share one layout (`packaging/stage.sh`).
+- `scripts/package-check.sh` builds a package in a clean container, installs it and starts the viewer.
+
+### Fixed
+
+- The first-start logo was missing in installed packages (it was only found in a source
+  checkout); packages now ship it, and a missing image skips the start sequence instead of
+  raising an error.
+
 ## [0.3.0] — 2026-10-26
 
 ### Added

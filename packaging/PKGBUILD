@@ -1,7 +1,7 @@
 # Maintainer: erdlabs <https://erdlabs.com>
 # Contributor: see repository
 pkgname=zeile
-pkgver=0.3.0
+pkgver=0.3.1
 pkgrel=1
 pkgdesc="Small, fast GTK4 markdown viewer with live reload, themes and Mermaid support"
 arch=(any)
@@ -18,68 +18,11 @@ depends=(
 )
 optdepends=('mermaid-cli: render ```mermaid fences (npm install -g @mermaid-js/mermaid-cli)')
 source=("$pkgname-$pkgver.tar.gz::https://github.com/DnaMes/zeile/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('7ffab2ae9bceae3f8317d770c3c45c1bfbdface21ad8ac08d3e19c94de29eb20')  # v0.3.0 tag archive
+sha256sums=('SKIP')  # replaced by the release step once the v0.3.1 tag archive exists
 
 package() {
-    local appdir="/usr/share/$pkgname"
-    local dest="$pkgdir$appdir"  # build-time path; $appdir is the installed path
     cd "$pkgname-$pkgver"
-
-    # App tree: read_asset() resolves assets relative to zeile.py, so the
-    # layout below must keep assets/ and locale/ next to the script.
-    install -d "$dest"
-    install -m 644 zeile.py code_lang.py markdown_ext.py mermaid_render.py "$dest/"
-    cp -r assets "$dest/assets"
-    install -d "$dest/locale"
-
-    # Compile translations when msgfmt is available; fall back to shipping
-    # the pre-compiled catalogue from the repository.
-    if command -v msgfmt >/dev/null 2>&1; then
-        while read -r po_file; do
-            lang="$(basename "$po_file" .po)"
-            install -d "$dest/locale/$lang/LC_MESSAGES"
-            msgfmt "$po_file" -o "$dest/locale/$lang/LC_MESSAGES/zeile.mo"
-        done < <(find po -name '*.po' 2>/dev/null)
-    fi
-    if ! find "$dest/locale" -name 'zeile.mo' | grep -q .; then
-        cp -r locale/. "$dest/locale/"
-    fi
-
-    # System-wide launcher (the user-level install.sh launcher is NOT
-    # installed -- a package never hijacks ~/.local).
-    install -d "$pkgdir/usr/bin"
-    cat > "$pkgdir/usr/bin/zeile" <<EOF
-#!/bin/bash
-exec /usr/bin/python3 $appdir/zeile.py "\$@"
-EOF
-    chmod 755 "$pkgdir/usr/bin/zeile"
-
-    # Desktop integration. A package must not claim the text/markdown
-    # default handler on its own -- users opt in via:
-    #   xdg-mime default zeile.desktop text/markdown text/x-markdown
-    install -Dm 644 /dev/null "$pkgdir/usr/share/applications/zeile.desktop"
-    cat > "$pkgdir/usr/share/applications/zeile.desktop" <<EOF
-[Desktop Entry]
-Type=Application
-Name=zeile
-GenericName=Markdown Viewer
-Comment=View markdown files
-Exec=/usr/bin/zeile %f
-Icon=zeile
-Terminal=false
-Categories=Utility;TextEditor;Viewer;
-MimeType=text/markdown;text/x-markdown;
-StartupWMClass=com.erdlabs.zeile
-EOF
-
-    # Icon set: the scalable SVG plus one PNG per hicolor size. The desktop
-    # entry's Icon=zeile resolves against this tree (freedesktop directory
-    # names, <size>x<size>/apps, as hicolor/index.theme declares them).
-    local size
-    for size in 16 24 32 48 64 128 256 512; do
-        install -Dm 644 "icons/hicolor/${size}x${size}/apps/zeile.png" \
-            "$pkgdir/usr/share/icons/hicolor/${size}x${size}/apps/zeile.png"
-    done
-    install -Dm 644 icons/hicolor/scalable/apps/zeile.svg \
-        "$pkgdir/usr/share/icons/hicolor/scalable/apps/zeile.svg"
+    # The layout is shared with the deb and rpm builds (and keeps the start-sequence
+    # logo next to zeile.py); a package never claims the text/markdown default handler.
+    packaging/stage.sh "$pkgdir" /usr
 }

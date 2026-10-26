@@ -1,0 +1,50 @@
+# Flatpak manifest for zeile. Local build:
+#   flatpak-builder --user --install --force-clean build-dir packaging/flatpak/com.erdlabs.zeile.yml
+# For Flathub, replace the `dir` source of the last module with the release archive:
+#   - type: archive
+#     url: https://github.com/DnaMes/zeile/archive/refs/tags/vX.Y.Z.tar.gz
+#     sha256: <checksum of that archive>
+app-id: com.erdlabs.zeile
+runtime: org.gnome.Platform
+runtime-version: "50"
+sdk: org.gnome.Sdk
+command: zeile
+finish-args:
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --share=ipc
+  - --device=dri
+  # Read-only home so a document can show the images next to it and follow links
+  # to its sibling files. No network, no write access.
+  - --filesystem=home:ro
+modules:
+  - python-deps.json
+  - name: zeile
+    buildsystem: simple
+    build-commands:
+      - install -d /app/share/zeile
+      - install -m 644 zeile.py code_lang.py markdown_ext.py mermaid_render.py /app/share/zeile/
+      - cp -r assets /app/share/zeile/assets
+      - install -Dm 644 icons/hicolor/512x512/apps/zeile.png /app/share/zeile/icons/hicolor/512x512/apps/zeile.png
+      - |
+        for po in po/*.po; do
+          lang="$(basename "$po" .po)"
+          install -d "/app/share/zeile/locale/$lang/LC_MESSAGES"
+          msgfmt "$po" -o "/app/share/zeile/locale/$lang/LC_MESSAGES/zeile.mo"
+        done
+      - install -Dm 755 zeile-launcher.sh /app/bin/zeile
+      - install -Dm 644 packaging/flatpak/com.erdlabs.zeile.desktop /app/share/applications/com.erdlabs.zeile.desktop
+      - install -Dm 644 packaging/flatpak/com.erdlabs.zeile.metainfo.xml /app/share/metainfo/com.erdlabs.zeile.metainfo.xml
+      - install -Dm 644 icons/hicolor/scalable/apps/zeile.svg /app/share/icons/hicolor/scalable/apps/com.erdlabs.zeile.svg
+      - |
+        for size in 16 24 32 48 64 128 256 512; do
+          install -Dm 644 "icons/hicolor/${size}x${size}/apps/zeile.png" \
+            "/app/share/icons/hicolor/${size}x${size}/apps/com.erdlabs.zeile.png"
+        done
+    sources:
+      - type: dir
+        path: ../..
+      - type: script
+        dest-filename: zeile-launcher.sh
+        commands:
+          - exec python3 /app/share/zeile/zeile.py "$@"

@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC0-1.0 -->
+<component type="desktop-application">
+  <id>com.erdlabs.zeile</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>zeile</name>
+  <summary>Small, fast markdown viewer with live reload</summary>
+  <developer id="com.erdlabs">
+    <name>erdlabs</name>
+  </developer>
+  <description>
+    <p>
+      zeile renders a markdown file, reloads it when you save, and gets out of the way.
+      It is built on GTK4 and WebKitGTK, so it starts fast and stays readable.
+    </p>
+    <p>
+      A markdown file is treated as untrusted content: document JavaScript is disabled,
+      the HTML is sanitized, nothing is stored and there is no network access.
+      No advertising, no tracking, no analytics.
+    </p>
+    <ul>
+      <li>17 themes plus an automatic light/dark mode</li>
+      <li>Syntax highlighting, tables, footnotes, GitHub-style alerts</li>
+      <li>Outline with filter, reading statistics, find in page</li>
+      <li>English and German interface</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">com.erdlabs.zeile.desktop</launchable>
+  <url type="homepage">https://github.com/DnaMes/zeile</url>
+  <url type="bugtracker">https://github.com/DnaMes/zeile/issues</url>
+  <url type="vcs-browser">https://github.com/DnaMes/zeile</url>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/DnaMes/zeile/main/docs/screenshots/github-light.png</image>
+      <caption>GitHub Light theme</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/DnaMes/zeile/main/docs/screenshots/github-dark.png</image>
+      <caption>GitHub Dark theme</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/DnaMes/zeile/main/docs/screenshots/catppuccin-mocha.png</image>
+      <caption>Catppuccin Mocha theme</caption>
+    </screenshot>
+  </screenshots>
+  <content_rating type="oars-1.1"/>
+  <provides>
+    <binary>zeile</binary>
+    <mediatype>text/markdown</mediatype>
+  </provides>
+  <supports>
+    <control>keyboard</control>
+    <control>pointing</control>
+  </supports>
+  <releases>
+    <release version="0.3.1" date="2026-10-27">
+      <description>
+        <p>Flatpak, Debian and Fedora packages; the start sequence no longer fails when a package lacks its image.</p>
+      </description>
+    </release>
+    <release version="0.3.0" date="2026-10-26">
+      <description>
+        <p>First public release: new themes, GitHub-style alerts, outline filter, fullscreen, icon set and a safer handling of local links.</p>
+      </description>
+    </release>
+  </releases>
+</component>

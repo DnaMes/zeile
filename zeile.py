@@ -47,7 +47,7 @@ from markdown_ext import (  # noqa: E402
 )
 
 APP_ID = "com.erdlabs.zeile"
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 # fallback=True: on a system with no compiled translation for the current
 # locale (or none at all, as on this dev machine's default LANG), _() just
