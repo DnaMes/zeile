@@ -81,10 +81,9 @@ check_dependency "WebKitGTK 6.0 (webkitgtk-6.0)" \
     /usr/bin/python3 -c "import gi; gi.require_version('WebKit', '6.0'); from gi.repository import WebKit"
 check_dependency "python-markdown" "python-markdown" "python3-markdown" "python3-markdown" \
     /usr/bin/python3 -c "import markdown; markdown.markdown"
-# Ubuntu 24.04 has no python3-nh3 package; Debian 13 does.
+# Ubuntu 24.04 has no python3-nh3 package (README: install it with pip); Debian 13 does.
 check_dependency "python-nh3" "python-nh3" \
-    "python3-nh3 (Ubuntu 24.04: python3 -m pip install --user --break-system-packages nh3)" \
-    "python3-nh3" \
+    "python3-nh3" "python3-nh3" \
     /usr/bin/python3 -c "import nh3; nh3.clean"
 check_dependency "python-pymdown-extensions" \
     "python-pymdown-extensions" "python3-pymdownx" "python3-pymdown-extensions" \
