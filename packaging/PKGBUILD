@@ -1,7 +1,7 @@
 # Maintainer: erdlabs <https://erdlabs.com>
 # Contributor: see repository
 pkgname=zeile
-pkgver=0.2.0
+pkgver=0.3.0
 pkgrel=1
 pkgdesc="Small, fast GTK4 markdown viewer with live reload, themes and Mermaid support"
 arch=(any)
@@ -24,26 +24,27 @@ sha256sums=('76573177fd106c22b35c9a2905baae6cbe72d97b683d66ce5323e9fecda54419')
 
 package() {
     local appdir="/usr/share/$pkgname"
+    local dest="$pkgdir$appdir"  # build-time path; $appdir is the installed path
     cd "$pkgname-$pkgver"
 
     # App tree: read_asset() resolves assets relative to zeile.py, so the
     # layout below must keep assets/ and locale/ next to the script.
-    install -d "$pkgdir$appdir"
-    install -m 644 zeile.py code_lang.py markdown_ext.py mermaid_render.py "$appdir/"
-    cp -r assets "$appdir/assets"
-    install -d "$appdir/locale"
+    install -d "$dest"
+    install -m 644 zeile.py code_lang.py markdown_ext.py mermaid_render.py "$dest/"
+    cp -r assets "$dest/assets"
+    install -d "$dest/locale"
 
     # Compile translations when msgfmt is available; fall back to shipping
     # the pre-compiled catalogue from the repository.
     if command -v msgfmt >/dev/null 2>&1; then
         while read -r po_file; do
             lang="$(basename "$po_file" .po)"
-            install -d "$appdir/locale/$lang/LC_MESSAGES"
-            msgfmt "$po_file" -o "$appdir/locale/$lang/LC_MESSAGES/zeile.mo"
+            install -d "$dest/locale/$lang/LC_MESSAGES"
+            msgfmt "$po_file" -o "$dest/locale/$lang/LC_MESSAGES/zeile.mo"
         done < <(find po -name '*.po' 2>/dev/null)
     fi
-    if ! find "$appdir/locale" -name 'zeile.mo' | grep -q .; then
-        cp -r locale/. "$appdir/locale/"
+    if ! find "$dest/locale" -name 'zeile.mo' | grep -q .; then
+        cp -r locale/. "$dest/locale/"
     fi
 
     # System-wide launcher (the user-level install.sh launcher is NOT

@@ -122,8 +122,7 @@ def run() -> None:
                     (
                         w
                         for w in Gtk.Window.list_toplevels()
-                        if isinstance(w, Gtk.Dialog)
-                        and w.get_title() == "About zeile"
+                        if isinstance(w, Gtk.Dialog) and w.get_title() == "About zeile"
                     ),
                     None,
                 )
@@ -360,10 +359,9 @@ def run() -> None:
                     has_stats = "words" in stats_text and "min read" in stats_text
                     win.toc_filter_entry.set_text("Head")
                     child = win.toc_list.get_first_child()
-                    matched_head = (
-                        isinstance(child, Gtk.ListBoxRow)
-                        and win._toc_filter_func(child)
-                    )
+                    matched_head = isinstance(
+                        child, Gtk.ListBoxRow
+                    ) and win._toc_filter_func(child)
                     win.toc_filter_entry.set_text("nonexistent")
                     matched_none = (
                         not win._toc_filter_func(child)

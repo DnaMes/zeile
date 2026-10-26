@@ -47,7 +47,7 @@ from markdown_ext import (  # noqa: E402
 )
 
 APP_ID = "com.erdlabs.zeile"
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 # fallback=True: on a system with no compiled translation for the current
 # locale (or none at all, as on this dev machine's default LANG), _() just
@@ -625,6 +625,22 @@ def flatten_toc(tokens: list[dict], depth: int = 0) -> list[tuple[int, str, str]
 
 
 _MARKDOWN_SUFFIXES = {".md", ".markdown"}
+# Local files WebKit may load directly in the view. Anything else (.html, .svg,
+# ...) would render without the generated document's CSP and sanitizer, so it
+# goes to the system opener instead.
+_DIRECT_LOAD_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif"}
+
+
+def classify_local_target(target: Path, document: Path) -> str:
+    """Decide what a link to a local file does: "navigate", "load" or "external"."""
+    if not target.is_relative_to(document.parent):
+        return "external"
+    suffix = target.suffix.lower()
+    if target == document:
+        return "load"  # reload / same-document navigation stays in the view
+    if suffix in _MARKDOWN_SUFFIXES:
+        return "navigate"
+    return "load" if suffix in _DIRECT_LOAD_SUFFIXES else "external"
 
 
 def _a11y_label(widget: Gtk.Widget, label: str) -> None:
@@ -1299,9 +1315,10 @@ class Viewer(Gtk.ApplicationWindow):
         A local .md/.markdown link re-enters our own renderer via
         navigate_to() instead of letting WebKit load it directly (which
         would dump raw markdown source with no way back -- confirmed broken
-        before this). Any other local file:// link (an image, say) still
-        loads in the WebView directly. Everything else -- http(s), any other
-        scheme, or a file:// path outside the document's directory tree --
+        before this). A local image still loads in the WebView directly.
+        Everything else -- other local files such as .html or .svg (they
+        would bypass the CSP), http(s), any other scheme, or a file:// path
+        outside the document's directory tree --
         is handed to the system's default opener. Combined with the
         ephemeral NetworkSession above, this is what actually makes "no
         network access" true rather than aspirational.
@@ -1322,14 +1339,15 @@ class Viewer(Gtk.ApplicationWindow):
             return True
         if scheme == "file" and local_path is not None:
             target = Path(local_path).resolve()
-            if target.is_relative_to(self.path.parent):
-                if target != self.path and target.suffix.lower() in _MARKDOWN_SUFFIXES:
-                    decision.ignore()
-                    # Deferred: re-entering load_html synchronously from
-                    # inside the policy callback is a documented-fragile
-                    # WebKitGTK pattern (HANDOFF.md's "check this first").
-                    GLib.idle_add(self.navigate_to, target)
-                    return True
+            action = classify_local_target(target, self.path)
+            if action == "navigate":
+                decision.ignore()
+                # Deferred: re-entering load_html synchronously from
+                # inside the policy callback is a documented-fragile
+                # WebKitGTK pattern (HANDOFF.md's "check this first").
+                GLib.idle_add(self.navigate_to, target)
+                return True
+            if action == "load":
                 decision.use()
                 return True
 
@@ -1477,9 +1495,7 @@ class Viewer(Gtk.ApplicationWindow):
                 _n("~%d min read", "~%d min read", stats.reading_time_minutes)
                 % stats.reading_time_minutes
             )
-            sections_text = (
-                _n("%d section", "%d sections", headings_count) % headings_count
-            )
+            sections_text = _n("%d section", "%d sections", headings_count) % headings_count
             self.toc_stats_label.set_text(
                 f"{words_text} · {reading_text} · {sections_text}"
             )
@@ -1575,13 +1591,20 @@ class Viewer(Gtk.ApplicationWindow):
         box.set_halign(Gtk.Align.CENTER)
         box.set_valign(Gtk.Align.START)
 
-        # App icon: load the shipped SVG first so the dialog works before
-        # the icon theme has been installed system-wide.
-        app_icon_path = Path(__file__).resolve().parent / "assets" / "zeile.svg"
-        if app_icon_path.is_file():
-            app_icon = Gtk.Image.new_from_file(str(app_icon_path))
-        else:
-            app_icon = Gtk.Image.new_from_icon_name("zeile")
+        # App icon: load the shipped files first so the dialog works before the
+        # icon theme has been installed system-wide. The SVG needs a gdk-pixbuf
+        # SVG loader (librsvg), which not every system has; the PNG does not.
+        here = Path(__file__).resolve().parent
+        app_icon = Gtk.Image.new_from_icon_name("zeile")
+        for candidate in (
+            here / "assets" / "zeile.svg",
+            here / "icons" / "hicolor" / "128x128" / "apps" / "zeile.png",
+        ):
+            if candidate.is_file():
+                loaded = Gtk.Image.new_from_file(str(candidate))
+                if loaded.get_paintable() is not None:
+                    app_icon = loaded
+                    break
         app_icon.set_pixel_size(128)
         box.append(app_icon)
 
@@ -1589,14 +1612,10 @@ class Viewer(Gtk.ApplicationWindow):
         name_label.set_markup("<span size='x-large' weight='bold'>zeile</span>")
         box.append(name_label)
 
-        version_label = Gtk.Label(
-            label=_("Version {version}").format(version=__version__)
-        )
+        version_label = Gtk.Label(label=_("Version {version}").format(version=__version__))
         box.append(version_label)
 
-        comments_label = Gtk.Label(
-            label=_("A small, fast, read-only markdown viewer.")
-        )
+        comments_label = Gtk.Label(label=_("A small, fast, read-only markdown viewer."))
         comments_label.set_wrap(True)
         comments_label.set_max_width_chars(40)
         comments_label.set_justify(Gtk.Justification.CENTER)

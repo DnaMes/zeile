@@ -62,7 +62,7 @@ jobs:
             --format=tar.gz \
             --prefix="zeile-${version}/" \
             "$GITHUB_SHA" > "dist/zeile-${version}.tar.gz"
-          sha256sum "dist/zeile-${version}.tar.gz" > dist/SHA256SUMS
+          (cd dist && sha256sum "zeile-${version}.tar.gz" > SHA256SUMS)
 
       - name: Prepare release notes
         env:

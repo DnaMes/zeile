@@ -46,26 +46,48 @@ fi
 
 # Fails loudly and specifically, not with a cryptic ImportError only when
 # the user finally double-clicks a .md file. Each check names the exact
-# pacman package so the fix is a single copy-pasteable line, not a search.
+# package for the detected package manager, so the fix is a single
+# copy-pasteable line, not a search. Arguments: description, then the
+# pacman / apt / dnf package names, then the probe command.
+install_hint() {
+    local pacman_package="$1" apt_package="$2" dnf_package="$3"
+    if command -v pacman >/dev/null 2>&1; then
+        printf 'sudo pacman -S --needed %s' "$pacman_package"
+    elif command -v apt-get >/dev/null 2>&1; then
+        printf 'sudo apt install %s' "$apt_package"
+    elif command -v dnf >/dev/null 2>&1; then
+        printf 'sudo dnf install %s' "$dnf_package"
+    else
+        printf 'install the package providing: %s' "$pacman_package"
+    fi
+}
+
 check_dependency() {
-    local description="$1" pacman_package="$2"
-    shift 2
+    local description="$1" pacman_package="$2" apt_package="$3" dnf_package="$4"
+    shift 4
     if ! "$@" >/dev/null 2>&1; then
         printf 'missing dependency: %s\n' "$description" >&2
-        printf '  fix: sudo pacman -S --needed %s\n' "$pacman_package" >&2
+        printf '  fix: %s\n' "$(install_hint "$pacman_package" "$apt_package" "$dnf_package")" >&2
         exit 1
     fi
 }
 
-check_dependency "python3" "python" command -v python3
-check_dependency "GTK4 GObject bindings (python-gobject)" "python-gobject" \
+check_dependency "python3" "python" "python3" "python3" command -v python3
+check_dependency "GTK4 GObject bindings (python-gobject)" \
+    "python-gobject" "python3-gi gir1.2-gtk-4.0" "python3-gobject gtk4" \
     /usr/bin/python3 -c "import gi; gi.require_version('Gtk', '4.0'); from gi.repository import Gtk"
-check_dependency "WebKitGTK 6.0 (webkitgtk-6.0)" "webkitgtk-6.0" \
+check_dependency "WebKitGTK 6.0 (webkitgtk-6.0)" \
+    "webkitgtk-6.0" "gir1.2-webkit-6.0" "webkitgtk6.0" \
     /usr/bin/python3 -c "import gi; gi.require_version('WebKit', '6.0'); from gi.repository import WebKit"
-check_dependency "python-markdown" "python-markdown" /usr/bin/python3 -c "import markdown; markdown.markdown"
-check_dependency "python-nh3" "python-nh3" /usr/bin/python3 -c "import nh3; nh3.clean"
-check_dependency "python-pymdown-extensions" "python-pymdown-extensions" \
+check_dependency "python-markdown" "python-markdown" "python3-markdown" "python3-markdown" \
+    /usr/bin/python3 -c "import markdown; markdown.markdown"
+check_dependency "python-nh3" "python-nh3" "python3-nh3" "python3-nh3" \
+    /usr/bin/python3 -c "import nh3; nh3.clean"
+check_dependency "python-pymdown-extensions" \
+    "python-pymdown-extensions" "python3-pymdownx" "python3-pymdown-extensions" \
     /usr/bin/python3 -c "import pymdownx.tasklist"
+check_dependency "python-pygments" "python-pygments" "python3-pygments" "python3-pygments" \
+    /usr/bin/python3 -c "import pygments; pygments.highlight"
 
 mkdir -p "$BIN_DIR" "$APP_DIR"
 
@@ -127,8 +149,14 @@ EOF
 
 update-desktop-database "$APP_DIR" 2>/dev/null || true
 update-icon-cache
-xdg-mime default zeile.desktop text/markdown text/x-markdown
+if command -v xdg-mime >/dev/null 2>&1; then
+    xdg-mime default zeile.desktop text/markdown text/x-markdown
+else
+    printf 'xdg-mime not found: install xdg-utils, then run: xdg-mime default zeile.desktop text/markdown\n' >&2
+fi
 
 printf 'installed: %s\n' "$LAUNCHER"
-handler="$(xdg-mime query default text/markdown)"
-printf 'default handler: %s\n' "$handler"
+if command -v xdg-mime >/dev/null 2>&1; then
+    handler="$(xdg-mime query default text/markdown)"
+    printf 'default handler: %s\n' "$handler"
+fi

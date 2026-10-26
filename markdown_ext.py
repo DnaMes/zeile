@@ -245,9 +245,7 @@ class GfmAlertTreeprocessor(Treeprocessor):
         parent[:] = new_children
 
     def _split_blockquote(self, bq: etree.Element) -> list[etree.Element]:
-        has_alert = any(
-            c.tag == "p" and c.text and GFM_ALERT_RE.match(c.text) for c in bq
-        )
+        has_alert = any(c.tag == "p" and c.text and GFM_ALERT_RE.match(c.text) for c in bq)
         if not has_alert:
             return [bq]
 
@@ -290,4 +288,3 @@ class GfmAlertExtension(Extension):
 
     def extendMarkdown(self, md) -> None:
         md.treeprocessors.register(GfmAlertTreeprocessor(md), "zeile-gfm-alerts", 25)
-

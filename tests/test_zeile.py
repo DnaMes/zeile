@@ -15,6 +15,7 @@ from zeile import (
     THEME_OPTIONS,
     DocumentStats,
     build_document,
+    classify_local_target,
     compute_document_stats,
     enhance_code_blocks,
     flatten_toc,
@@ -426,8 +427,7 @@ def test_heading_anchor_permalinks():
         in out
     )
     assert (
-        '<h2 id="section-two">Section Two<a class="headerlink" href="#section-two"'
-        in out
+        '<h2 id="section-two">Section Two<a class="headerlink" href="#section-two"' in out
     )
     assert 'title="Link to this section"' in out
     assert flatten_toc(toc) == [
@@ -449,3 +449,11 @@ def test_cyberpunk_theme_registered():
     assert is_theme_dark("cyberpunk", fallback=False) is True
 
 
+def test_classify_local_target(tmp_path: Path) -> None:
+    doc = tmp_path / "doc.md"
+    assert classify_local_target(tmp_path / "other.md", doc) == "navigate"
+    assert classify_local_target(doc, doc) == "load"
+    assert classify_local_target(tmp_path / "pic.PNG", doc) == "load"
+    assert classify_local_target(tmp_path / "page.html", doc) == "external"
+    assert classify_local_target(tmp_path / "x.svg", doc) == "external"
+    assert classify_local_target(tmp_path.parent / "up.md", doc) == "external"

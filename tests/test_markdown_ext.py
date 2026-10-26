@@ -249,4 +249,3 @@ def test_regular_blockquote_untouched():
     assert "<blockquote>" in out
     assert "admonition" not in out
     assert "regular quote." in out
-
