@@ -9,6 +9,7 @@ VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' pyproject.toml)"
 readonly VERSION
 STAGE="$(mktemp -d)"
 readonly STAGE
+chmod 755 "$STAGE"  # mktemp gives 700; the package root must be world-readable
 
 packaging/stage.sh "$STAGE" /usr
 install -d "$STAGE/DEBIAN" "$STAGE/usr/share/doc/zeile"

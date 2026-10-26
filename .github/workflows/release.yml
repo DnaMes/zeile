@@ -154,6 +154,7 @@ jobs:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
           gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern SHA256SUMS --dir pkgs
-          (cd pkgs && sha256sum *.deb *.rpm >> SHA256SUMS)
+          # drop lines of an earlier run so a re-run does not duplicate them
+          (cd pkgs && sed -i '/\.\(deb\|rpm\)$/d' SHA256SUMS && sha256sum *.deb *.rpm >> SHA256SUMS)
           gh release upload "$RELEASE_TAG" pkgs/*.deb pkgs/*.rpm pkgs/SHA256SUMS \
             --repo "$GITHUB_REPOSITORY" --clobber
