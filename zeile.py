@@ -243,6 +243,8 @@ _DEFAULT_SETTINGS = {
     "window_maximized": "false",
     "intro_seen": "false",  # the erdlabs intro plays once per install (#5)
 }
+_ZOOM_MIN, _ZOOM_MAX = 0.4, 3.0
+_WINDOW_MIN, _WINDOW_MAX = 200, 10000
 
 
 def _default_settings_path() -> Path:
@@ -266,18 +268,38 @@ def _coerce_font(font: str, kind: str) -> str:
     )
 
 
+def _as_finite_float(value: object) -> float | None:
+    """Return `value` as a finite float, or None if it is not one.
+
+    JSON can smuggle in values float() accepts but no UI can use: 1e309
+    (inf), "nan", and integers beyond float range (OverflowError). Bools
+    are rejected explicitly because JSON `true` would otherwise read as 1.
+    """
+    if isinstance(value, bool):
+        return None
+    try:
+        n = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return n if math.isfinite(n) else None
+
+
 def _coerce_number(
-    value, lo: float, hi: float, *, integer: bool = False, default: str | None = None
+    value: object,
+    lo: float,
+    hi: float,
+    *,
+    integer: bool = False,
+    default: str | None = None,
 ) -> str:
     """Clamp-to-range number coercion for free-form settings values.
 
-    Unparseable input falls back to `default` (the documented default), not
-    to the range minimum -- "garbage" should restore the shipped default,
-    not produce a 200px window.
+    Unparseable or non-finite input falls back to `default` (the documented
+    default), not to the range minimum -- "garbage" should restore the
+    shipped default, not produce a 200px window.
     """
-    try:
-        n = float(value)
-    except (TypeError, ValueError):
+    n = _as_finite_float(value)
+    if n is None:
         if default is not None:
             return default
         n = 0.0
@@ -298,7 +320,9 @@ def load_settings(*, path: Path | None = None) -> dict[str, str]:
     settings = dict(_DEFAULT_SETTINGS)
     try:
         data = json.loads(settings_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    # UnicodeDecodeError is a ValueError; RecursionError covers pathological
+    # nesting. Any of them means "unreadable settings", i.e. the defaults.
+    except (OSError, ValueError, RecursionError):
         return settings
 
     if not isinstance(data, dict):
@@ -316,25 +340,15 @@ def load_settings(*, path: Path | None = None) -> dict[str, str]:
     if isinstance(code_font, str):
         settings["code_font"] = _coerce_font(code_font, kind="code")
 
-    # Free-form numeric/bool keys: anything unparseable keeps the default,
-    # never raises, never propagates a bad value into the UI.
-    zoom = data.get("zoom")
-    if isinstance(zoom, (int, float, str)):
-        try:
-            z = float(zoom)
-            if 0.4 <= z <= 3.0:
-                settings["zoom"] = str(z)
-        except (TypeError, ValueError):
-            pass
-    for key, lo, hi in (("window_w", 200, 20000), ("window_h", 200, 20000)):
-        val = data.get(key)
-        if isinstance(val, (int, float, str)):
-            try:
-                n = int(float(val))
-                if lo <= n <= hi:
-                    settings[key] = str(n)
-            except (TypeError, ValueError):
-                pass
+    # Free-form numeric/bool keys: non-finite or unparseable values keep the
+    # default, finite out-of-range values are clamped; nothing raises.
+    zoom = _as_finite_float(data.get("zoom"))
+    if zoom is not None:
+        settings["zoom"] = _coerce_number(zoom, _ZOOM_MIN, _ZOOM_MAX)
+    for key in ("window_w", "window_h"):
+        width = _as_finite_float(data.get(key))
+        if width is not None:
+            settings[key] = _coerce_number(width, _WINDOW_MIN, _WINDOW_MAX, integer=True)
     maximized = data.get("window_maximized")
     if isinstance(maximized, bool):
         settings["window_maximized"] = "true" if maximized else "false"
@@ -364,19 +378,22 @@ def save_settings(settings: dict[str, str], *, path: Path | None = None) -> None
                 settings.get("code_font", _DEFAULT_SETTINGS["code_font"]), kind="code"
             ),
             "zoom": _coerce_number(
-                settings.get("zoom", _DEFAULT_SETTINGS["zoom"]), 0.4, 3.0
+                settings.get("zoom", _DEFAULT_SETTINGS["zoom"]),
+                _ZOOM_MIN,
+                _ZOOM_MAX,
+                default=_DEFAULT_SETTINGS["zoom"],
             ),
             "window_w": _coerce_number(
                 settings.get("window_w", _DEFAULT_SETTINGS["window_w"]),
-                200,
-                20000,
+                _WINDOW_MIN,
+                _WINDOW_MAX,
                 integer=True,
                 default=_DEFAULT_SETTINGS["window_w"],
             ),
             "window_h": _coerce_number(
                 settings.get("window_h", _DEFAULT_SETTINGS["window_h"]),
-                200,
-                20000,
+                _WINDOW_MIN,
+                _WINDOW_MAX,
                 integer=True,
                 default=_DEFAULT_SETTINGS["window_h"],
             ),
@@ -588,7 +605,8 @@ def render(
     """
     code_texts: list[str] = []
     try:
-        text = path.read_text(encoding="utf-8")
+        # Malformed bytes become U+FFFD instead of aborting the whole render.
+        text = path.read_text(encoding="utf-8", errors="replace")
     except OSError as exc:
         body = f"<h1>{_('Cannot read file')}</h1><pre>{html.escape(str(exc))}</pre>"
         toc_tokens: list[dict] = []
@@ -1785,7 +1803,7 @@ class Viewer(Gtk.ApplicationWindow):
                 code_font_id=self.code_font_id,
             )
             try:
-                raw_text = self.path.read_text(encoding="utf-8")
+                raw_text = self.path.read_text(encoding="utf-8", errors="replace")
             except OSError:
                 raw_text = ""
             self._doc_stats = compute_document_stats(raw_text)
