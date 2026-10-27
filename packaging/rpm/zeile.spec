@@ -22,7 +22,7 @@ Recommends:     librsvg2
 Recommends:     xdg-utils
 
 %description
-zeile renders a markdown file, reloads it on save and has 17 themes, syntax
+zeile renders a markdown file, reloads it on save and has 20 themes, syntax
 highlighting and optional Mermaid diagrams. Document JavaScript is disabled,
 the HTML is sanitized and there is no network access.
 

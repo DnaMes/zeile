@@ -8,6 +8,7 @@ _zeile() {
     catppuccin-latte catppuccin-frappe catppuccin-macchiato catppuccin-mocha
     solarized-light solarized-dark gruvbox-light gruvbox-dark
     nord dracula rose-pine rose-pine-dawn tokyo-night tokyo-night-day cyberpunk
+    vscode-dark one-dark monokai
   )
   local body_fonts=(system inter atkinson ia-writer noto-serif ibmplex-sans)
   local code_fonts=(system jetbrains-mono ia-writer fira-code cascadia-code)

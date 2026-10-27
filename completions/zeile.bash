@@ -10,7 +10,7 @@ _zeile() {
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD - 1]}"
 
-    local themes="auto github-light github-dark catppuccin-latte catppuccin-frappe catppuccin-macchiato catppuccin-mocha solarized-light solarized-dark gruvbox-light gruvbox-dark nord dracula rose-pine rose-pine-dawn tokyo-night tokyo-night-day cyberpunk"
+    local themes="auto github-light github-dark catppuccin-latte catppuccin-frappe catppuccin-macchiato catppuccin-mocha solarized-light solarized-dark gruvbox-light gruvbox-dark nord dracula rose-pine rose-pine-dawn tokyo-night tokyo-night-day cyberpunk vscode-dark one-dark monokai"
     local body_fonts="system inter atkinson ia-writer noto-serif ibmplex-sans"
     local code_fonts="system jetbrains-mono ia-writer fira-code cascadia-code"
     local opts="--enable-mermaid --debug --theme --body-font --code-font --help -h"

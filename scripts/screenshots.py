@@ -44,7 +44,7 @@ def greet(name: str) -> str:
 
 | Feature | Status |
 | ------- | ------ |
-| Themes  | 17     |
+| Themes  | 20     |
 | Network | none   |
 
 - [x] No advertising, no tracking

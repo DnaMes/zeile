@@ -224,6 +224,15 @@ def test_theme_css_defines_required_vars():
         "syn-added-bg",
         "syn-removed-fg",
         "syn-removed-bg",
+        "h1-color",
+        "h2-color",
+        "h3-color",
+        "h4-color",
+        "h5-color",
+        "h6-color",
+        "h1-border",
+        "h2-border",
+        "quote-fg",
     }
 
     theme_blocks = {
@@ -516,15 +525,17 @@ def test_heading_anchor_permalinks():
 
 def test_style_css_heading_and_code_colors():
     css = read_asset("style.css")
-    assert "color: var(--syn-function);" in css
-    assert "color: var(--syn-type);" in css
+    assert "color: var(--h1-color);" in css
+    assert "color: var(--h2-color);" in css
+    assert "color: var(--h3-color);" in css
     assert "border-left: 3.5px solid var(--accent);" in css
-    assert "border-bottom: 2px solid var(--accent);" in css
+    assert "border-bottom: 2px solid var(--h1-border);" in css
 
 
-def test_cyberpunk_theme_registered():
-    assert "cyberpunk" in THEME_OPTIONS
-    assert is_theme_dark("cyberpunk", fallback=False) is True
+def test_popular_themes_registered():
+    for name in ("cyberpunk", "vscode-dark", "one-dark", "monokai"):
+        assert name in THEME_OPTIONS
+        assert is_theme_dark(name, fallback=False) is True
 
 
 def test_classify_local_target(tmp_path: Path) -> None:

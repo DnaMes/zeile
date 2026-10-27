@@ -113,9 +113,9 @@ one `Alt+Left` away.
 ## Features
 
 - GitHub-style CSS, light and dark following `prefers-color-scheme`
-- 17 curated themes (GitHub Light/Dark, Catppuccin ×4, Solarized ×2,
-  Gruvbox ×2, Nord, Dracula, Rosé Pine ×2, Tokyo Night ×2, Cyberpunk) plus an
-  "Auto" mode following the system; pick in the header-bar palette button
+- 20 curated themes (GitHub Light/Dark, Catppuccin ×4, Solarized ×2,
+  Gruvbox ×2, Nord, Dracula, Rosé Pine ×2, Tokyo Night ×2, Cyberpunk,
+  VS Code Dark, One Dark, Monokai) plus an "Auto" mode following the system; pick in the header-bar palette button
   or via `--theme`. The selection persists in `~/.config/zeile/settings.json`
   (theme, fonts, zoom, window size and whether the erdlabs intro has played;
   no document content).

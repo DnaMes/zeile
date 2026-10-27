@@ -40,6 +40,16 @@
   --syn-removed-fg: #cf222e;
   --syn-removed-bg: #ffebe9;
 
+  --h1-color: var(--fg);
+  --h2-color: var(--syn-function);
+  --h3-color: var(--syn-type);
+  --h4-color: var(--syn-keyword);
+  --h5-color: var(--syn-builtin);
+  --h6-color: var(--muted);
+  --h1-border: var(--accent);
+  --h2-border: var(--border);
+  --quote-fg: var(--fg);
+
   --content-width: min(980px, calc(100% - 4rem)); /* standard (default) */
 }
 
@@ -93,6 +103,16 @@ html[data-width="wide"] {
     --syn-added-bg: #033a16;
     --syn-removed-fg: #ffdcd7;
     --syn-removed-bg: #67060c;
+
+    --h1-color: var(--fg);
+    --h2-color: var(--syn-function);
+    --h3-color: var(--syn-type);
+    --h4-color: var(--syn-keyword);
+    --h5-color: var(--syn-builtin);
+    --h6-color: var(--muted);
+    --h1-border: var(--accent);
+    --h2-border: var(--border);
+    --quote-fg: var(--fg);
   }
 }
 
@@ -138,37 +158,37 @@ h6 {
 
 h1 {
   font-size: 2.1em;
-  color: var(--fg);
+  color: var(--h1-color);
   padding-bottom: 0.35em;
-  border-bottom: 2px solid var(--accent);
+  border-bottom: 2px solid var(--h1-border);
 }
 
 h2 {
   font-size: 1.45em;
   margin-top: 2.2em;
   padding-bottom: 0.3em;
-  color: var(--syn-function);
-  border-bottom: 1px solid var(--border);
+  color: var(--h2-color);
+  border-bottom: 1px solid var(--h2-border);
 }
 
 h3 {
   font-size: 1.2em;
-  color: var(--syn-type);
+  color: var(--h3-color);
 }
 
 h4 {
   font-size: 1.05em;
-  color: var(--syn-keyword);
+  color: var(--h4-color);
 }
 
 h5 {
   font-size: 0.9em;
-  color: var(--syn-builtin);
+  color: var(--h5-color);
 }
 
 h6 {
   font-size: 0.85em;
-  color: var(--muted);
+  color: var(--h6-color);
 }
 
 /* Heading anchor links (permalink) */
@@ -241,7 +261,7 @@ li + li {
 blockquote {
   padding: 0.5em 1em;
   margin-inline-start: 0;
-  color: var(--muted);
+  color: var(--quote-fg);
   border-left: 0.25em solid var(--quote-border);
   background: var(--quote-bg);
   border-radius: 0 6px 6px 0;

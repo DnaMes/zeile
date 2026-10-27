@@ -105,6 +105,15 @@ msgstr "Tokyo Night Day"
 msgid "Cyberpunk"
 msgstr "Cyberpunk"
 
+msgid "VS Code Dark"
+msgstr "VS Code Dark"
+
+msgid "One Dark"
+msgstr "One Dark"
+
+msgid "Monokai"
+msgstr "Monokai"
+
 #: zeile.py:650
 msgid "System monospace"
 msgstr "System-Monospace"
