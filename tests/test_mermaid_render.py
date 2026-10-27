@@ -1,21 +1,30 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 erdlabs
-"""Tests for mermaid_render._strip_script_vectors.
+"""Tests for mermaid_render._strip_script_vectors and mmdc failure paths.
 
 The SVG mmdc produces reaches the page un-sanitized (injected after nh3's
 pass via markdown_ext's nonce mechanism), so mermaid_render strips script
 vectors itself. These tests pin that behaviour without needing mmdc.
 
-The htmlLabels/foreignObject situation is NOT tested here: empirically,
-mmdc 11.17.0 / mermaid 11.17.2 ignores flowchart.htmlLabels:false (node
-labels come out as <foreignObject> regardless of config or %%{init}%%
-directive -- verified 2026-09-11, see mermaid_render.py's comment and
-HANDOFF.md). If a future mermaid honours it again, nothing breaks either
-way; the document-level walls (enable-javascript-markup=False, CSP,
-decide-policy) are what actually contain SVG content.
+Failure-path tests install a fake `mmdc` on PATH via monkeypatch so they
+never need the real mermaid-cli binary.
 """
 
-from mermaid_render import _strip_script_vectors
+from __future__ import annotations
+
+import os
+from pathlib import Path
+
+import pytest
+
+import mermaid_render
+from mermaid_render import (
+    MermaidRenderError,
+    MermaidUnavailable,
+    _strip_script_vectors,
+    error_html,
+    render_svg,
+)
 
 
 def test_strips_script_element():
@@ -58,3 +67,126 @@ def test_label_text_containing_on_word_survives():
     attribute regex -- only attribute-shaped ` on...=` matches."""
     svg = '<g class="online-mode"><text>buy online today</text></g>'
     assert _strip_script_vectors(svg) == svg
+
+
+def _install_fake_mmdc(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, body: str) -> None:
+    mermaid_render._cache.clear()
+    mmdc = tmp_path / "mmdc"
+    mmdc.write_text("#!/bin/sh\n" + body, encoding="utf-8")
+    mmdc.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{tmp_path}{os.pathsep}{os.environ.get('PATH', '')}")
+
+
+def test_timeout_raises_render_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _install_fake_mmdc(tmp_path, monkeypatch, "sleep 5\n")
+    with pytest.raises(MermaidRenderError) as ei:
+        render_svg("graph TD; A-->B;", dark=False, timeout=0.1)
+    assert ei.value.kind == "timeout"
+    out = error_html(ei.value.kind, detail=ei.value.detail, source="graph TD; A-->B;")
+    assert "timed out" in out
+    assert "mermaid-error" in out
+
+
+def test_nonzero_exit_escapes_stderr(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _install_fake_mmdc(
+        tmp_path,
+        monkeypatch,
+        'echo "<script>alert(1)</script>" >&2\nexit 1\n',
+    )
+    with pytest.raises(MermaidRenderError) as ei:
+        render_svg("graph TD; A-->B;", dark=False)
+    assert ei.value.kind == "failed"
+    assert "<script>alert(1)</script>" in ei.value.detail
+    out = error_html(ei.value.kind, detail=ei.value.detail, source="graph TD; A-->B;")
+    assert "<script>alert(1)</script>" not in out
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in out
+
+
+def test_missing_mmdc(monkeypatch: pytest.MonkeyPatch) -> None:
+    mermaid_render._cache.clear()
+    monkeypatch.setenv("PATH", "/nonexistent")
+    with pytest.raises(MermaidUnavailable) as ei:
+        render_svg("graph TD; A-->B;", dark=False)
+    assert ei.value.kind == "missing"
+    out = error_html(ei.value.kind)
+    assert "mmdc" in out
+    assert "not found on PATH" in out
+
+
+def test_empty_output(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Parse -o and write an empty SVG so exit 0 still triggers the empty path.
+    _install_fake_mmdc(
+        tmp_path,
+        monkeypatch,
+        """
+out=""
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = "-o" ]; then out="$2"; shift 2; continue; fi
+  shift
+done
+: > "$out"
+exit 0
+""",
+    )
+    with pytest.raises(MermaidRenderError) as ei:
+        render_svg("graph TD; A-->B;", dark=False)
+    assert ei.value.kind == "empty"
+    out = error_html(ei.value.kind, source="graph TD; A-->B;")
+    assert "empty output" in out
+
+
+def test_invalid_utf8_stderr_is_replaced_not_raised(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _install_fake_mmdc(tmp_path, monkeypatch, "printf '\\377\\376bad' >&2\nexit 1\n")
+    with pytest.raises(MermaidRenderError) as ei:
+        render_svg("graph TD; A-->B;", dark=False)
+    assert ei.value.kind == "failed"
+    assert "bad" in ei.value.detail
+    assert "\ufffd" in ei.value.detail
+
+
+def test_invalid_utf8_svg_does_not_break_the_render(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _install_fake_mmdc(
+        tmp_path,
+        monkeypatch,
+        """
+out=""
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = "-o" ]; then out="$2"; shift 2; continue; fi
+  shift
+done
+printf '<svg><text>ok \\377</text></svg>' > "$out"
+exit 0
+""",
+    )
+    svg = render_svg("graph TD; A-->B;", dark=False)
+    assert svg.startswith("<svg>") and "ok" in svg
+
+
+def test_oversized_svg_is_rejected_before_it_is_read(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(mermaid_render, "MAX_SVG_CHARS", 100)
+    _install_fake_mmdc(
+        tmp_path,
+        monkeypatch,
+        """
+out=""
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = "-o" ]; then out="$2"; shift 2; continue; fi
+  shift
+done
+head -c 5000 /dev/zero | tr '\\0' 'a' > "$out"
+exit 0
+""",
+    )
+    with pytest.raises(MermaidRenderError) as ei:
+        render_svg("graph TD; A-->B;", dark=False)
+    assert ei.value.kind == "oversized"

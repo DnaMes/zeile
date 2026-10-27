@@ -25,7 +25,6 @@ from __future__ import annotations
 import html
 import re
 import secrets
-import subprocess
 import xml.etree.ElementTree as etree
 
 from markdown.extensions import Extension
@@ -83,16 +82,8 @@ class MermaidPreprocessor(Preprocessor):
             return f"<pre class='mermaid-disabled'>{html.escape(source)}</pre>"
         try:
             svg = mermaid_render.render_svg(source, dark=self.dark)
-        except mermaid_render.MermaidUnavailable:
-            return (
-                "<div class='mermaid-error'>Mermaid diagram: --enable-mermaid "
-                "is set but 'mmdc' (mermaid-cli) was not found on PATH.</div>"
-            )
-        except subprocess.CalledProcessError as exc:
-            return (
-                "<div class='mermaid-error'>Mermaid render failed:"
-                f"<pre>{html.escape(exc.stderr or str(exc))}</pre></div>"
-            )
+        except mermaid_render.MermaidRenderError as exc:
+            return mermaid_render.error_html(exc.kind, detail=exc.detail, source=source)
         return f"<div class='mermaid-diagram'>{svg}</div>"
 
 
