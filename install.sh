@@ -1,5 +1,6 @@
 #!/bin/bash
-# Install zeile: launcher in ~/.local/bin, desktop entry, and mime association.
+# Install zeile: launcher in ~/.local/bin, desktop entry, mime association,
+# man pages and shell completions.
 # Run with --uninstall to remove everything this script wrote.
 set -euo pipefail
 
@@ -14,6 +15,10 @@ readonly ICON_NAME="zeile"
 readonly -a ICON_DIRS=(scalable 16x16 24x24 32x32 48x48 64x64 128x128 256x256 512x512)
 readonly LAUNCHER="$BIN_DIR/zeile"
 readonly DESKTOP_FILE="$APP_DIR/zeile.desktop"
+readonly MAN_EN="$HOME/.local/share/man/man1/zeile.1"
+readonly MAN_DE="$HOME/.local/share/man/de/man1/zeile.1"
+readonly BASH_COMPLETION="$HOME/.local/share/bash-completion/completions/zeile"
+readonly FISH_COMPLETION="$HOME/.config/fish/completions/zeile.fish"
 
 # File extension inside one hicolor dir: scalable holds the SVG, the fixed
 # size dirs hold the PNG rendered at exactly that size.
@@ -25,9 +30,30 @@ icon_ext() {
     fi
 }
 
+# Man pages and completions carry a marker line, so an upgrade may overwrite our own file
+# and an uninstall removes only files we wrote; a file the user put there stays untouched.
+readonly OWNER_MARKER="zeile-installer-owned"
+is_ours() {
+    [[ -f "$1" ]] && grep -q -F "$OWNER_MARKER" "$1"
+}
+
+install_data() {
+    local src="$1" dest="$2"
+    if [[ -e "$dest" ]] && ! is_ours "$dest"; then
+        printf 'skipped: %s exists and was not installed by zeile\n' "$dest" >&2
+        return 0
+    fi
+    install -Dm 644 "$src" "$dest"
+}
+
 uninstall() {
-    local dir
+    local dir owned
     rm -f "$LAUNCHER" "$DESKTOP_FILE"
+    for owned in "$MAN_EN" "$MAN_DE" "$BASH_COMPLETION" "$FISH_COMPLETION"; do
+        if is_ours "$owned"; then
+            rm -f "$owned"
+        fi
+    done
     for dir in "${ICON_DIRS[@]}"; do
         rm -f "$ICON_ROOT/$dir/apps/$ICON_NAME.$(icon_ext "$dir")"
     done
@@ -158,6 +184,11 @@ if command -v xdg-mime >/dev/null 2>&1; then
 else
     printf 'xdg-mime not found: install xdg-utils, then run: xdg-mime default zeile.desktop text/markdown\n' >&2
 fi
+
+install_data "$SRC_DIR/man/zeile.1" "$MAN_EN"
+install_data "$SRC_DIR/man/de/zeile.1" "$MAN_DE"
+install_data "$SRC_DIR/completions/zeile.bash" "$BASH_COMPLETION"
+install_data "$SRC_DIR/completions/zeile.fish" "$FISH_COMPLETION"
 
 printf 'installed: %s\n' "$LAUNCHER"
 if command -v xdg-mime >/dev/null 2>&1; then

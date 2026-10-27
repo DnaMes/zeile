@@ -58,3 +58,13 @@ for size in 16 24 32 48 64 128 256 512; do
 done
 install -Dm 644 icons/hicolor/scalable/apps/zeile.svg \
     "$DESTDIR$PREFIX/share/icons/hicolor/scalable/apps/zeile.svg"
+
+# Man pages and shell completions (mode 644; leave ungzipped).
+install -Dm 644 man/zeile.1 "$DESTDIR$PREFIX/share/man/man1/zeile.1"
+install -Dm 644 man/de/zeile.1 "$DESTDIR$PREFIX/share/man/de/man1/zeile.1"
+install -Dm 644 completions/zeile.bash \
+    "$DESTDIR$PREFIX/share/bash-completion/completions/zeile"
+install -Dm 644 completions/zeile.zsh \
+    "$DESTDIR$PREFIX/share/zsh/site-functions/_zeile"
+install -Dm 644 completions/zeile.fish \
+    "$DESTDIR$PREFIX/share/fish/vendor_completions.d/zeile.fish"

@@ -37,6 +37,11 @@ packaging/stage.sh %{buildroot} %{_prefix}
 %{_datadir}/zeile
 %{_datadir}/applications/zeile.desktop
 %{_datadir}/icons/hicolor/*/apps/zeile.*
+%{_mandir}/man1/zeile.1*
+%{_mandir}/de/man1/zeile.1*
+%{_datadir}/bash-completion/completions/zeile
+%{_datadir}/zsh/site-functions/_zeile
+%{_datadir}/fish/vendor_completions.d/zeile.fish
 
 %changelog
 * Mon Oct 26 2026 erdlabs <https://erdlabs.com> - %{version}-1

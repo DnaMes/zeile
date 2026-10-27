@@ -1,0 +1,151 @@
+.\" zeile-installer-owned
+.\" SPDX-License-Identifier: GPL-3.0-or-later
+.TH ZEILE 1 "27. Oktober 2026" "zeile" "Benutzerbefehle"
+.SH NAME
+zeile \- kleiner GTK4-Markdown-Betrachter mit Live-Neuladen
+.SH \[:U]BERSICHT
+.B zeile
+[\fIOPTION\fR]... [\fIDATEI\fR]
+.SH BESCHREIBUNG
+.B zeile
+stellt eine Markdown-Datei in einem GTK4-Fenster dar, \[:u]berwacht sie auf
+\[:A]nderungen und rendert sie beim Speichern neu. Eine Markdown-Datei gilt als
+unvertrauensw\[:u]rdige Eingabe: Dokument-JavaScript ist deaktiviert, das
+erzeugte HTML wird bereinigt, eine strenge Content-Security-Policy gilt, und
+die WebView hat keinen Netzwerkzugriff und keinen dauerhaften Speicher.
+.PP
+Ohne
+.I DATEI
+\[:o]ffnet ein Dateiauswahldialog. Ein Klick auf einen Link zu einer anderen
+lokalen
+.B .md\c
+-Datei navigiert im selben Fenster mit Vor-/Zur\[:u]ck-Verlauf.
+.SH OPTIONEN
+.TP
+.I DATEI
+Anzuzeigende Markdown-Datei. Fehlt sie, erscheint ein Dateiauswahldialog.
+.TP
+.B \-\-enable\-mermaid
+Eingez\[:a]unte
+.B mermaid\c
+-Bl\[:o]cke \[:u]ber
+.B mmdc
+(mermaid-cli) rendern. Standardm\[:a]\[ss]ig aus, damit die Basisinstallation kein
+Node.js braucht.
+.TP
+.B \-\-debug
+WebKit-Entwicklerwerkzeuge einschalten. Entspricht der Umgebungsvariable
+.BR ZEILE_DEBUG .
+.TP
+.BI \-\-theme " THEME"
+Mit einem Thema starten (wird auch gespeichert).
+.I THEME
+ist eines von:
+.BR auto ,
+.BR github\-light ,
+.BR github\-dark ,
+.BR catppuccin\-latte ,
+.BR catppuccin\-frappe ,
+.BR catppuccin\-macchiato ,
+.BR catppuccin\-mocha ,
+.BR solarized\-light ,
+.BR solarized\-dark ,
+.BR gruvbox\-light ,
+.BR gruvbox\-dark ,
+.BR nord ,
+.BR dracula ,
+.BR rose\-pine ,
+.BR rose\-pine\-dawn ,
+.BR tokyo\-night ,
+.BR tokyo\-night\-day ,
+.BR cyberpunk .
+.TP
+.BI \-\-body\-font " FONT"
+Schrift f\[:u]r Flie\[ss]text in diesem Lauf (wird auch gespeichert).
+.I FONT
+ist eines von:
+.BR system ,
+.BR inter ,
+.BR atkinson ,
+.BR ia\-writer ,
+.BR noto\-serif ,
+.BR ibmplex\-sans .
+.TP
+.BI \-\-code\-font " FONT"
+Festbreitenschrift f\[:u]r Code in diesem Lauf (wird auch gespeichert).
+.I FONT
+ist eines von:
+.BR system ,
+.BR jetbrains\-mono ,
+.BR ia\-writer ,
+.BR fira\-code ,
+.BR cascadia\-code .
+.TP
+.BR \-h ", " \-\-help
+Kurze Hilfe anzeigen und beenden.
+.SH TASTATURK\[:U]RZEL
+.TP
+.B Strg+R
+Neu laden.
+.TP
+.B Strg+W / Strg+Q
+Schlie\[ss]en.
+.TP
+.B Strg++ / Strg+\-
+Herein-/herauszoomen.
+.TP
+.B Strg+0
+Zoom zur\[:u]cksetzen.
+.TP
+.B Strg+F
+In der Seite suchen.
+.TP
+.B Alt+Links / Alt+Rechts
+Zur\[:u]ck / vorw\[:a]rts durch besuchte lokale Links.
+.TP
+.B Strg+T
+Inhaltsverzeichnis-Overlay (Gliederung filtern, Statistik, springen).
+.TP
+.B Strg+P
+Drucken.
+.TP
+.B F11
+Vollbild umschalten.
+.SH DATEIEN
+.TP
+.I ~/.config/zeile/settings.json
+Gespeichertes Thema, Schriften, Zoom, Fenstergr\[:o]\[ss]e und ob die Startintro
+bereits lief. Kein Dokumentinhalt wird gespeichert.
+.SH UMGEBUNGSVARIABLEN
+.TP
+.B ZEILE_DEBUG
+Wenn nicht leer gesetzt, schaltet WebKit-Entwicklerwerkzeuge ein (wie
+.BR \-\-debug ).
+.TP
+.BR LANGUAGE ", " LANG
+UI-Sprache (Englisch oder Deutsch) nach den \[:u]blichen gettext-Locale-Regeln.
+.SH SICHERHEIT
+Markdown ist unvertraut. Dokument-JavaScript ist strukturell deaktiviert,
+erzeugtes HTML wird mit einer expliziten Allowlist bereinigt, eine
+.B Content\-Security\-Policy
+mit
+.B default\-src 'none'
+gilt, die WebView nutzt eine fl\[:u]chtige Netzwerksitzung ohne dauerhaften
+Speicher, und Navigation au\[ss]erhalb des Dokumentverzeichnisses geht an den
+System\[:o]ffner. Entwicklerwerkzeuge bleiben aus, au\[ss]er
+.B \-\-debug
+oder
+.B ZEILE_DEBUG
+ist gesetzt. Optional startet
+.B \-\-enable\-mermaid
+einen externen
+.B mmdc\c
+-Helfer, den zeile netzwerkseitig nicht isoliert.
+.SH SIEHE AUCH
+.BR mmdc (1)
+(optional, f\[:u]r
+.BR \-\-enable\-mermaid ).
+.SH AUTOR
+erdlabs <https://erdlabs.com>
+.SH LIZENZ
+GPL\-3.0\-or\-later.

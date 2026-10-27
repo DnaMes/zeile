@@ -1,0 +1,151 @@
+.\" zeile-installer-owned
+.\" SPDX-License-Identifier: GPL-3.0-or-later
+.TH ZEILE 1 "27 October 2026" "zeile" "User Commands"
+.SH NAME
+zeile \- small GTK4 markdown viewer with live reload
+.SH SYNOPSIS
+.B zeile
+[\fIOPTION\fR]... [\fIFILE\fR]
+.SH DESCRIPTION
+.B zeile
+renders a markdown file in a GTK4 window, watches it for changes and
+re-renders on save. A markdown file is treated as untrusted input:
+document JavaScript is disabled, converted HTML is sanitized, a strict
+Content-Security-Policy is applied, and the WebView has no network access
+and no persistent storage.
+.PP
+Omit
+.I FILE
+to pick one in a file dialog. Clicking a link to another local
+.B .md
+file navigates in the same window with back/forward history.
+.SH OPTIONS
+.TP
+.I FILE
+Markdown file to display. If omitted, a file chooser dialog is shown.
+.TP
+.B \-\-enable\-mermaid
+Render fenced
+.B mermaid
+blocks via
+.B mmdc
+(mermaid-cli). Off by default so the base install needs no Node.js.
+.TP
+.B \-\-debug
+Enable WebKit developer tools. Same as setting the
+.B ZEILE_DEBUG
+environment variable.
+.TP
+.BI \-\-theme " THEME"
+Start with a theme (also saved).
+.I THEME
+is one of:
+.BR auto ,
+.BR github\-light ,
+.BR github\-dark ,
+.BR catppuccin\-latte ,
+.BR catppuccin\-frappe ,
+.BR catppuccin\-macchiato ,
+.BR catppuccin\-mocha ,
+.BR solarized\-light ,
+.BR solarized\-dark ,
+.BR gruvbox\-light ,
+.BR gruvbox\-dark ,
+.BR nord ,
+.BR dracula ,
+.BR rose\-pine ,
+.BR rose\-pine\-dawn ,
+.BR tokyo\-night ,
+.BR tokyo\-night\-day ,
+.BR cyberpunk .
+.TP
+.BI \-\-body\-font " FONT"
+Body font for this run (also saved).
+.I FONT
+is one of:
+.BR system ,
+.BR inter ,
+.BR atkinson ,
+.BR ia\-writer ,
+.BR noto\-serif ,
+.BR ibmplex\-sans .
+.TP
+.BI \-\-code\-font " FONT"
+Monospace/code font for this run (also saved).
+.I FONT
+is one of:
+.BR system ,
+.BR jetbrains\-mono ,
+.BR ia\-writer ,
+.BR fira\-code ,
+.BR cascadia\-code .
+.TP
+.BR \-h ", " \-\-help
+Show a short help message and exit.
+.SH KEYBOARD SHORTCUTS
+.TP
+.B Ctrl+R
+Reload.
+.TP
+.B Ctrl+W / Ctrl+Q
+Close.
+.TP
+.B Ctrl++ / Ctrl+\-
+Zoom in / out.
+.TP
+.B Ctrl+0
+Reset zoom.
+.TP
+.B Ctrl+F
+Find in page.
+.TP
+.B Alt+Left / Alt+Right
+Back / forward through visited local links.
+.TP
+.B Ctrl+T
+Table of contents overlay (filter outline, stats, jump).
+.TP
+.B Ctrl+P
+Print.
+.TP
+.B F11
+Toggle fullscreen mode.
+.SH FILES
+.TP
+.I ~/.config/zeile/settings.json
+Persisted theme, fonts, zoom, window size and whether the start intro has
+played. No document content is stored.
+.SH ENVIRONMENT
+.TP
+.B ZEILE_DEBUG
+If set to a non-empty value, enables WebKit developer tools (same as
+.BR \-\-debug ).
+.TP
+.BR LANGUAGE ", " LANG
+Select the UI language (English or German). Follows the usual gettext
+locale rules.
+.SH SECURITY
+Markdown is untrusted. Document JavaScript is structurally disabled,
+converted HTML is sanitized with an explicit allowlist, a
+.B Content\-Security\-Policy
+of
+.B default\-src 'none'
+is set, the WebView uses an ephemeral network session with no persistent
+storage, and navigation outside the open document's directory is handed to
+the system opener. Developer tools stay off unless
+.B \-\-debug
+or
+.B ZEILE_DEBUG
+is used. Optional
+.B \-\-enable\-mermaid
+runs an external
+.B mmdc
+helper that is not network-isolated by zeile.
+.SH SEE ALSO
+.BR mmdc (1)
+(optional, for
+.BR \-\-enable\-mermaid ).
+.SH AUTHOR
+erdlabs <https://erdlabs.com>
+.SH LICENSE
+GPL\-3.0\-or\-later.
