@@ -34,4 +34,17 @@ if [[ "$status" -ne 124 ]] || grep -q Traceback "$HOME/run.log"; then
     exit 1
 fi
 grep -q '"intro_seen": "true"' "$HOME/.config/zeile/settings.json"
+
+# Surviving is not rendering: open the real Viewer and assert the rendered
+# DOM actually contains heading, code block and table. The repo copy of the
+# script lives next to this one; the containers copy it into the install.
+SMOKE_SCRIPT="$(dirname "$0")/smoke_render.py"
+test -f "$SMOKE_SCRIPT"
+status=0
+timeout 60 cage -d -- python3 "$SMOKE_SCRIPT" > "$HOME/render.log" 2>&1 || status=$?
+if [[ "$status" -ne 0 ]] || ! grep -q 'render OK' "$HOME/render.log"; then
+    cat "$HOME/render.log" >&2
+    printf 'smoke FAILED: render check (exit %s)\n' "$status" >&2
+    exit 1
+fi
 printf 'smoke OK\n'
