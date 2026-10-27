@@ -12,8 +12,8 @@ the system default handler for text/markdown), so the rendered document runs
 with document JavaScript structurally disabled, its HTML run through an
 explicit sanitizer allowlist, no persistent storage, no network egress
 beyond the click-to-open-externally path, and developer tools off unless
---debug/ZEILE_DEBUG is set. See docs in the repo's HANDOFF.md and its linked
-plan for the full threat model and what was measured, not assumed.
+--debug/ZEILE_DEBUG is set. The README's Security section states the full
+threat model and what was measured rather than assumed.
 """
 
 from __future__ import annotations
@@ -1484,7 +1484,8 @@ class Viewer(Gtk.ApplicationWindow):
                 decision.ignore()
                 # Deferred: re-entering load_html synchronously from
                 # inside the policy callback is a documented-fragile
-                # WebKitGTK pattern (HANDOFF.md's "check this first").
+                # WebKitGTK pattern known to break ("check this first" in
+                # the security notes).
                 GLib.idle_add(self.navigate_to, target)
                 return True
             if action == "load":
@@ -1526,8 +1527,7 @@ class Viewer(Gtk.ApplicationWindow):
 
         The script is app-authored and constant apart from a validated int,
         wrapped in an IIFE so no top-level bindings persist across
-        evaluate_javascript() calls (the const-redeclaration trap documented
-        in HANDOFF.md).
+        evaluate_javascript() calls (the const-redeclaration trap).
         """
         selector = json.dumps(f"a.code-copy[href='zeile-copy://{index}']")
         js = (

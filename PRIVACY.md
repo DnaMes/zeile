@@ -71,7 +71,7 @@ Chromium): enable the flag only for documents you trust.
 zeile contains no third-party SDKs, advertising networks, or analytics
 services, and no vendored third-party code (an earlier version vendored
 Mermaid's JavaScript renderer; it was removed when Mermaid rendering moved
-to the opt-in `mmdc` subprocess path — see `ASSETS.md`).
+to the opt-in `mmdc` subprocess path).
 
 `mmdc`, if you install and enable it, is Mermaid's own official CLI and runs
 entirely on your machine.
