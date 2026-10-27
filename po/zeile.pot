@@ -366,3 +366,19 @@ msgstr ""
 #: zeile.py
 msgid "This help"
 msgstr ""
+
+#: zeile.py
+msgid "Reading width"
+msgstr ""
+
+#: zeile.py
+msgid "Narrow"
+msgstr ""
+
+#: zeile.py
+msgid "Standard"
+msgstr ""
+
+#: zeile.py
+msgid "Wide"
+msgstr ""

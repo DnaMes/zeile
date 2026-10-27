@@ -233,10 +233,17 @@ CODE_FONT_OPTIONS = (
     "cascadia-code",
 )
 
+READING_WIDTH_OPTIONS = (
+    "narrow",
+    "standard",
+    "wide",
+)
+
 _DEFAULT_SETTINGS = {
     "theme": "auto",
     "body_font": "system",
     "code_font": "system",
+    "reading_width": "standard",
     "zoom": "1.0",
     "window_w": "900",
     "window_h": "1000",
@@ -265,6 +272,14 @@ def _coerce_font(font: str, kind: str) -> str:
         font
         if font in allowed
         else _DEFAULT_SETTINGS["body_font" if kind == "body" else "code_font"]
+    )
+
+
+def _coerce_reading_width(width: object) -> str:
+    return (
+        width
+        if isinstance(width, str) and width in READING_WIDTH_OPTIONS
+        else _DEFAULT_SETTINGS["reading_width"]
     )
 
 
@@ -340,6 +355,10 @@ def load_settings(*, path: Path | None = None) -> dict[str, str]:
     if isinstance(code_font, str):
         settings["code_font"] = _coerce_font(code_font, kind="code")
 
+    reading_width = data.get("reading_width")
+    if isinstance(reading_width, str):
+        settings["reading_width"] = _coerce_reading_width(reading_width)
+
     # Free-form numeric/bool keys: non-finite or unparseable values keep the
     # default, finite out-of-range values are clamped; nothing raises.
     zoom = _as_finite_float(data.get("zoom"))
@@ -376,6 +395,9 @@ def save_settings(settings: dict[str, str], *, path: Path | None = None) -> None
             ),
             "code_font": _coerce_font(
                 settings.get("code_font", _DEFAULT_SETTINGS["code_font"]), kind="code"
+            ),
+            "reading_width": _coerce_reading_width(
+                settings.get("reading_width", _DEFAULT_SETTINGS["reading_width"])
             ),
             "zoom": _coerce_number(
                 settings.get("zoom", _DEFAULT_SETTINGS["zoom"]),
@@ -567,20 +589,27 @@ def build_document(
     theme_id: str = "auto",
     body_font_id: str = "system",
     code_font_id: str = "system",
+    reading_width: str = "standard",
 ) -> str:
     """Wrap a sanitized HTML body in the full page shell (CSP, stylesheet)."""
     theme_id = _coerce_theme(theme_id)
     body_font_id = _coerce_font(body_font_id, kind="body")
     code_font_id = _coerce_font(code_font_id, kind="code")
+    reading_width = _coerce_reading_width(reading_width)
 
     theme_attr = f' data-theme="{html.escape(theme_id)}"' if theme_id != "auto" else ""
     font_body_attr = f' data-font-body="{html.escape(body_font_id)}"'
     font_code_attr = f' data-font-code="{html.escape(code_font_id)}"'
+    # Absent for the default so existing documents stay visually unchanged.
+    width_attr = (
+        f' data-width="{html.escape(reading_width)}"' if reading_width != "standard" else ""
+    )
     stylesheet = read_asset("style.css") + "\n" + read_asset("themes.css")
 
     return (
         "<!DOCTYPE html><html"
-        f"{theme_attr}{font_body_attr}{font_code_attr}><head><meta charset='utf-8'>"
+        f"{theme_attr}{font_body_attr}{font_code_attr}{width_attr}>"
+        "<head><meta charset='utf-8'>"
         f"<meta http-equiv='Content-Security-Policy' content=\"{_CSP}\">"
         f"<title>{html.escape(title)}</title>"
         f"<style>{stylesheet}</style>"
@@ -597,6 +626,7 @@ def render(
     theme_id: str = "auto",
     body_font_id: str = "system",
     code_font_id: str = "system",
+    reading_width: str = "standard",
 ) -> tuple[str, list[dict], list[str]]:
     """Read `path`, render and sanitize markdown.
 
@@ -627,6 +657,7 @@ def render(
             theme_id=theme_id,
             body_font_id=body_font_id,
             code_font_id=code_font_id,
+            reading_width=reading_width,
         ),
         toc_tokens,
         code_texts,
@@ -935,6 +966,7 @@ class Viewer(Gtk.ApplicationWindow):
         self.code_font_id = _coerce_font(code_font_id, kind="code")
         self.settings_path = settings_path
         self._persisted = load_settings(path=settings_path)
+        self.reading_width = _coerce_reading_width(self._persisted["reading_width"])
         self.set_default_size(
             int(self._persisted["window_w"]), int(self._persisted["window_h"])
         )
@@ -1226,18 +1258,42 @@ class Viewer(Gtk.ApplicationWindow):
         )
         box.append(self.code_font_dropdown)
 
+        width_title = Gtk.Label(label=_("Reading width"), xalign=0)
+        width_title.set_margin_top(8)
+        box.append(width_title)
+
+        width_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+        self._width_buttons: dict[str, Gtk.ToggleButton] = {}
+        width_group: Gtk.ToggleButton | None = None
+        for width_id, label in (
+            ("narrow", _("Narrow")),
+            ("standard", _("Standard")),
+            ("wide", _("Wide")),
+        ):
+            btn = Gtk.ToggleButton(label=label)
+            if width_group is None:
+                width_group = btn
+            else:
+                btn.set_group(width_group)
+            btn.set_active(width_id == self.reading_width)
+            btn.connect("toggled", partial(self._on_width_toggled, width_id))
+            self._width_buttons[width_id] = btn
+            width_row.append(btn)
+        box.append(width_row)
+
         pop.set_child(box)
         return pop
 
     def _persist_settings(self) -> None:
-        # Merge into the freshly loaded state: only the three keys this
-        # method owns may change -- the zoom/window keys must survive.
+        # Merge into the freshly loaded state: only the keys this method
+        # owns may change -- the zoom/window keys must survive.
         current = load_settings(path=self.settings_path)
         current.update(
             {
                 "theme": self.theme_id,
                 "body_font": self.body_font_id,
                 "code_font": self.code_font_id,
+                "reading_width": self.reading_width,
             }
         )
         save_settings(current, path=self.settings_path)
@@ -1282,6 +1338,11 @@ class Viewer(Gtk.ApplicationWindow):
             )
             + f"{root}.setAttribute('data-font-body', {json.dumps(self.body_font_id)});"
             + f"{root}.setAttribute('data-font-code', {json.dumps(self.code_font_id)});"
+            + (
+                f"{root}.setAttribute('data-width', {json.dumps(self.reading_width)});"
+                if self.reading_width != "standard"
+                else f"{root}.removeAttribute('data-width');"
+            )
         )
         self.webview.evaluate_javascript(js, -1, None, None, None, None, None)
 
@@ -1337,6 +1398,22 @@ class Viewer(Gtk.ApplicationWindow):
         if code_font_id == self.code_font_id:
             return
         self.code_font_id = code_font_id
+        self._apply_theme_and_font_attrs()
+        self._persist_settings()
+
+    def _on_width_toggled(self, width_id: str, button: Gtk.ToggleButton) -> None:
+        if not button.get_active():
+            return
+        self._set_reading_width(width_id)
+
+    def _set_reading_width(self, reading_width: str) -> None:
+        reading_width = _coerce_reading_width(reading_width)
+        if reading_width == self.reading_width:
+            return
+        self.reading_width = reading_width
+        btn = self._width_buttons.get(reading_width)
+        if btn is not None and not btn.get_active():
+            btn.set_active(True)
         self._apply_theme_and_font_attrs()
         self._persist_settings()
 
@@ -1904,6 +1981,7 @@ class Viewer(Gtk.ApplicationWindow):
                 theme_id=self.theme_id,
                 body_font_id=self.body_font_id,
                 code_font_id=self.code_font_id,
+                reading_width=self.reading_width,
             )
             try:
                 raw_text = self.path.read_text(encoding="utf-8", errors="replace")

@@ -131,6 +131,8 @@ one `Alt+Left` away.
   Hyperlegible, iA Writer Quattro, Noto Serif, IBM Plex Sans; JetBrains Mono,
   iA Writer Mono, Fira Code, Cascadia Code. Fonts are used if installed and
   silently fall back if not.
+- Reading width (narrow / standard / wide) for the document column, picked in
+  the same palette popover and persisted with the other UI preferences
 - Readability polish: color-coded heading hierarchy (`h1`–`h6`), accent-bordered
   code blocks (`3.5px solid var(--accent)`), tinted blockquotes, zebra table rows
   with accent headers, accent `hr` gradients, styled `kbd` keycaps, themed text

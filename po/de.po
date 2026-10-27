@@ -381,3 +381,19 @@ msgstr "Vollbild"
 #: zeile.py
 msgid "This help"
 msgstr "Diese Hilfe"
+
+#: zeile.py
+msgid "Reading width"
+msgstr "Lesebreite"
+
+#: zeile.py
+msgid "Narrow"
+msgstr "Schmal"
+
+#: zeile.py
+msgid "Standard"
+msgstr "Standard"
+
+#: zeile.py
+msgid "Wide"
+msgstr "Breit"

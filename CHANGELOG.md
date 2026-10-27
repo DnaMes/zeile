@@ -10,6 +10,7 @@ Versioning: [Semantic Versioning](https://semver.org/).
 ### Added
 
 - `F1` opens a small list of the keyboard shortcuts (Escape or `F1` closes it).
+- Reading width: narrow, standard or wide document column, chosen in the theme and fonts popover and remembered (`reading_width` in `settings.json`; unknown values fall back to standard).
 - Man pages in English and German and completions for bash, zsh and fish (`man zeile`); the user
   installer writes the man pages and the bash and fish completions and removes only files it wrote.
 - `zeile --help` is translated (German with `LANGUAGE=de`).

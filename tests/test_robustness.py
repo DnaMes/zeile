@@ -15,6 +15,7 @@ DEFAULTS = {
     "theme": "auto",
     "body_font": "system",
     "code_font": "system",
+    "reading_width": "standard",
     "zoom": "1.0",
     "window_w": "900",
     "window_h": "1000",

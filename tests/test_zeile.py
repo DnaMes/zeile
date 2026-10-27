@@ -12,8 +12,10 @@ from pathlib import Path
 from zeile import (
     BODY_FONT_OPTIONS,
     CODE_FONT_OPTIONS,
+    READING_WIDTH_OPTIONS,
     THEME_OPTIONS,
     DocumentStats,
+    _coerce_reading_width,
     build_document,
     classify_local_target,
     compute_document_stats,
@@ -154,6 +156,33 @@ def test_build_document_embeds_theme_and_font_attrs():
     assert 'data-theme="catppuccin-mocha"' in doc
     assert 'data-font-body="ia-writer"' in doc
     assert 'data-font-code="jetbrains-mono"' in doc
+    assert "data-width=" not in re.search(r"<html[^>]*>", doc).group(0)
+
+
+def test_build_document_embeds_reading_width_attr():
+    def html_open(doc: str) -> str:
+        match = re.search(r"<html[^>]*>", doc)
+        assert match is not None
+        return match.group(0)
+
+    default = build_document("<p>hi</p>", "f.md")
+    assert "data-width=" not in html_open(default)
+    standard = build_document("<p>hi</p>", "f.md", reading_width="standard")
+    assert "data-width=" not in html_open(standard)
+    narrow = build_document("<p>hi</p>", "f.md", reading_width="narrow")
+    assert 'data-width="narrow"' in html_open(narrow)
+    wide = build_document("<p>hi</p>", "f.md", reading_width="wide")
+    assert 'data-width="wide"' in html_open(wide)
+
+
+def test_coerce_reading_width():
+    for value in READING_WIDTH_OPTIONS:
+        assert _coerce_reading_width(value) == value
+    assert _coerce_reading_width("garbage") == "standard"
+    assert _coerce_reading_width("") == "standard"
+    assert _coerce_reading_width(None) == "standard"
+    assert _coerce_reading_width(42) == "standard"
+    assert _coerce_reading_width(["narrow"]) == "standard"
 
 
 def test_theme_css_defines_required_vars():
@@ -220,6 +249,7 @@ def test_load_settings_roundtrip_and_validation(tmp_path: Path):
             "theme": "dracula",
             "body_font": BODY_FONT_OPTIONS[1],
             "code_font": CODE_FONT_OPTIONS[1],
+            "reading_width": "wide",
             "zoom": "1.5",
             "window_w": "1200",
             "window_h": "800",
@@ -232,6 +262,7 @@ def test_load_settings_roundtrip_and_validation(tmp_path: Path):
         "theme": "dracula",
         "body_font": BODY_FONT_OPTIONS[1],
         "code_font": CODE_FONT_OPTIONS[1],
+        "reading_width": "wide",
         "zoom": "1.5",
         "window_w": "1200",
         "window_h": "800",
@@ -242,6 +273,7 @@ def test_load_settings_roundtrip_and_validation(tmp_path: Path):
     loaded["theme"] = "not-a-theme"
     loaded["body_font"] = "not-a-font"
     loaded["code_font"] = "not-a-font"
+    loaded["reading_width"] = "not-a-width"
     loaded["zoom"] = "99"  # out of range -> clamped
     loaded["window_w"] = "garbage"  # unparseable -> default
     loaded["window_maximized"] = "not-a-bool"  # -> coerced to "false"
@@ -250,9 +282,33 @@ def test_load_settings_roundtrip_and_validation(tmp_path: Path):
     assert clamped["theme"] == "auto"
     assert clamped["body_font"] == "system"
     assert clamped["code_font"] == "system"
+    assert clamped["reading_width"] == "standard"
     assert float(clamped["zoom"]) == 3.0  # clamped to the upper bound
     assert clamped["window_w"] == "900"  # default
     assert clamped["window_maximized"] == "false"
+
+
+def test_reading_width_settings_coercion_and_roundtrip(tmp_path: Path):
+    settings_path = tmp_path / "settings.json"
+    assert load_settings(path=settings_path)["reading_width"] == "standard"
+
+    settings_path.write_text('{"theme": "nord"}', encoding="utf-8")
+    assert load_settings(path=settings_path)["reading_width"] == "standard"
+
+    for bad in (
+        '{"reading_width": null}',
+        '{"reading_width": 3}',
+        '{"reading_width": "x"}',
+    ):
+        settings_path.write_text(bad, encoding="utf-8")
+        assert load_settings(path=settings_path)["reading_width"] == "standard"
+
+    save_settings({"reading_width": "narrow"}, path=settings_path)
+    assert load_settings(path=settings_path)["reading_width"] == "narrow"
+    save_settings(
+        {**load_settings(path=settings_path), "theme": "nord"}, path=settings_path
+    )
+    assert load_settings(path=settings_path)["reading_width"] == "narrow"
 
 
 def test_load_settings_returns_default_on_broken_file(tmp_path: Path):
@@ -262,6 +318,7 @@ def test_load_settings_returns_default_on_broken_file(tmp_path: Path):
         "theme": "auto",
         "body_font": "system",
         "code_font": "system",
+        "reading_width": "standard",
         "zoom": "1.0",
         "window_w": "900",
         "window_h": "1000",

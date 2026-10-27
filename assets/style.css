@@ -40,7 +40,15 @@
   --syn-removed-fg: #cf222e;
   --syn-removed-bg: #ffebe9;
 
-  --content-width: min(980px, calc(100% - 4rem));
+  --content-width: min(980px, calc(100% - 4rem)); /* standard (default) */
+}
+
+html[data-width="narrow"] {
+  --content-width: min(38rem, calc(100% - 4rem));
+}
+
+html[data-width="wide"] {
+  --content-width: min(90rem, calc(100% - 4rem));
 }
 
 @media (prefers-color-scheme: dark) {

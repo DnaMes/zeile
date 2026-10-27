@@ -249,6 +249,96 @@ def run_hostile_document_check(app, tmp: Path, settings_path: Path) -> None:
     win.present()
 
 
+def run_width_anchor_check(
+    app, tmp: Path, settings_path: Path, then: Callable[[], None]
+) -> None:
+    """Switching the reading width keeps the passage the reader is on in place.
+
+    Relies on WebKit's native scroll anchoring (verified by removing every manual
+    compensation: the check still passes), so this guards against a regression there.
+    """
+    md = tmp / "anchor.md"
+    md.write_text(
+        "".join(
+            f"Paragraph {n} " + "lorem ipsum dolor " * 12 + "\n\n" for n in range(1, 81)
+        ),
+        encoding="utf-8",
+    )
+    win = zeile.Viewer(
+        app,
+        md,
+        enable_mermaid=False,
+        debug=False,
+        theme_id="nord",
+        body_font_id="ia-writer",
+        code_font_id="jetbrains-mono",
+        settings_path=settings_path,
+    )
+    state = {"done": False, "armed": False}
+
+    def finish(ok: bool, detail: str) -> None:
+        if state["done"]:
+            return
+        state["done"] = True
+        check("width-keeps-position", ok, detail)
+        then()
+
+    GLib.timeout_add_seconds(
+        30, lambda: finish(False, "never finished") or GLib.SOURCE_REMOVE
+    )
+
+    first_visible = (
+        "(function(){var b=document.querySelectorAll('p');"
+        "for(var i=0;i<b.length;i++){var r=b[i].getBoundingClientRect();"
+        "if(r.bottom>4)return b[i].textContent.slice(0,14)+'|'+Math.round(r.top);}"
+        "return 'none|0';})();"
+    )
+
+    def on_load(_webview, event) -> None:
+        if event != WebKit.LoadEvent.FINISHED or state["armed"]:
+            return
+        state["armed"] = True
+        GLib.timeout_add(500, scroll_down)
+        return GLib.SOURCE_REMOVE
+
+    def scroll_down() -> bool:
+        js = "document.querySelectorAll('p')[40].scrollIntoView();" + first_visible
+        win.webview.evaluate_javascript(js, -1, None, None, None, before_cb, None)
+        return GLib.SOURCE_REMOVE
+
+    def read(value) -> tuple[str, int]:
+        text, _, top = (value.to_string() or "").partition("|")
+        return text, int(top or 0)
+
+    def before_cb(src, res, _u) -> None:
+        try:
+            before = read(src.evaluate_javascript_finish(res))
+        except Exception as exc:  # noqa: BLE001
+            finish(False, f"probe JS failed: {exc}")
+            return
+        win._set_reading_width("narrow")
+
+        def after_probe() -> bool:
+            def after_cb(src2, res2, _u2) -> None:
+                try:
+                    after = read(src2.evaluate_javascript_finish(res2))
+                except Exception as exc:  # noqa: BLE001
+                    finish(False, f"probe JS failed: {exc}")
+                    return
+                same = after[0] == before[0] and abs(after[1] - before[1]) <= 40
+                finish(same, f"before={before} after={after}")
+
+            win.webview.evaluate_javascript(
+                first_visible, -1, None, None, None, after_cb, None
+            )
+            return GLib.SOURCE_REMOVE
+
+        GLib.timeout_add(500, after_probe)
+
+    win.webview.connect("load-changed", on_load)
+    win.present()
+
+
 def run_tasklist_no_bullet_check(
     app, tmp: Path, settings_path: Path, then: Callable[[], None]
 ) -> None:
@@ -826,46 +916,114 @@ def run() -> None:
                         f"labels_ok={labels_ok}",
                     )
 
-                    # 11. fullscreen toggle
-                    check(
-                        "fullscreen-init",
-                        not win.is_fullscreen(),
-                        "initially windowed",
+                    # ---- reading-width -------------------------------------------------
+                    # Switch via the same method the palette popover calls; assert
+                    # computed column max-width differs narrow↔wide, standard matches
+                    # the original, and settings.json stores the choice.
+                    _mw_js = (
+                        "getComputedStyle(document.querySelector('.markdown-body'))"
+                        ".maxWidth"
                     )
-                    win._toggle_fullscreen()
 
-                    def check_fs_after_enter() -> None:
-                        is_fs = win.is_fullscreen()
+                    def _mw_finish(src, res, _u):
+                        try:
+                            return src.evaluate_javascript_finish(res).to_string()
+                        except Exception as exc:  # noqa: BLE001
+                            return f"ERR:{exc}"
+
+                    def reading_width_then_fullscreen() -> None:
+                        # 11. fullscreen toggle
+                        check(
+                            "fullscreen-init",
+                            not win.is_fullscreen(),
+                            "initially windowed",
+                        )
                         win._toggle_fullscreen()
 
-                        def check_fs_after_leave() -> None:
-                            is_unfs = not win.is_fullscreen()
-                            check(
-                                "fullscreen-toggle",
-                                is_fs and is_unfs,
-                                f"fullscreen={is_fs} restored={is_unfs}",
-                            )
-                            # 12-14. tasklist / overflow / hostile Viewers
-                            # chain; hostile owns the quit.
-                            run_tasklist_no_bullet_check(
-                                a,
-                                tmp,
-                                settings_path,
-                                lambda: run_overflow_contained_check(
+                        def check_fs_after_enter() -> None:
+                            is_fs = win.is_fullscreen()
+                            win._toggle_fullscreen()
+
+                            def check_fs_after_leave() -> None:
+                                is_unfs = not win.is_fullscreen()
+                                check(
+                                    "fullscreen-toggle",
+                                    is_fs and is_unfs,
+                                    f"fullscreen={is_fs} restored={is_unfs}",
+                                )
+                                # 12-14. tasklist / overflow / hostile Viewers
+                                # chain; hostile owns the quit.
+                                run_tasklist_no_bullet_check(
                                     a,
                                     tmp,
                                     settings_path,
-                                    lambda: run_hostile_document_check(
-                                        a, tmp, settings_path
+                                    lambda: run_overflow_contained_check(
+                                        a,
+                                        tmp,
+                                        settings_path,
+                                        lambda: run_width_anchor_check(
+                                            a,
+                                            tmp,
+                                            settings_path,
+                                            lambda: run_hostile_document_check(
+                                                a, tmp, settings_path
+                                            ),
+                                        ),
                                     ),
-                                ),
-                            )
+                                )
+                                return GLib.SOURCE_REMOVE
+
+                            GLib.timeout_add(150, check_fs_after_leave)
                             return GLib.SOURCE_REMOVE
 
-                        GLib.timeout_add(150, check_fs_after_leave)
-                        return GLib.SOURCE_REMOVE
+                        GLib.timeout_add(150, check_fs_after_enter)
 
-                    GLib.timeout_add(150, check_fs_after_enter)
+                    def after_standard(src, res, _u):
+                        restored = _mw_finish(src, res, _u)
+                        win._set_reading_width("wide")
+                        saved = load_settings(path=settings_path)
+                        ok = (
+                            narrow_mw != wide_mw
+                            and restored == standard_mw
+                            and saved.get("reading_width") == "wide"
+                        )
+                        check(
+                            "reading-width",
+                            ok,
+                            f"std={standard_mw!r} narrow={narrow_mw!r} "
+                            f"wide={wide_mw!r} restored={restored!r} "
+                            f"settings={saved.get('reading_width')!r}",
+                        )
+                        reading_width_then_fullscreen()
+
+                    def after_wide(src, res, _u):
+                        nonlocal wide_mw
+                        wide_mw = _mw_finish(src, res, _u)
+                        win._set_reading_width("standard")
+                        win.webview.evaluate_javascript(
+                            _mw_js, -1, None, None, None, after_standard, None
+                        )
+
+                    def after_narrow(src, res, _u):
+                        nonlocal narrow_mw
+                        narrow_mw = _mw_finish(src, res, _u)
+                        win._set_reading_width("wide")
+                        win.webview.evaluate_javascript(
+                            _mw_js, -1, None, None, None, after_wide, None
+                        )
+
+                    def after_standard_initial(src, res, _u):
+                        nonlocal standard_mw
+                        standard_mw = _mw_finish(src, res, _u)
+                        win._set_reading_width("narrow")
+                        win.webview.evaluate_javascript(
+                            _mw_js, -1, None, None, None, after_narrow, None
+                        )
+
+                    standard_mw = narrow_mw = wide_mw = ""
+                    win.webview.evaluate_javascript(
+                        _mw_js, -1, None, None, None, after_standard_initial, None
+                    )
                     return GLib.SOURCE_REMOVE
 
                 return GLib.SOURCE_REMOVE

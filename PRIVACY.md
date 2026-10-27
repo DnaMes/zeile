@@ -45,10 +45,10 @@ an identifier that survives across opens.
 
 **One small configuration file, by request of the theme/font picker:**
 `~/.config/zeile/settings.json` stores UI preferences only — the selected
-theme id, body/code font ids, zoom level and window geometry (e.g.
-`"tokyo-night"`, `"ia-writer"`, `"1.5"`, `"1200"`). No file paths, no
-document content, no timestamps, no identifiers. Delete the file and zeile
-falls back to its defaults on the next start.
+theme id, body/code font ids, reading width, zoom level and window geometry
+(e.g. `"tokyo-night"`, `"ia-writer"`, `"narrow"`, `"1.5"`, `"1200"`). No
+file paths, no document content, no timestamps, no identifiers. Delete the
+file and zeile falls back to its defaults on the next start.
 
 **One honest exception in `~/.cache`, checked rather than assumed:** the
 GPU driver (Mesa) writes compiled shader bytecode to
@@ -81,8 +81,8 @@ entirely on your machine.
 zeile requests no special permissions. It reads the markdown file you open
 (and watches it for changes), and — only with `--enable-mermaid` — runs the
 `mmdc` subprocess you installed yourself. It writes nothing except a PDF you
-explicitly choose to export, to the location you choose, and the three-string
-theme/font settings file described above.
+explicitly choose to export, to the location you choose, and the
+theme/font/width settings file described above.
 
 ## Children
 
