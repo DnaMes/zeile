@@ -7,6 +7,27 @@ Versioning: [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `F1` opens a small list of the keyboard shortcuts (Escape or `F1` closes it).
+- Man pages in English and German and completions for bash, zsh and fish (`man zeile`); the user
+  installer writes the man pages and the bash and fish completions and removes only files it wrote.
+- `zeile --help` is translated (German with `LANGUAGE=de`).
+- German desktop entries and AppStream metadata for the packages.
+
+### Fixed
+
+- A document with invalid UTF-8 opens (the bad bytes show as U+FFFD); a damaged `settings.json`
+  or out-of-range window and zoom values fall back to defaults instead of failing.
+- When Mermaid fails (timeout, helper missing, non-zero exit, empty or oversized output) the
+  document shows a translated, escaped error block instead of breaking.
+- Task list items (`- [x]`) show only the checkbox, without a bullet next to it.
+
+### Changed
+
+- Releases are published only after the `.deb` and `.rpm` are attached (draft first).
+- Screenshot generation fails loudly when a PNG cannot be written.
+
 ## [0.3.1] — 2026-10-27
 
 ### Added

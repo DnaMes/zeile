@@ -85,6 +85,9 @@ zeile --code-font jetbrains-mono README.md
 
 `ZEILE_DEBUG=1` is equivalent to `--debug`.
 
+`man zeile` (English and German) documents every option; completions for bash, zsh and
+fish are installed by the packages and, for bash and fish, by `./install.sh`.
+
 | Shortcut                 | Action                                                    |
 | ------------------------ | --------------------------------------------------------- |
 | `Ctrl+R`                 | reload                                                    |
@@ -96,6 +99,7 @@ zeile --code-font jetbrains-mono README.md
 | `Ctrl+T`                 | table of contents overlay (filter outline, stats, jump)   |
 | `Ctrl+P`                 | print                                                     |
 | `F11`                    | toggle fullscreen mode                                    |
+| `F1`                     | list of keyboard shortcuts (Esc or `F1` closes it)        |
 
 The header bar also has a PDF export button (save-location picker, then
 straight to a PDF file — no print dialog in between).
