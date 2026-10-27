@@ -10,8 +10,12 @@ the wrapper):
 
 Exercises the real GTK/WebKit widget stack -- widget state, computed page
 styles and persistence -- without needing a visible window, and never
-touches the operator's desktop focus. Prints one PASS/FAIL line per check
-and exits 0 only if all pass.
+touches the operator's desktop focus. The final check builds a Viewer from a
+deliberately hostile document (raw <script>/<svg onload>/<a href=javascript:>
+... aimed at a live local TCP listener) and proves the WebView contains it:
+no script execution, no dangerous markup in the DOM, zero listener
+connections. Prints one PASS/FAIL line per check and exits 0 only if all
+pass.
 
 Deliberately NOT included in plain `pytest`: this needs cage + a Wayland
 session. The pytest wrapper skips when either is absent.
@@ -19,8 +23,13 @@ session. The pytest wrapper skips when either is absent.
 
 from __future__ import annotations
 
+import json
+import socket
 import sys
 import tempfile
+import threading
+import time
+from collections.abc import Callable
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -32,7 +41,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
 gi.require_version("WebKit", "6.0")
 
-from gi.repository import Gdk, GLib, Gtk  # noqa: E402
+from gi.repository import Gdk, GLib, Gtk, WebKit  # noqa: E402
 
 import zeile  # noqa: E402
 from zeile import ZeileApp, load_settings, print_backends_available  # noqa: E402
@@ -42,6 +51,194 @@ results: list[tuple[str, bool, str]] = []
 
 def check(tag: str, ok: bool, detail: str = "") -> None:
     results.append((tag, ok, detail))
+
+
+class PwnListener:
+    """Tiny TCP listener on 127.0.0.1 that only counts accepted connections.
+
+    Network oracle for the hostile-document check: if the WebView so much
+    as dials this port, count stops being 0 and the check fails.
+    """
+
+    def __init__(self) -> None:
+        self.count = 0
+        self._lock = threading.Lock()
+        self.port = 0
+        self._sock: socket.socket | None = None
+        self._thread: threading.Thread | None = None
+
+    def start(self) -> None:
+        self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._sock.settimeout(1.0)
+        self._sock.bind(("127.0.0.1", 0))
+        self._sock.listen(8)
+        self.port = self._sock.getsockname()[1]
+        self._thread = threading.Thread(
+            target=self._serve, name="zeile-pwn-listener", daemon=True
+        )
+        self._thread.start()
+
+    def _serve(self) -> None:
+        assert self._sock is not None
+        while self._sock is not None:
+            try:
+                conn, _addr = self._sock.accept()
+            except TimeoutError:
+                continue  # listener stops via .stop() -- keep waiting
+            except OSError:
+                return  # socket closed -- listener stopping
+            conn.close()
+            with self._lock:
+                self.count += 1
+
+    def settled_count(self) -> int:
+        """Connections seen so far, after letting a just-accepted one be counted."""
+        time.sleep(0.3)  # accept() returns at once for a pending connection
+        with self._lock:
+            return self.count
+
+    def stop(self) -> None:
+        sock, self._sock = self._sock, None
+        if sock is not None:
+            sock.close()
+
+
+def evaluated(webview: WebKit.WebView, js: str, callback: Callable[..., None]) -> None:
+    """Evaluate `js` on `webview` and deliver the result to ``callback``.
+
+    Same evaluate_javascript pattern the matrix uses inline (e.g. the copy
+    and theme checks); shared so the hostile-document probe stays readable.
+    """
+
+    def issued(src: WebKit.WebView, result, _user_data) -> None:
+        callback(src.evaluate_javascript_finish(result))
+
+    webview.evaluate_javascript(js, -1, None, None, None, issued, None)
+
+
+def run_hostile_document_check(app, tmp: Path, settings_path: Path) -> None:
+    """Open a raw-hostile markdown document and prove the WebView contains it.
+
+    Starts a local TCP listener, writes markdown full of script vectors
+    aimed at it, renders it in a fresh Viewer, then -- load finished plus
+    1.5 s -- asks the page live: did any payload run or survive in the DOM,
+    did anything reach the listener?
+    """
+    listener = PwnListener()
+    listener.start()
+    base = f"http://127.0.0.1:{listener.port}"
+    md = tmp / "hostile.md"
+    # Raw HTML markdown (not fenced) -- the sanitizer sees it as-is.
+    md.write_text(
+        "# Hostile\n\n"
+        f"<script>window.__pwn=1</script>\n\n"
+        f'<img src="{base}/a.png" onerror="window.__pwn=2">\n\n'
+        f'<iframe src="{base}/f"></iframe>\n\n'
+        f'<svg onload="window.__pwn=3"><script>window.__pwn=4</script></svg>\n\n'
+        f'<a href="javascript:window.__pwn=5">x</a>\n\n'
+        f"<style>@import url({base}/s.css);</style>\n\n"
+        f'<link rel="stylesheet" href="{base}/l.css">\n\n'
+        f'<object data="{base}/o"></object>\n\n'
+        f'<form action="{base}/p"><input></form>\n\n',
+        encoding="utf-8",
+    )
+    win = zeile.Viewer(
+        app,
+        md,
+        enable_mermaid=False,
+        debug=False,
+        theme_id="nord",
+        body_font_id="ia-writer",
+        code_font_id="jetbrains-mono",
+        settings_path=settings_path,
+    )
+
+    state = {"done": False}
+
+    def give_up() -> bool:
+        # A WebView that never finishes loading must fail the check, not hang the matrix.
+        if not state["done"]:
+            state["done"] = True
+            check("hostile-document-contained", False, "WebView never finished loading")
+            listener.stop()
+            app.quit()
+        return GLib.SOURCE_REMOVE
+
+    GLib.timeout_add_seconds(30, give_up)
+
+    def on_load(_webview, event) -> None:
+        if event != WebKit.LoadEvent.FINISHED:
+            return
+        GLib.timeout_add(1500, probe)
+        return GLib.SOURCE_REMOVE
+
+    def probe() -> bool:
+        # IIFE, const-free (same redeclaration trap the copy wording in
+        # zeile.py shies away from): collects leftover dangerous elements,
+        # attributes that still point at the listener, javascript: anchors,
+        # and window.__pwn's type. img[src] on its own is tolerated -- nh3's
+        # default allowlist keeps an img spec, CSP img-src 'self' kills any
+        # fetch, and the listener count below is what proves that.
+        prefix = json.dumps(f"{base}/")
+        # Wrapped in an IIFE so 'return' is legal (evaluate_javascript gets a
+        # program, not a function body).
+        js = (
+            "(function(){"
+            f"var p={prefix},leaks=[];"
+            "var ban="
+            "document.querySelectorAll('script,iframe,object,link[rel=stylesheet]');"
+            "for(var i=0;i<ban.length;i++)leaks.push(ban[i].tagName.toLowerCase());"
+            "var els=document.querySelectorAll('[src],[href],[action]');"
+            "for(var j=0;j<els.length;j++){"
+            "var el=els[j],tag=el.tagName.toLowerCase();"
+            "var names=['src','href','action'];"
+            "for(var k=0;k<names.length;k++){"
+            "var v=el.getAttribute(names[k]);"
+            "if(!v)continue;"
+            "if(v.indexOf(p)===0&&!(tag==='img'&&names[k]==='src'))"
+            "leaks.push(tag+'['+names[k]+']');"
+            "}"
+            "if(tag==='a'&&el.hasAttribute('href')&&"
+            "el.getAttribute('href').toLowerCase().indexOf('javascript:')===0)"
+            "leaks.push('a[javascript]');"
+            "}"
+            "return (typeof window.__pwn)+'|'+leaks.join(',');"
+            "})();"
+        )
+
+        def probe_cb(value) -> None:
+            try:
+                raw = value.to_string() or ""
+            except Exception as exc:  # noqa: BLE001
+                problems = [f"probe JS failed: {exc}"]
+            else:
+                # Format: "<pwn-type>|<leak tokens CSV>" -- the CSV never
+                # contains '|', so a plain split is unambiguous.
+                pwn, _, leaks = raw.partition("|")
+                problems = []
+                if pwn != "undefined":
+                    problems.append(f"window.__pwn is {pwn!r}, undefined expected")
+                if leaks:
+                    problems.append(f"dangerous markup survived: {leaks}")
+            seen = listener.settled_count()
+            if seen != 0:
+                problems.append(f"listener accepted {seen} connection(s)")
+            state["done"] = True
+            check(
+                "hostile-document-contained",
+                not problems,
+                "; ".join(problems) if problems else "script off, DOM clean, 0 fetches",
+            )
+            listener.stop()
+            app.quit()
+
+        evaluated(win.webview, js, probe_cb)
+        return GLib.SOURCE_REMOVE
+
+    # Connected before present(): FINISHED can arrive in an early main-loop
+    # turn, and a missed probe means a stuck matrix.
+    win.webview.connect("load-changed", on_load)
+    win.present()
 
 
 def walk_buttons(widget) -> list[Gtk.Button]:
@@ -411,7 +608,10 @@ def run() -> None:
                                 is_fs and is_unfs,
                                 f"fullscreen={is_fs} restored={is_unfs}",
                             )
-                            a.quit()
+                            # 12. hostile-document-contained owns the quit
+                            # from here on: a second Viewer loads the hostile
+                            # fixture and the app only stops once it reported.
+                            run_hostile_document_check(a, tmp, settings_path)
                             return GLib.SOURCE_REMOVE
 
                         GLib.timeout_add(150, check_fs_after_leave)
