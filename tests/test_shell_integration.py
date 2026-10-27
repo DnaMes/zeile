@@ -7,6 +7,7 @@ from __future__ import annotations
 import os
 import re
 import shutil
+import site
 import subprocess
 import sys
 from pathlib import Path
@@ -113,7 +114,7 @@ def test_theme_and_font_ids_match_zeile_tuples() -> None:
 def test_install_sh_man_completions_roundtrip(tmp_path: Path) -> None:
     home = tmp_path / "home"
     home.mkdir()
-    env = {**os.environ, "HOME": str(home)}
+    env = {**os.environ, "HOME": str(home), "PYTHONUSERBASE": site.getuserbase()}
 
     man_en = home / ".local" / "share" / "man" / "man1" / "zeile.1"
     man_de = home / ".local" / "share" / "man" / "de" / "man1" / "zeile.1"
@@ -177,7 +178,7 @@ def test_man_pages_lint_clean(man_path: Path) -> None:
 
 def test_install_never_clobbers_or_removes_a_foreign_file(tmp_path: Path) -> None:
     home = tmp_path / "home"
-    env = {**os.environ, "HOME": str(home)}
+    env = {**os.environ, "HOME": str(home), "PYTHONUSERBASE": site.getuserbase()}
     man_en = home / ".local" / "share" / "man" / "man1" / "zeile.1"
     man_en.parent.mkdir(parents=True)
     man_en.write_text("the user's own page\n", encoding="utf-8")
@@ -193,7 +194,7 @@ def test_install_never_clobbers_or_removes_a_foreign_file(tmp_path: Path) -> Non
 
 def test_install_upgrades_its_own_files(tmp_path: Path) -> None:
     home = tmp_path / "home"
-    env = {**os.environ, "HOME": str(home)}
+    env = {**os.environ, "HOME": str(home), "PYTHONUSERBASE": site.getuserbase()}
     bash_comp = home / ".local" / "share" / "bash-completion" / "completions" / "zeile"
     subprocess.run(["bash", str(REPO / "install.sh")], check=True, cwd=REPO, env=env)
     bash_comp.write_text("# zeile-installer-owned\n# an older version\n", encoding="utf-8")

@@ -10,6 +10,7 @@ exits before main() loads settings).
 from __future__ import annotations
 
 import os
+import site
 import subprocess
 import sys
 from pathlib import Path
@@ -35,6 +36,8 @@ def _run_help(language: str, tmp_path: Path) -> subprocess.CompletedProcess[byte
     env["LC_ALL"] = "C.UTF-8"
     env["LANGUAGE"] = language
     env["HOME"] = str(tmp_path)
+    # keep pip --user installs visible although HOME points at a throw-away directory
+    env["PYTHONUSERBASE"] = site.getuserbase()
     env["XDG_CONFIG_HOME"] = str(tmp_path / "config")
     return subprocess.run(
         [sys.executable, str(REPO / "zeile.py"), "--help"],
