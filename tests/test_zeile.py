@@ -9,24 +9,26 @@ specifically so they're testable without a WebView or a display.
 import re
 from pathlib import Path
 
-from zeile import (
-    BODY_FONT_OPTIONS,
-    CODE_FONT_OPTIONS,
-    READING_WIDTH_OPTIONS,
-    THEME_OPTIONS,
+from documents import (
     DocumentStats,
-    _coerce_reading_width,
     build_document,
     classify_local_target,
     compute_document_stats,
     enhance_code_blocks,
     flatten_toc,
-    is_theme_dark,
-    load_settings,
     read_asset,
     render,
     render_body,
     sanitize_html,
+)
+from preferences import (
+    BODY_FONT_OPTIONS,
+    CODE_FONT_OPTIONS,
+    READING_WIDTH_OPTIONS,
+    THEME_OPTIONS,
+    _coerce_reading_width,
+    is_theme_dark,
+    load_settings,
     save_settings,
 )
 
