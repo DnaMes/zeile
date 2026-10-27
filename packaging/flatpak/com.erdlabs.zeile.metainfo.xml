@@ -72,6 +72,12 @@
     <control>pointing</control>
   </supports>
   <releases>
+    <release version="0.4.0" date="2026-10-27">
+      <description>
+        <p>Reading width setting, F1 shortcut list, man pages and shell completions, translated --help, task lists without bullets, safer handling of damaged files and Mermaid failures.</p>
+        <p xml:lang="de">Einstellbare Lesebreite, F1-Tastenübersicht, Man-Pages und Shell-Vervollständigungen, übersetztes --help, Aufgabenlisten ohne Aufzählungspunkte, robustere Behandlung beschädigter Dateien und fehlgeschlagener Mermaid-Diagramme.</p>
+      </description>
+    </release>
     <release version="0.3.1" date="2026-10-27">
       <description>
         <p>Flatpak, Debian and Fedora packages; the start sequence no longer fails when a package lacks its image.</p>

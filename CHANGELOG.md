@@ -7,6 +7,8 @@ Versioning: [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-10-27
+
 ### Added
 
 - `F1` opens a small list of the keyboard shortcuts (Escape or `F1` closes it).

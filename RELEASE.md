@@ -6,7 +6,7 @@ release checklist does not apply. What remains is the licensing, versioning,
 security, and documentation work every erdlabs project owes a release. The
 repository has been public since 2026-10-26.
 
-Current version: **0.3.1** (`pyproject.toml`); 0.3.0 was the first public release (2026-10-26). The tag workflow publishes a checksumed Linux source archive;
+Current version: **0.4.0** (`pyproject.toml`); 0.3.0 was the first public release (2026-10-26). The tag workflow publishes a checksumed Linux source archive;
 native Windows/macOS artifacts are intentionally not produced until the
 WebView backend is ported (see README's Platform support section).
 
