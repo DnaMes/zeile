@@ -750,9 +750,8 @@ def run() -> None:
                 def final() -> None:
                     # 6. search match-count label: driven at signal level
                     # (WebKit's own found-text does not fire reliably in a
-                    # headless compositor -- same caveat as counted-matches
-                    # in HANDOFF.md; the handler is what the real signal
-                    # calls).
+                    # headless compositor -- same caveat as counted-matches;
+                    # the handler is what the real signal calls).
                     win._on_found_text(win.find_controller, 3)
                     three = win._match_label.get_text()
                     win._on_failed_to_find(win.find_controller)

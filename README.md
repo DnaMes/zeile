@@ -305,12 +305,21 @@ commits follow Conventional Commits, and a change is ready when `ruff check .`,
 User-visible strings go through `po/` (English and German). Report security
 problems privately, see [SECURITY.md](SECURITY.md).
 
+Release flow: bump the version in `pyproject.toml`, `zeile.py` and
+`packaging/PKGBUILD` together (`scripts/check_version.py` verifies the three
+copies), add the changelog entry, then push an annotated `vX.Y.Z` tag —
+`.github/workflows/release.yml` validates the tag and publishes the checksumed
+source archive. Nothing is tagged that did not ship.
+
+Everything in this repository ships under GPL-3.0-or-later, and the icons and
+logo are the author's own work.
+
 ## Licence
 
 GPL-3.0-or-later. Copyright (c) 2026 erdlabs.
 
 See also: [CHANGELOG.md](CHANGELOG.md), [PRIVACY.md](PRIVACY.md),
-[RELEASE.md](RELEASE.md), [ASSETS.md](ASSETS.md).
+[SECURITY.md](SECURITY.md).
 
 **Trademarks.** The GPL covers the code and the shipped icon files. The names
 "erdlabs" and "zeile" and the erdlabs mark are not licensed for use as the name or

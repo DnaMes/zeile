@@ -7,6 +7,12 @@ Versioning: [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Removed
+
+- Internal working documents — agent instructions, session handoffs, dead Forgejo templates and a
+  stale secret-scan ignore file — are no longer published. Their still-relevant content moved into
+  `README.md`, `PRIVACY.md` and this changelog.
+
 ## [0.5.0] — 2026-10-27
 
 ### Added
@@ -25,7 +31,7 @@ Versioning: [Semantic Versioning](https://semver.org/).
   0.4.0 package in a clean container).
 - The Flatpak check reports network isolation only when the probe really attempted the connection.
 - Documentation: `PRIVACY.md` states the `--enable-mermaid` exception where it describes network
-  activity; `RELEASE.md` no longer carries outdated test counts or print wording.
+  activity.
 
 ## [0.4.0] — 2026-10-27
 
@@ -142,7 +148,7 @@ Versioning: [Semantic Versioning](https://semver.org/).
   with threshold + runner-up margin. Untagged fences now highlight;
   ambiguous or prose blocks deliberately stay plain.
 - Find-in-page shows a live match count next to the search entry, with a
-  clear "No matches" state (closes a HANDOFF backlog item).
+  clear "No matches" state.
 - Launching without a file (app menu / launcher) now opens a markdown file
   chooser instead of exiting with a usage error.
 - Window size, maximized state and zoom level persist across sessions
@@ -158,8 +164,7 @@ Versioning: [Semantic Versioning](https://semver.org/).
 ### Changed
 
 - Local `.md` link navigation defers the document switch out of the WebKit
-  policy callback (`GLib.idle_add`), closing the re-entrancy risk flagged
-  in HANDOFF.md.
+  policy callback (`GLib.idle_add`), closing the re-entrancy risk.
 
 ## [0.1.0] — 2026-09-11
 

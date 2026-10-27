@@ -1,2 +1,0 @@
-# False positive: "keyCount" in the minified Mermaid bundle (removed in 8f2f129)
-6c9edca5d6f14101af3570388f00633338e09983:assets/mermaid.min.js:generic-api-key:635
