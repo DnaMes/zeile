@@ -1158,6 +1158,12 @@ class Viewer(Gtk.ApplicationWindow):
         box.append(overlay)
         self.set_child(box)
 
+        self._shortcut_overlay: Gtk.Window | None = None
+        self._help_key = Gtk.EventControllerKey()
+        self._help_key.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+        self._help_key.connect("key-pressed", self._on_help_key)
+        self.add_controller(self._help_key)
+
         self._add_shortcuts()
         self.reload()
         self._watch()
@@ -1729,6 +1735,102 @@ class Viewer(Gtk.ApplicationWindow):
             )
         self.add_controller(controller)
 
+    def _on_help_key(
+        self,
+        _controller: Gtk.EventControllerKey,
+        keyval: int,
+        _keycode: int,
+        _state: Gdk.ModifierType,
+    ) -> bool:
+        # Capture only F1 so the find entry keeps receiving typed characters.
+        if keyval != Gdk.KEY_F1:
+            return False
+        return self._toggle_shortcut_overlay()
+
+    def _shortcut_help_entries(self) -> list[tuple[str, str]]:
+        return [
+            ("Ctrl+R", _("Reload")),
+            ("Ctrl+W / Ctrl+Q", _("Close")),
+            ("Ctrl++ / Ctrl+- / Ctrl+0", _("Zoom")),
+            ("Ctrl+F", _("Find")),
+            ("Alt+Left / Alt+Right", _("Back / Forward")),
+            ("Ctrl+T", _("Outline")),
+            ("Ctrl+P", _("Print")),
+            ("F11", _("Fullscreen")),
+            ("F1", _("This help")),
+        ]
+
+    def _toggle_shortcut_overlay(self) -> bool:
+        if self._shortcut_overlay is not None:
+            self._close_shortcut_overlay()
+            return True
+
+        overlay = Gtk.Window(
+            application=self.get_application(),
+            title=_("Keyboard shortcuts"),
+            transient_for=self,
+            modal=False,
+            resizable=False,
+        )
+        overlay.set_default_size(340, -1)
+
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        box.set_margin_top(12)
+        box.set_margin_bottom(12)
+        box.set_margin_start(16)
+        box.set_margin_end(16)
+
+        heading = Gtk.Label(label=_("Keyboard shortcuts"), xalign=0)
+        heading.add_css_class("title-4")
+        heading.set_margin_bottom(8)
+        box.append(heading)
+
+        for accel, action in self._shortcut_help_entries():
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=16)
+            accel_label = Gtk.Label(label=accel, xalign=0)
+            accel_label.set_width_chars(26)
+            action_label = Gtk.Label(label=action, xalign=0)
+            row.append(accel_label)
+            row.append(action_label)
+            box.append(row)
+
+        overlay.set_child(box)
+
+        key = Gtk.EventControllerKey()
+        key.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+        key.connect("key-pressed", self._on_shortcut_overlay_key)
+        overlay.add_controller(key)
+        overlay._key = key  # headless tests synthesize Escape/F1 here
+        overlay.connect("close-request", self._on_shortcut_overlay_close_request)
+
+        self._shortcut_overlay = overlay
+        overlay.present()
+        return True
+
+    def _on_shortcut_overlay_key(
+        self,
+        _controller: Gtk.EventControllerKey,
+        keyval: int,
+        _keycode: int,
+        _state: Gdk.ModifierType,
+    ) -> bool:
+        if keyval in (Gdk.KEY_Escape, Gdk.KEY_F1):
+            self._close_shortcut_overlay()
+            return True
+        return False
+
+    def _on_shortcut_overlay_close_request(self, _window: Gtk.Window) -> bool:
+        self._close_shortcut_overlay()
+        return True
+
+    def _close_shortcut_overlay(self) -> None:
+        overlay = self._shortcut_overlay
+        if overlay is None:
+            return
+        self._shortcut_overlay = None
+        overlay.destroy()
+        self.webview.grab_focus()
+
     def _zoom(self, delta: float) -> bool:
         level = min(3.0, max(0.4, self.webview.get_zoom_level() + delta))
         self.webview.set_zoom_level(level)
@@ -1909,42 +2011,44 @@ class ZeileApp(Gtk.Application):
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Minimal GTK4 markdown viewer.")
+    parser = argparse.ArgumentParser(description=_("Minimal GTK4 markdown viewer."))
     parser.add_argument(
         "file",
         nargs="?",
         type=Path,
         default=None,
-        help="markdown file to display (omit to pick one in a dialog)",
+        help=_("markdown file to display (omit to pick one in a dialog)"),
     )
     parser.add_argument(
         "--enable-mermaid",
         action="store_true",
-        help="render ```mermaid fences via mmdc (mermaid-cli); off by default "
-        "so the base install needs no Node.js",
+        help=_(
+            "render ```mermaid fences via mmdc (mermaid-cli); off by default "
+            "so the base install needs no Node.js"
+        ),
     )
     parser.add_argument(
         "--debug",
         action="store_true",
-        help="enable WebKit developer tools (same as setting ZEILE_DEBUG)",
+        help=_("enable WebKit developer tools (same as setting ZEILE_DEBUG)"),
     )
     parser.add_argument(
         "--theme",
         choices=THEME_OPTIONS,
         default=None,
-        help="start with a theme (saved selection is used otherwise)",
+        help=_("start with a theme (saved selection is used otherwise)"),
     )
     parser.add_argument(
         "--body-font",
         choices=BODY_FONT_OPTIONS,
         default=None,
-        help="body font selection (saved selection is used otherwise)",
+        help=_("body font selection (saved selection is used otherwise)"),
     )
     parser.add_argument(
         "--code-font",
         choices=CODE_FONT_OPTIONS,
         default=None,
-        help="monospace/code font selection (saved selection is used otherwise)",
+        help=_("monospace/code font selection (saved selection is used otherwise)"),
     )
 
     args = parser.parse_args()

@@ -27,6 +27,15 @@ from mermaid_render import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _english_locale(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Pin mermaid_render's strings to English regardless of the test host's
+    locale: the assertions below check English substrings of error_html().
+    Error messages are translated lazily at error_html() call time, so
+    monkeypatching the module-level `_` is enough."""
+    monkeypatch.setattr(mermaid_render, "_", lambda s: s)
+
+
 def test_strips_script_element():
     svg = "<svg><g><script>alert(1)</script><rect/></g></svg>"
     out = _strip_script_vectors(svg)

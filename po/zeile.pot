@@ -304,3 +304,65 @@ msgstr ""
 #: mermaid_render.py
 msgid "Mermaid render produced oversized output."
 msgstr ""
+
+#: zeile.py:1912
+msgid "Minimal GTK4 markdown viewer."
+msgstr ""
+
+#: zeile.py:1914
+msgid "markdown file to display (omit to pick one in a dialog)"
+msgstr ""
+
+#: zeile.py:1921
+msgid ""
+"render ```mermaid fences via mmdc (mermaid-cli); off by default so the base "
+"install needs no Node.js"
+msgstr ""
+
+#: zeile.py:1927
+msgid "enable WebKit developer tools (same as setting ZEILE_DEBUG)"
+msgstr ""
+
+#: zeile.py:1932
+msgid "start with a theme (saved selection is used otherwise)"
+msgstr ""
+
+#: zeile.py:1938
+msgid "body font selection (saved selection is used otherwise)"
+msgstr ""
+
+#: zeile.py:1944
+msgid "monospace/code font selection (saved selection is used otherwise)"
+msgstr ""
+
+#: zeile.py
+msgid "Keyboard shortcuts"
+msgstr ""
+
+#: zeile.py
+msgid "Close"
+msgstr ""
+
+#: zeile.py
+msgid "Zoom"
+msgstr ""
+
+#: zeile.py
+msgid "Find"
+msgstr ""
+
+#: zeile.py
+msgid "Back / Forward"
+msgstr ""
+
+#: zeile.py
+msgid "Outline"
+msgstr ""
+
+#: zeile.py
+msgid "Fullscreen"
+msgstr ""
+
+#: zeile.py
+msgid "This help"
+msgstr ""
