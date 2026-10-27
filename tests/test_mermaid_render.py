@@ -13,6 +13,7 @@ never need the real mermaid-cli binary.
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 import pytest
@@ -78,6 +79,17 @@ def test_label_text_containing_on_word_survives():
     assert _strip_script_vectors(svg) == svg
 
 
+# The fake below is a POSIX shell script. Windows can only start a .cmd/.bat
+# shim through cmd.exe, so with a list argv CreateProcess reports it as
+# missing -- which is what these tests then see instead of the simulated
+# failure. The code paths they pin (returncode, stderr decoding, output size)
+# are plain Python and identical on every OS; the Windows-only case that does
+# matter, mmdc being absent, is pinned by test_missing_mmdc above.
+posix_shell_only = pytest.mark.skipif(
+    sys.platform == "win32", reason="the fake mmdc is a POSIX shell script"
+)
+
+
 def _install_fake_mmdc(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, body: str) -> None:
     mermaid_render._cache.clear()
     mmdc = tmp_path / "mmdc"
@@ -86,6 +98,7 @@ def _install_fake_mmdc(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, body: st
     monkeypatch.setenv("PATH", f"{tmp_path}{os.pathsep}{os.environ.get('PATH', '')}")
 
 
+@posix_shell_only
 def test_timeout_raises_render_error(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -98,6 +111,7 @@ def test_timeout_raises_render_error(
     assert "mermaid-error" in out
 
 
+@posix_shell_only
 def test_nonzero_exit_escapes_stderr(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -126,6 +140,7 @@ def test_missing_mmdc(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "not found on PATH" in out
 
 
+@posix_shell_only
 def test_empty_output(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     # Parse -o and write an empty SVG so exit 0 still triggers the empty path.
     _install_fake_mmdc(
@@ -148,6 +163,7 @@ exit 0
     assert "empty output" in out
 
 
+@posix_shell_only
 def test_invalid_utf8_stderr_is_replaced_not_raised(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -159,6 +175,7 @@ def test_invalid_utf8_stderr_is_replaced_not_raised(
     assert "\ufffd" in ei.value.detail
 
 
+@posix_shell_only
 def test_invalid_utf8_svg_does_not_break_the_render(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -179,6 +196,7 @@ exit 0
     assert svg.startswith("<svg>") and "ok" in svg
 
 
+@posix_shell_only
 def test_oversized_svg_is_rejected_before_it_is_read(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
