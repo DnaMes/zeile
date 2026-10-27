@@ -7,6 +7,17 @@ Versioning: [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.1] — 2026-10-27
+
+### Fixed
+
+- The Fedora `.rpm` now requires `gobject-introspection`: on a minimal system the viewer failed to
+  start with "Typelib file for namespace 'cairo' not found" (found by installing the published
+  0.4.0 package in a clean container).
+- The Flatpak check reports network isolation only when the probe really attempted the connection.
+- Documentation: `PRIVACY.md` states the `--enable-mermaid` exception where it describes network
+  activity; `RELEASE.md` no longer carries outdated test counts or print wording.
+
 ## [0.4.0] — 2026-10-27
 
 ### Added

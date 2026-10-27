@@ -1,7 +1,7 @@
 # Maintainer: erdlabs <https://erdlabs.com>
 # Contributor: see repository
 pkgname=zeile
-pkgver=0.4.0
+pkgver=0.4.1
 pkgrel=1
 pkgdesc="Small, fast GTK4 markdown viewer with live reload, themes and Mermaid support"
 arch=(any)
@@ -18,7 +18,7 @@ depends=(
 )
 optdepends=('mermaid-cli: render ```mermaid fences (npm install -g @mermaid-js/mermaid-cli)')
 source=("$pkgname-$pkgver.tar.gz::https://github.com/DnaMes/zeile/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('SKIP')  # replaced by the release step once the v0.4.0 tag archive exists
+sha256sums=('SKIP')  # replaced by the release step once the v0.4.1 tag archive exists
 
 package() {
     cd "$pkgname-$pkgver"

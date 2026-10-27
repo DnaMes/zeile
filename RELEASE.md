@@ -46,7 +46,7 @@ puppeteer @mermaid-js/mermaid-cli`), a real flowchart rendered through
       across unlimited switches; scroll position survives reload end-to-end.
       Remaining, needing a person: the print dialog and PDF export are
       **unverifiable on this machine** (GTK4 4.22 ships no print backends —
-      see README; the buttons no-op), a literal file-manager double-click,
+      see README; the buttons are disabled with a tooltip), a literal file-manager double-click,
       and `wtype`-driven keyboard input is unexercised.
 
 ## Licensing and provenance
@@ -69,7 +69,7 @@ puppeteer @mermaid-js/mermaid-cli`), a real flowchart rendered through
 ## Verification before release
 
 - [x] `ruff check` + `ruff format --check` clean.
-- [x] `pytest` — 22/22 passing (`tests/`).
+- [x] `pytest` — 186 passed, 2 skipped on 2026-10-27, plus the headless GUI matrix (25 checks, `tests/headless_gui.py`) and the hosted CI distro matrix.
 - [x] `shellcheck install.sh` — clean as of 2026-09-10, re-check after any
       further edit; re-checked clean 2026-09-11.
 - [x] Install on a clean machine (no `python-nh3`/`python-pymdown-extensions`

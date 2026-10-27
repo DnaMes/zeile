@@ -1,6 +1,6 @@
 # Privacy Policy — zeile
 
-Last updated: 2026-09-11
+Last updated: 2026-10-27
 
 ## Summary
 
@@ -28,8 +28,8 @@ grep -nE 'curl|wget|requests\.|urllib|http\.client|socket\.' zeile.py markdown_e
 # no matches
 ```
 
-The one place network activity is even possible is a link a document
-contains and you deliberately click: it opens in your system's default web
+Without `--enable-mermaid` (see below for that opt-in), the one place network
+activity is even possible is a link a document contains and you deliberately click: it opens in your system's default web
 browser (`Gio.AppInfo.launch_default_for_uri`), a separate process zeile
 does not control or observe. The document view itself never makes a network
 request — it runs on an ephemeral `WebKit.NetworkSession` and a

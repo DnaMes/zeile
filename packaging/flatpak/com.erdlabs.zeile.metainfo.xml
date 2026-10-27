@@ -72,6 +72,12 @@
     <control>pointing</control>
   </supports>
   <releases>
+    <release version="0.4.1" date="2026-10-27">
+      <description>
+        <p>Fixes the Fedora package on minimal systems (missing gobject-introspection dependency).</p>
+        <p xml:lang="de">Behebt das Fedora-Paket auf minimalen Systemen (fehlende Abhängigkeit gobject-introspection).</p>
+      </description>
+    </release>
     <release version="0.4.0" date="2026-10-27">
       <description>
         <p>Reading width setting, F1 shortcut list, man pages and shell completions, translated --help, task lists without bullets, safer handling of damaged files and Mermaid failures.</p>
