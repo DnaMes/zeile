@@ -19,7 +19,8 @@ from pathlib import Path
 import gi
 
 gi.require_version("Gtk", "4.0")
-from gi.repository import GLib, Gtk  # noqa: E402
+gi.require_version("Gdk", "4.0")
+from gi.repository import Gdk, GLib, Gtk  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import zeile  # noqa: E402
@@ -51,6 +52,30 @@ def greet(name: str) -> str:
 """
 
 
+PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+
+
+def write_png(texture: Gdk.Texture, path: Path) -> None:
+    """Save the texture, trusting only a verified PNG on disk when it returns.
+
+    save_to_png quietly returns False on failure, so the result is judged by
+    what actually landed on disk: present, non-empty, and PNG-headed.
+    """
+    path.unlink(missing_ok=True)  # a stale PNG must not make a no-op save look successful
+    if not texture.save_to_png(str(path)):
+        raise RuntimeError(f"save_to_png({path}) returned False")
+    try:
+        data = path.read_bytes()
+    except OSError as exc:  # the renderer can also leave nothing behind
+        raise RuntimeError(f"{path}: not written after save ({exc})") from exc
+    if not data:
+        raise RuntimeError(f"{path}: empty file after save")
+    if data[:8] != PNG_SIGNATURE:
+        raise RuntimeError(f"{path}: not a PNG (bad signature)")
+    if len(data) < 33 or data[12:16] != b"IHDR":  # signature + a complete IHDR chunk
+        raise RuntimeError(f"{path}: truncated PNG (no complete IHDR)")
+
+
 def save_window(win: Gtk.Window, out: Path) -> None:
     width, height = win.get_width(), win.get_height()
     paintable = Gtk.WidgetPaintable.new(win)
@@ -60,7 +85,7 @@ def save_window(win: Gtk.Window, out: Path) -> None:
     if node is None:
         raise RuntimeError(f"empty render node for a {width}x{height} window")
     texture = win.get_native().get_renderer().render_texture(node, None)
-    texture.save_to_png(str(out))
+    write_png(texture, out)
 
 
 def main() -> int:
