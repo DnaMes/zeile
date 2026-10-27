@@ -1,32 +1,30 @@
 #!/usr/bin/python3
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 erdlabs
-"""A small, fast GTK4 markdown viewer.
+"""The Linux shell for zeile: a GTK4 window around a WebKitGTK view.
 
-Renders a markdown file with python-markdown into a WebKitGTK view and
-reloads it whenever the file changes on disk. Symlinks are resolved so
-that watching a link follows its target.
+This file owns everything that is GTK: the window, the header bar, the search
+bar, the settings and theme menu, the splash, printing and the CSS provider.
+The platform-neutral parts -- markdown to HTML, the settings store, the launch
+plan -- live in documents.py, preferences.py and launch.py, so a Windows or
+macOS shell can drive the same core with a different webview.
 
 A .md file is untrusted content a user double-clicks (install.sh makes this
 the system default handler for text/markdown), so the rendered document runs
 with document JavaScript structurally disabled, its HTML run through an
-explicit sanitizer allowlist, no persistent storage, no network egress
-beyond the click-to-open-externally path, and developer tools off unless
---debug/ZEILE_DEBUG is set. The README's Security section states the full
-threat model and what was measured rather than assumed.
+explicit sanitizer allowlist, the document carrying its own CSP, no persistent
+storage, no network egress beyond the click-to-open-externally path, and
+developer tools off unless --debug/ZEILE_DEBUG is set. The README's Security
+section states the full threat model and what was measured rather than assumed.
 """
 
 from __future__ import annotations
 
 import argparse
-import gettext
-import html
 import json
-import math
 import os
 import re
 import sys
-from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
 
@@ -36,488 +34,87 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
 gi.require_version("WebKit", "6.0")
 
-import markdown  # noqa: E402
-import nh3  # noqa: E402
 from gi.repository import Gdk, Gio, GLib, Gtk, Pango, WebKit  # noqa: E402
 
-from markdown_ext import (  # noqa: E402
-    GfmAlertExtension,
-    LanguageGuessExtension,
-    MermaidExtension,
+from documents import (  # noqa: E402
+    EXTENSION_CONFIGS,
+    EXTENSIONS,
+    DocumentStats,
+    build_document,
+    classify_local_target,
+    compute_document_stats,
+    enhance_code_blocks,
+    flatten_toc,
+    read_asset,
+    render,
+    render_body,
+    sanitize_html,
+)
+from i18n import _, _n  # noqa: E402
+from launch import (  # noqa: E402
+    LaunchPhase,
+    launch_asset_path,
+    phase_opacity,
+    plan_launch_sequence,
+)
+from preferences import (  # noqa: E402
+    BODY_FONT_OPTIONS,
+    CODE_FONT_OPTIONS,
+    READING_WIDTH_OPTIONS,
+    THEME_OPTIONS,
+    _coerce_font,
+    _coerce_reading_width,
+    _coerce_theme,
+    _default_settings_path,
+    _font_label,
+    _theme_label,
+    is_theme_dark,
+    load_settings,
+    save_settings,
 )
 
 APP_ID = "com.erdlabs.zeile"
 __version__ = "0.5.0"
 
-# fallback=True: on a system with no compiled translation for the current
-# locale (or none at all, as on this dev machine's default LANG), _() just
-# returns the original English string instead of raising -- translation is
-# additive, never a hard requirement to run. ngettext is exposed as _n for
-# the search-bar match count.
-_translation = gettext.translation(
-    "zeile", localedir=Path(__file__).resolve().parent / "locale", fallback=True
-)
-_ = _translation.gettext
-_n = _translation.ngettext
-
-
-EXTENSIONS = [
-    "extra",  # tables, fenced_code, footnotes, def_list, abbr, attr_list
-    "admonition",
-    "codehilite",
-    "sane_lists",
-    "smarty",
-    "toc",
-    "pymdownx.tasklist",
+# The names above are re-exported on purpose: tests, scripts and the headless
+# GUI matrix have always reached them as `zeile.X`, and the split into modules
+# must not turn that into a scavenger hunt.
+__all__ = [
+    "APP_ID",
+    "BODY_FONT_OPTIONS",
+    "CODE_FONT_OPTIONS",
+    "DocumentStats",
+    "EXTENSION_CONFIGS",
+    "EXTENSIONS",
+    "LaunchPhase",
+    "READING_WIDTH_OPTIONS",
+    "THEME_OPTIONS",
+    "ZeileApp",
+    "_coerce_font",
+    "_coerce_reading_width",
+    "_coerce_theme",
+    "_default_settings_path",
+    "_font_label",
+    "_theme_label",
+    "build_document",
+    "classify_local_target",
+    "compute_document_stats",
+    "enhance_code_blocks",
+    "flatten_toc",
+    "is_theme_dark",
+    "launch_asset_path",
+    "load_settings",
+    "main",
+    "phase_opacity",
+    "plan_launch_sequence",
+    "play_launch_sequence",
+    "print_backends_available",
+    "read_asset",
+    "render",
+    "render_body",
+    "sanitize_html",
+    "save_settings",
 ]
-
-EXTENSION_CONFIGS = {
-    "codehilite": {"guess_lang": False, "noclasses": False},
-    "toc": {"permalink": "#", "permalink_title": _("Link to this section")},
-    "pymdownx.tasklist": {"custom_checkbox": False},
-}
-
-
-# A YAML frontmatter block, stripped before conversion -- python-markdown has
-# no opinion on frontmatter, so left alone it renders as a literal <hr> plus
-# a paragraph of raw "key: value" text, confirmed broken. Anchored to the
-# very start of the document; the closing "---" must be alone on its own
-# line, same shape most static-site generators use.
-_FRONTMATTER_RE = re.compile(r"\A---\n.*?\n---\n?", re.DOTALL)
-
-
-def _strip_frontmatter(text: str) -> str:
-    return _FRONTMATTER_RE.sub("", text, count=1)
-
-
-def _visible_text(text: str) -> str:
-    """Extract visible document text for reading statistics.
-
-    Strips frontmatter, link URLs (keeping visible anchor text), image definitions,
-    HTML tags, reference-style links, and bare URLs so only readable words are counted.
-    """
-    clean = _strip_frontmatter(text)
-    clean = re.sub(r"^\s*\[[^\]]+\]:\s*\S+.*$", "", clean, flags=re.MULTILINE)
-    clean = re.sub(r"!\[([^\]]*)\]\([^)]+\)", "", clean)
-    clean = re.sub(r"!\[([^\]]*)\]\[[^\]]*\]", "", clean)
-    clean = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", clean)
-    clean = re.sub(r"\[([^\]]+)\]\[[^\]]*\]", r"\1", clean)
-    clean = re.sub(r"<[^>]+>", " ", clean)
-    clean = re.sub(r"https?://\S+", "", clean)
-    return clean
-
-
-@dataclass(frozen=True)
-class DocumentStats:
-    words: int
-    chars: int
-    reading_time_minutes: int
-
-
-def compute_document_stats(text: str) -> DocumentStats:
-    """Compute word count, character count, and estimated reading time.
-
-    Frontmatter, link destinations, images, and markup are stripped prior to counting.
-    Words are counted via Unicode word tokens. Estimated reading time assumes
-    standard 200 WPM silent reading speed.
-    """
-    visible = _visible_text(text)
-    words = len(re.findall(r"\b\w+\b", visible))
-    chars = len(visible)
-    reading_time = max(1, math.ceil(words / 200)) if words > 0 else 0
-    return DocumentStats(words=words, chars=chars, reading_time_minutes=reading_time)
-
-
-# No script-src entry: enable-javascript-markup=False (set on the WebView
-# below) already prevents any document <script> from running, and nh3 (see
-# sanitize_html()) strips <script> tags outright regardless. This CSP layer
-# exists for the non-script vector that needs no script at all -- an
-# `<img src=http://tracker/pixel>` beacon -- which img-src 'self' kills.
-# style-src allows inline <style> since we own all page styling ourselves
-# and inject it as a literal <style> block below.
-_CSP = (
-    "default-src 'none'; img-src 'self' data:; font-src 'self' data:; "
-    "style-src 'unsafe-inline'"
-)
-
-# nh3's own defaults strip `class`/`id` from most tags. Used as-is that
-# silently breaks codehilite's <span class="k"> (colourless syntax
-# highlighting), every heading id (kills TOC anchors), and footnote id/href
-# pairs -- confirmed empirically before wiring this in. Mermaid diagrams are
-# deliberately NOT special-cased here: they never reach the sanitizer as SVG
-# markup at all (see markdown_ext.MermaidExtension's nonce mechanism), so
-# this allowlist stays exactly as narrow as the plain-markdown features
-# above actually need.
-_ALLOWED_TAGS = nh3.ALLOWED_TAGS | {"input"}
-_ALLOWED_ATTRIBUTES = {
-    **nh3.ALLOWED_ATTRIBUTES,
-    "abbr": {"title"},
-    "h1": {"id"},
-    "h2": {"id"},
-    "h3": {"id"},
-    "h4": {"id"},
-    "h5": {"id"},
-    "h6": {"id"},
-    "span": {"class"},
-    "code": {"class"},
-    "pre": {"class"},
-    "div": {"class"},
-    "p": {"class"},
-    "ul": {"class"},
-    "li": {"id", "class"},
-    "sup": {"id"},
-    "a": {"id", "href", "class", "name"},
-    # pymdownx.tasklist checkboxes -- read-only, `disabled` is load-bearing
-    # (without it a click would try to toggle state nothing persists).
-    "input": {"type", "disabled", "checked"},
-}
-
-
-THEME_OPTIONS = (
-    "auto",
-    "github-light",
-    "github-dark",
-    "catppuccin-latte",
-    "catppuccin-frappe",
-    "catppuccin-macchiato",
-    "catppuccin-mocha",
-    "solarized-light",
-    "solarized-dark",
-    "gruvbox-light",
-    "gruvbox-dark",
-    "nord",
-    "dracula",
-    "rose-pine",
-    "rose-pine-dawn",
-    "tokyo-night",
-    "tokyo-night-day",
-    "cyberpunk",
-    "vscode-dark",
-    "one-dark",
-    "monokai",
-)
-
-THEME_DARKNESS: dict[str, bool | None] = {
-    "auto": None,
-    "github-light": False,
-    "github-dark": True,
-    "catppuccin-latte": False,
-    "catppuccin-frappe": True,
-    "catppuccin-macchiato": True,
-    "catppuccin-mocha": True,
-    "solarized-light": False,
-    "solarized-dark": True,
-    "gruvbox-light": False,
-    "gruvbox-dark": True,
-    "nord": True,
-    "dracula": True,
-    "rose-pine": True,
-    "rose-pine-dawn": False,
-    "tokyo-night": True,
-    "tokyo-night-day": False,
-    "cyberpunk": True,
-    "vscode-dark": True,
-    "one-dark": True,
-    "monokai": True,
-}
-
-
-BODY_FONT_OPTIONS = (
-    "system",
-    "inter",
-    "atkinson",
-    "ia-writer",
-    "noto-serif",
-    "ibmplex-sans",
-)
-
-CODE_FONT_OPTIONS = (
-    "system",
-    "jetbrains-mono",
-    "ia-writer",
-    "fira-code",
-    "cascadia-code",
-)
-
-READING_WIDTH_OPTIONS = (
-    "narrow",
-    "standard",
-    "wide",
-)
-
-_DEFAULT_SETTINGS = {
-    "theme": "auto",
-    "body_font": "system",
-    "code_font": "system",
-    "reading_width": "standard",
-    "zoom": "1.0",
-    "window_w": "900",
-    "window_h": "1000",
-    "window_maximized": "false",
-    "intro_seen": "false",  # the erdlabs intro plays once per install (#5)
-}
-_ZOOM_MIN, _ZOOM_MAX = 0.4, 3.0
-_WINDOW_MIN, _WINDOW_MAX = 200, 10000
-
-
-def _default_settings_path() -> Path:
-    return (
-        Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config")))
-        / "zeile"
-        / "settings.json"
-    )
-
-
-def _coerce_theme(theme: str) -> str:
-    return theme if theme in THEME_OPTIONS else _DEFAULT_SETTINGS["theme"]
-
-
-def _coerce_font(font: str, kind: str) -> str:
-    allowed = BODY_FONT_OPTIONS if kind == "body" else CODE_FONT_OPTIONS
-    return (
-        font
-        if font in allowed
-        else _DEFAULT_SETTINGS["body_font" if kind == "body" else "code_font"]
-    )
-
-
-def _coerce_reading_width(width: object) -> str:
-    return (
-        width
-        if isinstance(width, str) and width in READING_WIDTH_OPTIONS
-        else _DEFAULT_SETTINGS["reading_width"]
-    )
-
-
-def _as_finite_float(value: object) -> float | None:
-    """Return `value` as a finite float, or None if it is not one.
-
-    JSON can smuggle in values float() accepts but no UI can use: 1e309
-    (inf), "nan", and integers beyond float range (OverflowError). Bools
-    are rejected explicitly because JSON `true` would otherwise read as 1.
-    """
-    if isinstance(value, bool):
-        return None
-    try:
-        n = float(value)  # type: ignore[arg-type]
-    except (TypeError, ValueError, OverflowError):
-        return None
-    return n if math.isfinite(n) else None
-
-
-def _coerce_number(
-    value: object,
-    lo: float,
-    hi: float,
-    *,
-    integer: bool = False,
-    default: str | None = None,
-) -> str:
-    """Clamp-to-range number coercion for free-form settings values.
-
-    Unparseable or non-finite input falls back to `default` (the documented
-    default), not to the range minimum -- "garbage" should restore the
-    shipped default, not produce a 200px window.
-    """
-    n = _as_finite_float(value)
-    if n is None:
-        if default is not None:
-            return default
-        n = 0.0
-    n = min(hi, max(lo, n))
-    return str(int(n)) if integer else str(n)
-
-
-def is_theme_dark(theme_id: str, *, fallback: bool) -> bool:
-    value = THEME_DARKNESS.get(theme_id)
-    if value is None:
-        return fallback
-    return value
-
-
-def load_settings(*, path: Path | None = None) -> dict[str, str]:
-    """Load viewer settings from JSON with robust fallback."""
-    settings_path = path or _default_settings_path()
-    settings = dict(_DEFAULT_SETTINGS)
-    try:
-        data = json.loads(settings_path.read_text(encoding="utf-8"))
-    # UnicodeDecodeError is a ValueError; RecursionError covers pathological
-    # nesting. Any of them means "unreadable settings", i.e. the defaults.
-    except (OSError, ValueError, RecursionError):
-        return settings
-
-    if not isinstance(data, dict):
-        return settings
-
-    theme = data.get("theme")
-    if isinstance(theme, str):
-        settings["theme"] = _coerce_theme(theme)
-
-    body_font = data.get("body_font")
-    if isinstance(body_font, str):
-        settings["body_font"] = _coerce_font(body_font, kind="body")
-
-    code_font = data.get("code_font")
-    if isinstance(code_font, str):
-        settings["code_font"] = _coerce_font(code_font, kind="code")
-
-    reading_width = data.get("reading_width")
-    if isinstance(reading_width, str):
-        settings["reading_width"] = _coerce_reading_width(reading_width)
-
-    # Free-form numeric/bool keys: non-finite or unparseable values keep the
-    # default, finite out-of-range values are clamped; nothing raises.
-    zoom = _as_finite_float(data.get("zoom"))
-    if zoom is not None:
-        settings["zoom"] = _coerce_number(zoom, _ZOOM_MIN, _ZOOM_MAX)
-    for key in ("window_w", "window_h"):
-        width = _as_finite_float(data.get(key))
-        if width is not None:
-            settings[key] = _coerce_number(width, _WINDOW_MIN, _WINDOW_MAX, integer=True)
-    maximized = data.get("window_maximized")
-    if isinstance(maximized, bool):
-        settings["window_maximized"] = "true" if maximized else "false"
-    elif maximized in ("true", "false"):
-        settings["window_maximized"] = maximized
-
-    intro_seen = data.get("intro_seen")
-    if isinstance(intro_seen, bool):
-        settings["intro_seen"] = "true" if intro_seen else "false"
-    elif intro_seen in ("true", "false"):
-        settings["intro_seen"] = intro_seen
-
-    return settings
-
-
-def save_settings(settings: dict[str, str], *, path: Path | None = None) -> None:
-    """Persist settings if possible; silently ignore environment write failures."""
-    settings_path = path or _default_settings_path()
-    try:
-        settings_path.parent.mkdir(parents=True, exist_ok=True)
-        payload = {
-            "theme": _coerce_theme(settings.get("theme", _DEFAULT_SETTINGS["theme"])),
-            "body_font": _coerce_font(
-                settings.get("body_font", _DEFAULT_SETTINGS["body_font"]), kind="body"
-            ),
-            "code_font": _coerce_font(
-                settings.get("code_font", _DEFAULT_SETTINGS["code_font"]), kind="code"
-            ),
-            "reading_width": _coerce_reading_width(
-                settings.get("reading_width", _DEFAULT_SETTINGS["reading_width"])
-            ),
-            "zoom": _coerce_number(
-                settings.get("zoom", _DEFAULT_SETTINGS["zoom"]),
-                _ZOOM_MIN,
-                _ZOOM_MAX,
-                default=_DEFAULT_SETTINGS["zoom"],
-            ),
-            "window_w": _coerce_number(
-                settings.get("window_w", _DEFAULT_SETTINGS["window_w"]),
-                _WINDOW_MIN,
-                _WINDOW_MAX,
-                integer=True,
-                default=_DEFAULT_SETTINGS["window_w"],
-            ),
-            "window_h": _coerce_number(
-                settings.get("window_h", _DEFAULT_SETTINGS["window_h"]),
-                _WINDOW_MIN,
-                _WINDOW_MAX,
-                integer=True,
-                default=_DEFAULT_SETTINGS["window_h"],
-            ),
-            "window_maximized": (
-                "true"
-                if settings.get("window_maximized", _DEFAULT_SETTINGS["window_maximized"])
-                in (True, "true")
-                else "false"
-            ),
-            "intro_seen": (
-                "true"
-                if settings.get("intro_seen", _DEFAULT_SETTINGS["intro_seen"])
-                in (True, "true")
-                else "false"
-            ),
-        }
-        settings_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    except OSError:
-        return
-
-
-def sanitize_html(body: str) -> str:
-    """Strip everything nh3.clean() doesn't explicitly allow.
-
-    Runs on markdown's converted output, which includes not just markdown
-    syntax but any raw HTML a .md source embeds directly (the `extra`
-    bundle's html passthrough) -- <script>, on* handlers, javascript:/data:
-    URLs, <iframe>/<object>/<embed>, meta-refresh and <style> blocks are all
-    removed here, verified empirically against nh3's actual default+override
-    behaviour rather than assumed from its docs.
-    """
-    return nh3.clean(body, tags=_ALLOWED_TAGS, attributes=_ALLOWED_ATTRIBUTES)
-
-
-# Code blocks are <pre>...</pre> (codehilite wraps some in a .codehilite
-# div, plain/indented ones are bare). Non-greedy so each block maps to one
-# match; a <pre> can never nest inside another in valid HTML.
-_PRE_BLOCK_RE = re.compile(r"<pre\b[^>]*>.*?</pre>", re.S)
-
-# Copy affordance for code blocks. The button is an <a> with a zeile-copy:
-# URI, NOT a <button> with JS: document JavaScript is structurally disabled
-# (enable_javascript-markup=False), so an in-page click handler could never
-# run. Clicking the link fires decide-policy instead (a navigation attempt
-# is pure HTML, no script involved), where the scheme is intercepted and
-# the block's plain text -- captured here at render time -- is put on the
-# GTK clipboard. The markup is injected *after* sanitize_html() (the same
-# post-sanitizer pattern MermaidExtension.resolve uses) and contains only
-# our own static strings plus an int index, so it widens the sanitizer's
-# attack surface by nothing. A hostile .md embedding its own zeile-copy:
-# link can at worst copy a block of its own content.
-_COPY_ICONS = (
-    '<svg class="ic ic-copy" viewBox="0 0 16 16" width="14" height="14"'
-    ' aria-hidden="true"><rect x="5.5" y="5.5" width="8.5" height="8.5" rx="1.6"'
-    ' fill="none" stroke="currentColor" stroke-width="1.4"/>'
-    '<path d="M10.5 5.5V3.9A1.4 1.4 0 0 0 9.1 2.5H3.9A1.4 1.4 0 0 0 2.5 3.9'
-    'v5.2a1.4 1.4 0 0 0 1.4 1.4h1.6" fill="none" stroke="currentColor"'
-    ' stroke-width="1.4"/></svg>'
-    '<svg class="ic ic-check" viewBox="0 0 16 16" width="14" height="14"'
-    ' aria-hidden="true"><path d="M3 8.5 6.5 12 13 4.5" fill="none"'
-    ' stroke="currentColor" stroke-width="1.8" stroke-linecap="round"'
-    ' stroke-linejoin="round"/></svg>'
-)
-
-
-def _pre_plain_text(pre_html: str) -> str:
-    """Plain text content of a rendered <pre> block (tags stripped,
-    entities unescaped). The input came out of the sanitizer, so no raw
-    unescaped '<' can hide in a text node."""
-    return html.unescape(re.sub(r"<[^>]+>", "", pre_html))
-
-
-def enhance_code_blocks(body: str) -> tuple[str, list[str]]:
-    """Wrap every <pre> block with a copy affordance.
-
-    Returns (new_body, plain_texts): plain_texts[i] is what clicking the
-    i-th block's copy link puts on the clipboard, in document order.
-    """
-    texts: list[str] = []
-
-    def _wrap(match: re.Match[str]) -> str:
-        idx = len(texts)
-        texts.append(_pre_plain_text(match.group(0)))
-        return (
-            '<div class="code-block">'
-            f'<a class="code-copy" href="zeile-copy://{idx}"'
-            f' title="{html.escape(_("Copy"))}"'
-            f' aria-label="{html.escape(_("Copy code"))}">'
-            f"{_COPY_ICONS}</a>{match.group(0)}</div>"
-        )
-
-    return _PRE_BLOCK_RE.sub(_wrap, body), texts
-
-
-def read_asset(name: str) -> str:
-    """Return the contents of an asset shipped next to this script."""
-    return (Path(__file__).resolve().parent / "assets" / name).read_text(encoding="utf-8")
 
 
 def print_backends_available() -> bool:
@@ -544,264 +141,10 @@ def print_backends_available() -> bool:
     return not found_module_tree
 
 
-def render_body(
-    text: str,
-    *,
-    enable_mermaid: bool,
-    dark: bool,
-    theme_id: str = "auto",
-    body_font_id: str = "system",
-    code_font_id: str = "system",
-) -> tuple[str, list[dict], list[str]]:
-    """Convert markdown text to sanitized HTML body content.
-
-    Pure function -- no file I/O, no GTK -- so it's unit-testable directly.
-    Returns (body, toc_tokens, code_texts): the `toc` extension already
-    computes a heading tree for anchor generation, so the TOC overlay reuses
-    it instead of re-deriving it from the rendered HTML; code_texts is the
-    plain text of each code block in document order (see
-    enhance_code_blocks), consumed by the copy-to-clipboard handler.
-
-    body_font_id/code_font_id don't change the body HTML -- fonts are applied
-    purely in CSS via data-font-* attributes on <html> (see build_document) --
-    but they're accepted here so render() can forward the full setting set
-    without the call sites needing to know which knobs affect which stage.
-    """
-    # Mermaid SVGs are pre-rendered with a light/dark palette baked in, so a
-    # theme's darkness (not the system preference) decides the mmdc theme.
-    theme_dark = is_theme_dark(theme_id, fallback=dark)
-    text = _strip_frontmatter(text)
-    mermaid_ext = MermaidExtension(enable_mermaid=enable_mermaid, dark=theme_dark)
-    md = markdown.Markdown(
-        extensions=[
-            *EXTENSIONS,
-            mermaid_ext,
-            LanguageGuessExtension(),
-            GfmAlertExtension(),
-        ],
-        extension_configs=EXTENSION_CONFIGS,
-    )
-    body = md.convert(text)
-    body = sanitize_html(body)
-    body = mermaid_ext.resolve(body)
-    body, code_texts = enhance_code_blocks(body)
-    return body, md.toc_tokens, code_texts  # type: ignore[attr-defined]
-
-
-def build_document(
-    body: str,
-    title: str,
-    *,
-    theme_id: str = "auto",
-    body_font_id: str = "system",
-    code_font_id: str = "system",
-    reading_width: str = "standard",
-) -> str:
-    """Wrap a sanitized HTML body in the full page shell (CSP, stylesheet)."""
-    theme_id = _coerce_theme(theme_id)
-    body_font_id = _coerce_font(body_font_id, kind="body")
-    code_font_id = _coerce_font(code_font_id, kind="code")
-    reading_width = _coerce_reading_width(reading_width)
-
-    theme_attr = f' data-theme="{html.escape(theme_id)}"' if theme_id != "auto" else ""
-    font_body_attr = f' data-font-body="{html.escape(body_font_id)}"'
-    font_code_attr = f' data-font-code="{html.escape(code_font_id)}"'
-    # Absent for the default so existing documents stay visually unchanged.
-    width_attr = (
-        f' data-width="{html.escape(reading_width)}"' if reading_width != "standard" else ""
-    )
-    stylesheet = read_asset("style.css") + "\n" + read_asset("themes.css")
-
-    return (
-        "<!DOCTYPE html><html"
-        f"{theme_attr}{font_body_attr}{font_code_attr}{width_attr}>"
-        "<head><meta charset='utf-8'>"
-        f"<meta http-equiv='Content-Security-Policy' content=\"{_CSP}\">"
-        f"<title>{html.escape(title)}</title>"
-        f"<style>{stylesheet}</style>"
-        "</head><body><article class='markdown-body'>"
-        f"{body}</article></body></html>"
-    )
-
-
-def render(
-    path: Path,
-    *,
-    enable_mermaid: bool,
-    dark: bool,
-    theme_id: str = "auto",
-    body_font_id: str = "system",
-    code_font_id: str = "system",
-    reading_width: str = "standard",
-) -> tuple[str, list[dict], list[str]]:
-    """Read `path`, render and sanitize markdown.
-
-    Returns (html_doc, toc_tokens, code_texts) -- code_texts being the
-    plain text of each code block in document order, for the clipboard.
-    """
-    code_texts: list[str] = []
-    try:
-        # Malformed bytes become U+FFFD instead of aborting the whole render.
-        text = path.read_text(encoding="utf-8", errors="replace")
-    except OSError as exc:
-        body = f"<h1>{_('Cannot read file')}</h1><pre>{html.escape(str(exc))}</pre>"
-        toc_tokens: list[dict] = []
-    else:
-        body, toc_tokens, code_texts = render_body(
-            text,
-            enable_mermaid=enable_mermaid,
-            dark=dark,
-            theme_id=theme_id,
-            body_font_id=body_font_id,
-            code_font_id=code_font_id,
-        )
-
-    return (
-        build_document(
-            body,
-            path.name,
-            theme_id=theme_id,
-            body_font_id=body_font_id,
-            code_font_id=code_font_id,
-            reading_width=reading_width,
-        ),
-        toc_tokens,
-        code_texts,
-    )
-
-
-def flatten_toc(tokens: list[dict], depth: int = 0) -> list[tuple[int, str, str]]:
-    """Flatten the `toc` extension's nested heading tree to (depth, id, name)."""
-    flat: list[tuple[int, str, str]] = []
-    for token in tokens:
-        flat.append((depth, token["id"], token["name"]))
-        flat.extend(flatten_toc(token.get("children", []), depth + 1))
-    return flat
-
-
-_MARKDOWN_SUFFIXES = {".md", ".markdown"}
-# Local files WebKit may load directly in the view. Anything else (.html, .svg,
-# ...) would render without the generated document's CSP and sanitizer, so it
-# goes to the system opener instead.
-_DIRECT_LOAD_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif"}
-
-
-def classify_local_target(target: Path, document: Path) -> str:
-    """Decide what a link to a local file does: "navigate", "load" or "external"."""
-    if not target.is_relative_to(document.parent):
-        return "external"
-    suffix = target.suffix.lower()
-    if target == document:
-        return "load"  # reload / same-document navigation stays in the view
-    if suffix in _MARKDOWN_SUFFIXES:
-        return "navigate"
-    return "load" if suffix in _DIRECT_LOAD_SUFFIXES else "external"
-
-
 def _a11y_label(widget: Gtk.Widget, label: str) -> None:
     """Icon-only buttons need an accessible name; tooltips alone are not
     reliably exposed to assistive technology."""
     widget.update_property([Gtk.AccessibleProperty.LABEL], [label])
-
-
-def _theme_label(theme_id: str) -> str:
-    mapping = {
-        "auto": _("Auto (system)"),
-        "github-light": _("GitHub Light"),
-        "github-dark": _("GitHub Dark"),
-        "catppuccin-latte": _("Catppuccin Latte"),
-        "catppuccin-frappe": _("Catppuccin Frappé"),
-        "catppuccin-macchiato": _("Catppuccin Macchiato"),
-        "catppuccin-mocha": _("Catppuccin Mocha"),
-        "solarized-light": _("Solarized Light"),
-        "solarized-dark": _("Solarized Dark"),
-        "gruvbox-light": _("Gruvbox Light"),
-        "gruvbox-dark": _("Gruvbox Dark"),
-        "nord": _("Nord"),
-        "dracula": _("Dracula"),
-        "rose-pine": _("Rosé Pine"),
-        "rose-pine-dawn": _("Rosé Pine Dawn"),
-        "tokyo-night": _("Tokyo Night"),
-        "tokyo-night-day": _("Tokyo Night Day"),
-        "cyberpunk": _("Cyberpunk"),
-        "vscode-dark": _("VS Code Dark"),
-        "one-dark": _("One Dark"),
-        "monokai": _("Monokai"),
-    }
-    return mapping.get(theme_id, theme_id)
-
-
-def _font_label(font_id: str, *, is_code: bool) -> str:
-    if is_code:
-        mapping = {
-            "system": _("System monospace"),
-            "jetbrains-mono": _("JetBrains Mono"),
-            "ia-writer": _("iA Writer Mono"),
-            "fira-code": _("Fira Code"),
-            "cascadia-code": _("Cascadia Code"),
-        }
-        return mapping.get(font_id, font_id)
-
-    mapping = {
-        "system": _("System"),
-        "inter": _("Inter"),
-        "atkinson": _("Atkinson Hyperlegible"),
-        "ia-writer": _("iA Writer Quattro"),
-        "noto-serif": _("Noto Serif"),
-        "ibmplex-sans": _("IBM Plex Sans"),
-    }
-    return mapping.get(font_id, font_id)
-
-
-@dataclass(frozen=True)
-class LaunchPhase:
-    """One frame of the launch sequence; durations in milliseconds."""
-
-    asset: str
-    fade_in: int
-    hold: int
-    fade_out: int
-
-    @property
-    def total(self) -> int:
-        return self.fade_in + self.hold + self.fade_out
-
-
-# docs/SPLASH.md + BRAND.md §7: the erdlabs mark and product logo play once
-# per install (~2.8 s + 1.4 s); later native starts show nothing.
-_INTRO_PHASE = LaunchPhase("logo_erdlabs.png", 800, 1200, 800)
-_LOGO_PHASE = LaunchPhase("zeile.png", 400, 600, 400)
-
-
-def launch_asset_path(asset: str) -> Path:
-    """Resolve a launch-sequence image; product logo lives in the icon set."""
-    root = Path(__file__).resolve().parent
-    if asset == "zeile.png":
-        return root / "icons" / "hicolor" / "512x512" / "apps" / "zeile.png"
-    return root / "assets" / asset
-
-
-def plan_launch_sequence(*, intro_seen: bool, animations: bool) -> list[LaunchPhase]:
-    """Phases to play on first start only; with animations off the fades go."""
-    if intro_seen:
-        return []
-    phases = [_INTRO_PHASE, _LOGO_PHASE]
-    if animations:
-        return phases
-    return [LaunchPhase(p.asset, 0, p.hold, 0) for p in phases]
-
-
-def phase_opacity(phase: LaunchPhase, t_ms: float) -> float:
-    """Linear fade in, hold, fade out; 0 outside the phase."""
-    if t_ms < 0 or t_ms >= phase.total:
-        return 0.0
-    if phase.fade_in and t_ms < phase.fade_in:
-        return t_ms / phase.fade_in
-    if t_ms < phase.fade_in + phase.hold:
-        return 1.0
-    if phase.fade_out:
-        return (phase.total - t_ms) / phase.fade_out
-    return 0.0
 
 
 class LaunchSplash(Gtk.Window):

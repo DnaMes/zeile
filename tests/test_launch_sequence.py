@@ -11,14 +11,8 @@ from pathlib import Path
 
 import pytest
 
-import zeile
-from zeile import (
-    launch_asset_path,
-    load_settings,
-    phase_opacity,
-    plan_launch_sequence,
-    save_settings,
-)
+from launch import launch_asset_path, phase_opacity, plan_launch_sequence
+from preferences import load_settings, save_settings
 
 
 def test_first_start_plays_intro_then_logo():
@@ -90,7 +84,9 @@ def test_other_saves_keep_the_intro_flag(tmp_path):
 
 
 def test_version_is_shown_only_in_the_about_dialog():
-    source = Path(zeile.__file__).read_text(encoding="utf-8")
+    source = (Path(__file__).resolve().parent.parent / "zeile.py").read_text(
+        encoding="utf-8"
+    )
     uses = [m.start() for m in re.finditer(r"\b__version__\b", source)]
     # definition + the single About-dialog use
     assert len(uses) == 2

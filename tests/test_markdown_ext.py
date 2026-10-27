@@ -14,8 +14,8 @@ import markdown
 import pytest
 
 import mermaid_render
+from documents import EXTENSION_CONFIGS, EXTENSIONS, sanitize_html
 from markdown_ext import GfmAlertExtension, LanguageGuessExtension, MermaidExtension
-from zeile import EXTENSION_CONFIGS, EXTENSIONS, sanitize_html
 
 
 def render(text: str, *, enable_mermaid: bool = False, dark: bool = False) -> str:

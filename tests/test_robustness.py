@@ -9,7 +9,8 @@ from pathlib import Path
 
 import pytest
 
-from zeile import load_settings, render, save_settings
+from documents import render
+from preferences import load_settings, save_settings
 
 DEFAULTS = {
     "theme": "auto",

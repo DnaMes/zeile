@@ -7,6 +7,15 @@ Versioning: [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- The markdown pipeline, the settings store and the launch plan now live in `documents.py`,
+  `preferences.py` and `launch.py`, none of which import a GUI toolkit: the same document a Linux
+  WebKitGTK window renders can be driven by a Windows or macOS shell. The Linux shell (`zeile.py`)
+  behaves exactly as before.
+- CI runs those core tests on Linux, Windows and macOS, so a platform-specific assumption fails in
+  the pull request instead of during a port.
+
 ### Removed
 
 - Internal working documents — agent instructions, session handoffs, dead Forgejo templates and a

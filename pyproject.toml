@@ -6,6 +6,9 @@ requires-python = ">=3.11"
 [tool.ruff]
 line-length = 92
 target-version = "py311"
+# docs/ is prose: plans and READMEs quote illustrative snippets, and a
+# formatter that rewrites them turns every documentation edit into churn.
+extend-exclude = ["docs"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]

@@ -42,6 +42,40 @@ jobs:
       - name: shellcheck
         run: shellcheck install.sh scripts/*.sh packaging/*.sh packaging/*/*.sh
 
+  core:
+    # The platform-neutral core is what a Windows and a macOS shell will drive.
+    # Running its tests on all three operating systems is the cheapest way to
+    # keep it platform-neutral: a stray `import gi`, a hard-coded POSIX path or
+    # a text-mode file read with the wrong encoding fails here, today.
+    name: core (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Python dependencies
+        run: >-
+          python -m pip install --upgrade pip
+          markdown nh3 pymdown-extensions pygments pytest
+
+      - name: Core tests (no GUI toolkit installed on purpose)
+        run: >-
+          python -m pytest -q
+          tests/test_zeile.py
+          tests/test_robustness.py
+          tests/test_launch_sequence.py
+          tests/test_code_lang.py
+          tests/test_markdown_ext.py
+          tests/test_mermaid_render.py
+          tests/test_core_isolation.py
+
   distro:
     name: distro (${{ matrix.image }})
     runs-on: ubuntu-latest
