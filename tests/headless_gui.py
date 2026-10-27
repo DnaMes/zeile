@@ -790,6 +790,42 @@ def run() -> None:
                         f"stats={stats_text!r} head={matched_head} none={matched_none}",
                     )
 
+                    # 10b. F1 shortcut overlay: open on F1, Escape closes,
+                    # action labels match the active (EN/DE) catalog.
+                    win._help_key.emit("key-pressed", Gdk.KEY_F1, 0, Gdk.ModifierType(0))
+                    overlay = win._shortcut_overlay
+                    opened = overlay is not None
+                    title = overlay.get_title() if overlay is not None else ""
+                    title_ok = title in ("Keyboard shortcuts", "Tastenkürzel")
+                    label_texts: list[str] = []
+
+                    def collect_labels(widget) -> None:
+                        if isinstance(widget, Gtk.Label):
+                            label_texts.append(widget.get_text() or "")
+                        get_child = getattr(widget, "get_first_child", None)
+                        child = get_child() if get_child is not None else None
+                        while child is not None:
+                            collect_labels(child)
+                            child = child.get_next_sibling()
+
+                    if overlay is not None and overlay.get_child() is not None:
+                        collect_labels(overlay.get_child())
+                    expected_actions = [
+                        action for _accel, action in win._shortcut_help_entries()
+                    ]
+                    labels_ok = all(action in label_texts for action in expected_actions)
+                    if overlay is not None:
+                        overlay._key.emit(
+                            "key-pressed", Gdk.KEY_Escape, 0, Gdk.ModifierType(0)
+                        )
+                    closed = win._shortcut_overlay is None
+                    check(
+                        "f1-shortcut-overlay",
+                        opened and closed and title_ok and labels_ok,
+                        f"opened={opened} closed={closed} title={title!r} "
+                        f"labels_ok={labels_ok}",
+                    )
+
                     # 11. fullscreen toggle
                     check(
                         "fullscreen-init",
