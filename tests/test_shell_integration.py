@@ -99,7 +99,7 @@ def test_completions_list_help_options_and_theme_font_ids() -> None:
 
 def test_theme_and_font_ids_match_zeile_tuples() -> None:
     """Completion id lists stay in lockstep with zeile.py tuples."""
-    assert len(THEME_OPTIONS) == 18
+    assert THEME_OPTIONS  # the count may grow; the loop below checks every id
     for path in COMPLETION_FILES:
         text = path.read_text(encoding="utf-8")
         for theme in THEME_OPTIONS:

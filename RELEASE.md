@@ -1,22 +1,20 @@
 # Release Checklist — zeile
 
 **This project does not ship to the Play Store.** It is a Linux desktop
-application distributed as source, so most of the label's release checklist
-does not apply. What remains is the licensing, versioning, security, and
-documentation work every erdlabs project owes before its repository goes
-public.
+application distributed as source and as Linux packages, so most of the label's
+release checklist does not apply. What remains is the licensing, versioning,
+security, and documentation work every erdlabs project owes a release. The
+repository has been public since 2026-10-26.
 
 Current version: **0.3.1** (`pyproject.toml`); 0.3.0 was the first public release (2026-10-26). The tag workflow publishes a checksumed Linux source archive;
 native Windows/macOS artifacts are intentionally not produced until the
 WebView backend is ported (see README's Platform support section).
 
-**Version drift risk**: `pyproject.toml`'s `version` and `zeile.py`'s
-`__version__` (shown in the About dialog) are two hand-synced copies, not
-one source of truth — this bare-Python project has no build step to derive
-one from the other the way `docs/VERSIONING.md`'s `versionCode` derivation
-does for the Android apps in this label. Check both are still equal before
-tagging; a future bump script for this project should read one and write
-the other, not update them independently.
+**Version drift risk**: `pyproject.toml`'s `version`, `zeile.py`'s `__version__` (shown in the
+About dialog) and `packaging/PKGBUILD`'s `pkgver` are three hand-synced copies;
+`python3 scripts/check_version.py X.Y.Z [--tag vX.Y.Z]` fails on drift and the release workflow runs
+it. The deb, rpm and Flatpak builds read the version from `pyproject.toml`; the AppStream metainfo
+and the CHANGELOG carry it by hand: update both when bumping.
 
 ---
 
@@ -138,8 +136,8 @@ puppeteer @mermaid-js/mermaid-cli`), a real flowchart rendered through
 
 ## Publishing
 
-- [x] Repository is private on GitHub (`DnaMes/zeile`) — confirmed as of
-      this rename; re-check before any public-listing decision.
+- [x] Repository was private on GitHub (`DnaMes/zeile`) until 2026-10-26; it is public now
+      (see "Going public" above).
 - [x] Tag `v0.2.0` and cut a GitHub release — done 2026-09-24
       (https://github.com/DnaMes/zeile/releases/tag/v0.2.0). Built and
       published locally (`git archive` tarball + `SHA256SUMS`, notes from

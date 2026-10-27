@@ -1769,6 +1769,7 @@ class Viewer(Gtk.ApplicationWindow):
             application=self.get_application(),
             title=_("Keyboard shortcuts"),
             transient_for=self,
+            destroy_with_parent=True,  # closing the viewer must not strand this window
             modal=False,
             resizable=False,
         )
