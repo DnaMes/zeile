@@ -139,7 +139,9 @@ cat > "$DESKTOP_FILE" <<EOF
 Type=Application
 Name=zeile
 GenericName=Markdown Viewer
+GenericName[de]=Markdown-Betrachter
 Comment=View markdown files
+Comment[de]=Markdown-Dateien anzeigen
 Exec=$LAUNCHER %f
 Icon=zeile
 Terminal=false

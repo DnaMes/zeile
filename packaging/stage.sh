@@ -41,7 +41,9 @@ cat > "$DESTDIR$PREFIX/share/applications/zeile.desktop" <<DESKTOP
 Type=Application
 Name=zeile
 GenericName=Markdown Viewer
+GenericName[de]=Markdown-Betrachter
 Comment=View markdown files
+Comment[de]=Markdown-Dateien anzeigen
 Exec=$PREFIX/bin/zeile %f
 Icon=zeile
 Terminal=false

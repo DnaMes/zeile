@@ -2,11 +2,14 @@
 Type=Application
 Name=zeile
 GenericName=Markdown Viewer
+GenericName[de]=Markdown-Betrachter
 Comment=View markdown files with live reload
+Comment[de]=Markdown-Dateien mit Live-Neuladen anzeigen
 Exec=zeile %f
 Icon=com.erdlabs.zeile
 Terminal=false
 Categories=Utility;Viewer;
 Keywords=markdown;viewer;reader;mermaid;
+Keywords[de]=Markdown;Betrachter;Leser;Mermaid;
 MimeType=text/markdown;text/x-markdown;
 StartupWMClass=com.erdlabs.zeile

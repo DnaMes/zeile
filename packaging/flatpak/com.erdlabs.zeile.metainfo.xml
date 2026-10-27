@@ -6,6 +6,7 @@
   <project_license>GPL-3.0-or-later</project_license>
   <name>zeile</name>
   <summary>Small, fast markdown viewer with live reload</summary>
+  <summary xml:lang="de">Kleiner, schneller Markdown-Betrachter mit Live-Neuladen</summary>
   <developer id="com.erdlabs">
     <name>erdlabs</name>
   </developer>
@@ -14,16 +15,30 @@
       zeile renders a markdown file, reloads it when you save, and gets out of the way.
       It is built on GTK4 and WebKitGTK, so it starts fast and stays readable.
     </p>
+    <p xml:lang="de">
+      zeile zeigt eine Markdown-Datei an, lädt sie bei Speichern neu und hält sich
+      ansonsten zurück. Es basiert auf GTK4 und WebKitGTK, startet schnell und bleibt
+      gut lesbar.
+    </p>
     <p>
       A markdown file is treated as untrusted content: document JavaScript is disabled,
       the HTML is sanitized, nothing is stored and there is no network access.
       No advertising, no tracking, no analytics.
     </p>
+    <p xml:lang="de">
+      Eine Markdown-Datei gilt als unvertrauenswürdiger Inhalt: Dokument-JavaScript ist
+      deaktiviert, das HTML wird bereinigt, nichts wird gespeichert und es gibt keinen
+      Netzwerkzugriff. Keine Werbung, kein Tracking, keine Analyse.
+    </p>
     <ul>
       <li>17 themes plus an automatic light/dark mode</li>
+      <li xml:lang="de">17 Themen sowie ein automatischer Hell-/Dunkelmodus</li>
       <li>Syntax highlighting, tables, footnotes, GitHub-style alerts</li>
+      <li xml:lang="de">Syntaxhervorhebung, Tabellen, Fußnoten, GitHub-artige Hinweise</li>
       <li>Outline with filter, reading statistics, find in page</li>
+      <li xml:lang="de">Gliederung mit Filter, Lesestatistik, Suche in der Seite</li>
       <li>English and German interface</li>
+      <li xml:lang="de">Oberfläche auf Englisch und Deutsch</li>
     </ul>
   </description>
   <launchable type="desktop-id">com.erdlabs.zeile.desktop</launchable>
@@ -34,14 +49,17 @@
     <screenshot type="default">
       <image>https://raw.githubusercontent.com/DnaMes/zeile/main/docs/screenshots/github-light.png</image>
       <caption>GitHub Light theme</caption>
+      <caption xml:lang="de">GitHub-Light-Thema</caption>
     </screenshot>
     <screenshot>
       <image>https://raw.githubusercontent.com/DnaMes/zeile/main/docs/screenshots/github-dark.png</image>
       <caption>GitHub Dark theme</caption>
+      <caption xml:lang="de">GitHub-Dark-Thema</caption>
     </screenshot>
     <screenshot>
       <image>https://raw.githubusercontent.com/DnaMes/zeile/main/docs/screenshots/catppuccin-mocha.png</image>
       <caption>Catppuccin Mocha theme</caption>
+      <caption xml:lang="de">Catppuccin-Mocha-Thema</caption>
     </screenshot>
   </screenshots>
   <content_rating type="oars-1.1"/>
@@ -57,11 +75,13 @@
     <release version="0.3.1" date="2026-10-27">
       <description>
         <p>Flatpak, Debian and Fedora packages; the start sequence no longer fails when a package lacks its image.</p>
+        <p xml:lang="de">Flatpak-, Debian- und Fedora-Pakete; die Startsequenz schlägt nicht mehr fehl, wenn einem Paket sein Bild fehlt.</p>
       </description>
     </release>
     <release version="0.3.0" date="2026-10-26">
       <description>
         <p>First public release: new themes, GitHub-style alerts, outline filter, fullscreen, icon set and a safer handling of local links.</p>
+        <p xml:lang="de">Erste öffentliche Veröffentlichung: neue Themen, GitHub-artige Hinweise, Gliederungsfilter, Vollbild, Icon-Satz und sicherere Behandlung lokaler Links.</p>
       </description>
     </release>
   </releases>
