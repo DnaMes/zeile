@@ -4,7 +4,9 @@
 #   scripts/flatpak-check.sh
 set -euo pipefail
 
-cd "$(dirname "$0")/.."
+script_dir="${BASH_SOURCE[0]%/*}"
+[[ "$script_dir" == "${BASH_SOURCE[0]}" ]] && script_dir=.
+cd "$script_dir/.."
 REPO="$(pwd)"
 readonly REPO
 
@@ -20,8 +22,15 @@ if ((${#MISSING[@]} > 0)); then
 fi
 
 # The cleanup below removes the app and its data: never run over a real installation.
-if flatpak info --user com.erdlabs.zeile >/dev/null 2>&1; then
+if flatpak info com.erdlabs.zeile >/dev/null 2>&1; then  # user or system installation
     printf 'refusing to run: com.erdlabs.zeile is already installed (this check replaces it and deletes its data)\n' >&2
+    exit 2
+fi
+
+# Data left behind by an earlier installation would be deleted by the cleanup too.
+if [[ -e "$HOME/.var/app/com.erdlabs.zeile" ]]; then
+    printf 'refusing to run: %s exists and would be deleted by the cleanup\n' \
+        "$HOME/.var/app/com.erdlabs.zeile" >&2
     exit 2
 fi
 
@@ -104,6 +113,10 @@ if [[ ! -s "$PORT_FILE" ]]; then
     exit 1
 fi
 PORT="$(cat "$PORT_FILE")"
+if ! kill -0 "$LISTENER_PID" 2>/dev/null; then
+    printf 'FAIL: probe\nthe host listener died before the probe ran\n' >&2
+    exit 1
+fi
 
 # Minimal valid 4x4 RGB PNG (no external tooling).
 python3 - "$DOC_DIR/pic.png" <<'PY'
@@ -158,10 +171,10 @@ fi
 
 # --- c. host listener must stay untouched ---
 COUNT="$(tr -d '[:space:]' <"$COUNTER_FILE")"
-if [[ "$COUNT" == "0" && "$PROBE_STATUS" -eq 0 ]]; then
-    printf 'PASS: network isolation\n'
+if [[ "$COUNT" == "0" ]] && kill -0 "$LISTENER_PID" 2>/dev/null; then
+    printf 'PASS: network isolation (host listener saw 0 connections)\n'
 else
-    printf 'FAIL: network isolation\n'
+    printf 'FAIL: network isolation (listener saw %s connection(s) or died)\n' "$COUNT"
     FAILED=1
 fi
 
