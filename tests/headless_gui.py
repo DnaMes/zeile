@@ -254,8 +254,8 @@ def run_width_anchor_check(
 ) -> None:
     """Switching the reading width keeps the passage the reader is on in place.
 
-    Relies on WebKit's native scroll anchoring (verified by removing every manual
-    compensation: the check still passes), so this guards against a regression there.
+    WebKitGTK's own scroll anchoring holds the position on Arch but not on Debian 13,
+    Ubuntu 24.04 or Fedora 43, so the viewer compensates itself; this guards that.
     """
     md = tmp / "anchor.md"
     md.write_text(

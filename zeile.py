@@ -1344,7 +1344,25 @@ class Viewer(Gtk.ApplicationWindow):
                 else f"{root}.removeAttribute('data-width');"
             )
         )
-        self.webview.evaluate_javascript(js, -1, None, None, None, None, None)
+        # A new width, font or theme reflows the page: keep the passage the reader is on
+        # where it is (the first visible block keeps its distance from the viewport top).
+        # WebKitGTK's own scroll anchoring does this on Arch but not on Debian 13, Ubuntu
+        # 24.04 or Fedora 43 (headless matrix, width-keeps-position). IIFE and `var` only,
+        # for the same re-evaluation reason as above.
+        anchored = (
+            "(function(){"
+            "var blocks=document.querySelectorAll("
+            "'h1,h2,h3,h4,h5,h6,p,pre,table,ul,ol,blockquote,hr');"
+            "var anchor=null,top=0;"
+            "for(var i=0;i<blocks.length;i++){"
+            "var r=blocks[i].getBoundingClientRect();"
+            "if(r.bottom>4){anchor=blocks[i];top=r.top;break;}"
+            "}"
+            f"{js}"
+            "if(anchor){window.scrollBy(0,anchor.getBoundingClientRect().top-top);}"
+            "})();"
+        )
+        self.webview.evaluate_javascript(anchored, -1, None, None, None, None, None)
 
     def _on_theme_dropdown_changed(
         self, theme_ids: list[str], dropdown: Gtk.DropDown, *_pspec
