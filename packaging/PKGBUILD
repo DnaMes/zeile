@@ -1,7 +1,7 @@
 # Maintainer: erdlabs <https://erdlabs.com>
 # Contributor: see repository
 pkgname=zeile
-pkgver=0.4.1
+pkgver=0.5.0
 pkgrel=1
 pkgdesc="Small, fast GTK4 markdown viewer with live reload, themes and Mermaid support"
 arch=(any)

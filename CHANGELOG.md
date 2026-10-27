@@ -7,6 +7,15 @@ Versioning: [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-10-27
+
+### Added
+
+- Three new popular dark themes: `vscode-dark` (VS Code Dark+), `one-dark` (Atom One Dark), and `monokai` (Monokai Pro/Classic). Zeile now ships 20 curated themes.
+- Dedicated heading color hierarchy: explicit CSS variables (`--h1-color` through `--h6-color`, `--h1-border`, `--h2-border`) across all 20 themes, giving distinctive and readable hierarchy colors to Cyberpunk, Tokyo Night, Solarized Dark, Dracula, Nord, Gruvbox, and others.
+- Enhanced blockquote styling: introduced `--quote-fg` alongside theme-tuned quote borders and backgrounds for clear, readable callouts.
+- Shell completions (bash, fish, zsh) updated with the new theme choices.
+
 ## [0.4.1] — 2026-10-27
 
 ### Fixed
