@@ -23,9 +23,11 @@ deb)
     ;;
 rpm)
     IMAGE=fedora:43
-    SCRIPT='set -euo pipefail; dnf install -y -q rpm-build gettext git cage >/dev/null
-        packaging/rpm/build-rpm.sh
-        dnf install -y -q ./dist/zeile-*.rpm >/dev/null
+    # Build tools would mask missing Requires (git, rpm-build pull in typelibs), so the
+    # package is installed and smoke-tested in a second, clean container.
+    SCRIPT='set -euo pipefail; dnf install -y -q rpm-build gettext git >/dev/null
+        packaging/rpm/build-rpm.sh'
+    INSTALL_SCRIPT='set -euo pipefail; dnf install -y -q cage ./dist/zeile-*.rpm >/dev/null
         packaging/smoke.sh'
     ;;
 arch)
@@ -53,3 +55,6 @@ docker run --rm -v "$WORK/zeile:/src" -w /src \
     -e ARCH_MIRROR='Server = https://geo.mirror.pkgbuild.com/$repo/os/$arch' \
     -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/src \
     "$IMAGE" bash -c "$SCRIPT"
+if [[ -n "${INSTALL_SCRIPT:-}" ]]; then
+    docker run --rm -v "$WORK/zeile:/src" -w /src "$IMAGE" bash -c "$INSTALL_SCRIPT"
+fi

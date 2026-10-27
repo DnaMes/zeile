@@ -39,6 +39,7 @@ BUILD="$(mktemp -d)"
 DOC_DIR=""
 COUNTER_FILE=""
 PORT_FILE=""
+PROBE_OUT=""
 LISTENER_PID=""
 
 cleanup() {
@@ -52,6 +53,7 @@ cleanup() {
     [[ -n "${DOC_DIR:-}" ]] && rm -rf "$DOC_DIR"
     [[ -n "${COUNTER_FILE:-}" ]] && rm -f "$COUNTER_FILE"
     [[ -n "${PORT_FILE:-}" ]] && rm -f "$PORT_FILE"
+    [[ -n "${PROBE_OUT:-}" ]] && rm -f "$PROBE_OUT"
 }
 trap cleanup EXIT
 
@@ -157,10 +159,12 @@ printf '%s\n' \
     >"$DOC_DIR/doc.md"
 printf '# Sibling\n' >"$DOC_DIR/sibling.md"
 
+PROBE_OUT="$(mktemp)"
 PROBE_STATUS=0
 WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 \
     cage -d -- flatpak run --command=python3 com.erdlabs.zeile \
-    "$REPO/scripts/flatpak_probe.py" "$DOC_DIR" "$PORT" || PROBE_STATUS=$?
+    "$REPO/scripts/flatpak_probe.py" "$DOC_DIR" "$PORT" >"$PROBE_OUT" 2>&1 || PROBE_STATUS=$?
+grep -E '^(readonly|network isolated|sibling image|flatpak probe)' "$PROBE_OUT" || true
 
 if [[ "$PROBE_STATUS" -eq 0 ]]; then
     printf 'PASS: probe\n'
@@ -171,10 +175,12 @@ fi
 
 # --- c. host listener must stay untouched ---
 COUNT="$(tr -d '[:space:]' <"$COUNTER_FILE")"
-if [[ "$COUNT" == "0" ]] && kill -0 "$LISTENER_PID" 2>/dev/null; then
-    printf 'PASS: network isolation (host listener saw 0 connections)\n'
+# Zero connections only proves isolation if the probe really tried to connect.
+if [[ "$COUNT" == "0" ]] && kill -0 "$LISTENER_PID" 2>/dev/null &&
+    grep -q 'network isolated OK' "$PROBE_OUT"; then
+    printf 'PASS: network isolation (probe tried, host listener saw 0 connections)\n'
 else
-    printf 'FAIL: network isolation (listener saw %s connection(s) or died)\n' "$COUNT"
+    printf 'FAIL: network isolation (%s connection(s), listener alive or probe did not reach the network test)\n' "$COUNT"
     FAILED=1
 fi
 

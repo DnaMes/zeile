@@ -10,6 +10,8 @@ BuildArch:      noarch
 BuildRequires:  gettext
 Requires:       python3 >= 3.11
 Requires:       python3-gobject
+# provides the cairo typelib that gi needs; python3-gobject does not pull it in
+Requires:       gobject-introspection
 Requires:       gtk4
 Requires:       webkitgtk6.0
 Requires:       python3-markdown
