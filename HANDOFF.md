@@ -11,20 +11,13 @@ bilingual (German + English), and keep extending it carefully.
 
 ## Current Progress (2026-10-27, after the autonomous night session)
 
-- **Released: v0.4.1** (tarball, `.deb` Debian 13, `.rpm` Fedora 43, SHA256SUMS). v0.4.0 was released earlier
-  the same night; its rpm lacked `Requires: gobject-introspection` (ImportError on minimal Fedora), fixed in 0.4.1.
-- Shipped since v0.3.1 (see CHANGELOG): malformed-input recovery, Mermaid error blocks, atomic draft-then-publish
-  release workflow, hostile-document WebView test, German desktop/AppStream metadata, task-list fix, overflow check,
-  man pages (EN/DE) + bash/zsh/fish completions, translated `--help`, F1 shortcut overlay, persisted reading width
-  (narrow/standard/wide) that keeps the reader's passage in place, package smoke test that proves rendering,
-  `scripts/flatpak-check.sh` (sandbox: read-only home, no network, sibling image renders), clean-container rpm check.
-- Verified at 0.4.1 (observed): pytest 186 passed / 2 skipped; GUI matrix 25 checks; hosted CI green (test + Arch,
-  Debian 13, Ubuntu 24.04, Fedora 43); `scripts/package-check.sh deb|rpm|arch` exit 0; `scripts/flatpak-check.sh` exit 0;
-  published assets: `sha256sum -c` OK, tarball tests pass, downloaded rpm and deb installed in clean containers and
-  smoke-tested (render OK); AUR PKGBUILD builds with makepkg; Flathub manifest builds from the tag archive.
-- Branch `chore/14-pkgbuild-0.4.1` (PKGBUILD checksum for 0.4.1 + this HANDOFF) may still need shipping: check
-  `git branch --show-current`, `git status`, `git log origin/main`.
-- Issues: #9, #10, #14 on DnaMes/zeile (close after confirming main has everything); board AB#1766.
+- **Released: v0.5.0** (tarball, `.deb` Debian 13, `.rpm` Fedora 43, SHA256SUMS).
+  Major theme overhaul: dedicated heading color hierarchy (--h1-color through --h6-color, --h1-border, --h2-border)
+  across 20 themes, blockquote readability polish (--quote-fg), and 3 new dark themes (vscode-dark, one-dark, monokai).
+- Released earlier today: v0.4.1 (rpm fix) and v0.4.0 (reading width, F1 shortcuts, man pages, completions).
+- Verified at 0.5.0 (observed): pytest 186 passed / 2 skipped; ruff clean; shellcheck clean; check_version.py 0.5.0 OK;
+  hosted release workflow 40504952218 succeeded; published assets verified with sha256sum.
+- AUR PKGBUILD checksum updated to v0.5.0 archive.
 
 ## Needs the owner (do NOT do autonomously)
 
