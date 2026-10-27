@@ -1,68 +1,41 @@
-# zeile — Continuation Prompt
+# zeile — Continuation Prompt (tool-agnostic)
 
-> **Verify state before trusting this document.** Before acting on anything
-> below, run `git status`, `git diff`, `git log --oneline -10`, `git tag`, and
-> `gh run list --repo DnaMes/zeile`; then re-read `HANDOFF.md`. The repository
-> may have moved on since this document was written.
+> **Verify state before trusting this document.** Before acting on anything below, run
+> `git status`, `git branch --show-current`, `git log --oneline -12`, `git worktree list`, `git tag`
+> and `gh run list --repo DnaMes/zeile --limit 5`; then read `HANDOFF.md` (source of truth) and
+> `CHANGELOG.md` `[Unreleased]`. The repository may have moved on since this was written.
 
-You are continuing work on **zeile** — a small, fast, security-hardened GTK4
-markdown viewer for Linux (single-file Python app, `/usr/bin/python3`, GTK4 +
-WebKitGTK 6.0, pytest suite, GPL-3.0-or-later, repo `github.com/DnaMes/zeile`,
-currently PRIVATE).
+You are continuing **zeile**: a small, security-hardened GTK4 + WebKitGTK 6.0 markdown viewer for Linux
+(Python 3.11+, GPL-3.0-or-later). The repo `github.com/DnaMes/zeile` has been PUBLIC since 2026-10-26;
+**v0.3.1** is released (tarball, .deb, .rpm, SHA256SUMS). Packaging exists for Arch (`packaging/PKGBUILD`),
+Debian/Fedora (`packaging/debian`, `packaging/rpm`, shared `packaging/stage.sh`) and Flatpak
+(`packaging/flatpak`, GNOME 50). A markdown file is untrusted input: never weaken document-JS-off, the nh3
+allowlist, the CSP or the navigation policy; no network, no telemetry; every user string in German and English
+(`po/de.po`, `po/zeile.pot`, compiled `locale/de/LC_MESSAGES/zeile.mo`).
 
-## Where things stand (as of 2026-09-16)
+## Where things stand (2026-10-27 ~02:20)
 
-- **`v0.1.0` is released**: annotated tag + GitHub release + CHANGELOG cut.
-- **`v0.2.0` is prepared locally** in commit `4eefb32` but is not pushed or
-  tagged yet. Version copies are `0.2.0` and checked by
-  `python3 scripts/check_version.py`.
-- **CI is green** (`.github/workflows/ci.yml`: ruff + pytest + shellcheck).
-- **Release automation is ready** in `.github/workflows/release.yml`: a
-  `vX.Y.Z` tag runs validation and publishes a checksumed Linux source archive
-  plus `SHA256SUMS` to a GitHub Release.
-- The current implementation is a **Linux release**. Windows/macOS native
-  artifacts are intentionally absent because WebKitGTK 6.0 is not available
-  through the supported packaging paths; a real port needs platform WebView
-  adapters first.
-- The feature work is verified: **86 pytest tests**, Ruff, ShellCheck,
-  gettext, and the **8/8 headless GTK/WebKit matrix** pass. The copy click
-  was proven live through WebKit policy interception to GTK clipboard.
-- All previously identified **1.0-readiness blockers are fixed and pushed**
-  (see `HANDOFF.md` top section): file-chooser launch without argument,
-  window/zoom persistence with merge-safe settings writers, Auto-theme
-  mid-session sync, visible print/PDF degradation when GTK4 print backends
-  are missing (Arch gtk4 4.22 ships none), decide-policy deferral,
-  accessible labels on all icon-only buttons.
-- `tests/headless_gui.py` + `tests/test_headless_gui.py` run the GUI
-  verification matrix inside a headless cage compositor (focus-safe,
-  skips without cage/Wayland). Keep this harness fed — it caught real bugs
-  that introspection-level tests could not.
-- `packaging/PKGBUILD` exists with the real v0.1.0 sha256; the source URL
-  resolves only once the repo goes public.
+- `main` holds, on top of v0.3.1, the unreleased work listed in CHANGELOG `[Unreleased]`: malformed-input
+  recovery, Mermaid error blocks, atomic draft-then-publish release workflow, hostile-document WebView test,
+  German package metadata, task-list fix, man pages + completions, translated `--help`, F1 shortcut overlay.
+- In flight when this was written: a git-ops ship of branch `feat/10-batch-d1` (package smoke test that proves the
+  viewer renders) and a worker producing a persisted reading-width setting in
+  `~/.worktrees/zeile/feat-10-reading-width` (report in `/tmp/zeile-night/out-width.md`, ends with `exit N`).
+- Uncommitted in the main checkout: `HANDOFF.md`, `.parachute/*`, `AGENTS.md` block, archive
+  `.parachute/handoff-archive/2026-10-27.md`: commit them with the next ship.
 
-## What to do next (ordered)
+## Immediate next step
 
-1. Verify the current state again, then push commit `4eefb32` to `origin/main`.
-2. Create and push an annotated `v0.2.0` tag.
-3. Monitor the Release Actions run and confirm the source archive, checksum,
-   and release notes were published.
-4. Change the pending `v0.2.0` checkbox in `RELEASE.md`, commit, and push.
-5. Confirm local `main` equals `origin/main` and the working tree is clean.
-6. Later, dogfood the installed app and decide whether a platform-WebView port
-   is worth the complexity for Windows/macOS.
+1. Check whether `feat/10-batch-d1` reached `origin/main`; if so run `scripts/package-check.sh deb`, `rpm`, `arch`.
+2. Integrate the reading-width worker (see HANDOFF.md "Next Steps" 2 for the exact recipe), then build a
+   `scripts/flatpak-check.sh` worker (Next Steps 3), then the small follow-ups, then ask for a release GO.
 
-## Ground rules for this repo
+## Ground rules
 
-- A `.md` file is untrusted input. Never weaken the sandbox
-  (`enable-javascript-markup=False`, nh3 allowlist, strict CSP, ephemeral
-  NetworkSession, decide-policy gate). `HANDOFF.md` + `README.md` Security
-  section document every wall — verified, not assumed.
-- GUI verification uses the headless cage harness
-  (`WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 cage -d python3 …`),
-  never the operator's desktop focus. For WebKit content use
-  `webview.get_snapshot()`, not `grim` (WebKitGTK throttles occluded
-  windows — grim shows a stale frame).
-- Run `ruff check` + `pytest` + `shellcheck install.sh` before any commit.
-- Only commit/push/tag when the task explicitly asks for it.
+- Verify yourself before claiming anything: `python3 -m pytest -q`; `~/.local/bin/ruff check . && ~/.local/bin/ruff format --check .`;
+  `shellcheck install.sh scripts/*.sh packaging/*.sh packaging/*/*.sh`; GUI matrix
+  `WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 cage -d -- /usr/bin/python3 tests/headless_gui.py` (never a visible window).
+- Never: production deploys, new accounts, AUR/Flathub submissions, tags without an explicit GO, force-push on main.
+- Owner items (AUR account, Flathub PR, erdlabs.com deploy, human desktop checks) are listed in HANDOFF.md.
 
-generated by context-parachute vunknown
+generated by context-parachute v1.4.1
