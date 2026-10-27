@@ -625,6 +625,18 @@ input[type="checkbox"] {
   accent-color: var(--accent);
 }
 
+/* Task items: hide the bullet (checkbox is the marker). Negative margin
+   pulls the checkbox into the list gutter so no empty indent remains;
+   plain <li> siblings keep their disc/circle/square. */
+li.task-list-item {
+  list-style-type: none;
+}
+
+li.task-list-item > input[type="checkbox"] {
+  margin: 0 0.35em 0.25em -1.6em;
+  vertical-align: middle;
+}
+
 .task-list-item-checkbox {
   margin-right: 0.35rem;
 }

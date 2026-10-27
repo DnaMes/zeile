@@ -53,6 +53,27 @@ def test_tasklist_renders_as_checkboxes():
     assert "checked" in out
 
 
+def test_tasklist_html_structure_mixed_and_nested():
+    """pymdownx.tasklist marks items so CSS can hide bullets on tasks only."""
+    doc = "- [x] done\n- [ ] todo\n- plain\n    - nested plain\n    - [ ] nested task\n"
+    out, _toc, _codes = render_body(doc, enable_mermaid=False, dark=False)
+    assert 'class="task-list"' in out
+    assert out.count('class="task-list-item"') == 3
+    assert "<li>nested plain</li>" in out
+    # Nested list stays a task-list; only the task child is marked.
+    assert re.search(
+        r'<li>plain<ul class="task-list">\s*'
+        r"<li>nested plain</li>\s*"
+        r'<li class="task-list-item">',
+        out,
+    )
+    # Checkboxes stay disabled (read-only); checked and unchecked both present.
+    attrs = re.findall(r'<li class="task-list-item"><input type="checkbox" ([^>]+)>', out)
+    assert len(attrs) == 3
+    assert all("disabled" in a for a in attrs)
+    assert sum("checked" in a for a in attrs) == 1
+
+
 def test_heading_gets_toc_anchor_id():
     out, _toc, _codes = render_body("# Section One\n", enable_mermaid=False, dark=False)
     assert 'id="section-one"' in out

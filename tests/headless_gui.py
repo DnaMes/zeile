@@ -202,6 +202,14 @@ def run_hostile_document_check(app, tmp: Path, settings_path: Path) -> None:
             "el.getAttribute('href').toLowerCase().indexOf('javascript:')===0)"
             "leaks.push('a[javascript]');"
             "}"
+            "var all=document.querySelectorAll('*');"
+            "for(var n=0;n<all.length;n++){"
+            "var at=all[n].attributes;"
+            "for(var m=0;m<at.length;m++){"
+            "if(/^on/i.test(at[m].name))"
+            "leaks.push(all[n].tagName.toLowerCase()+'['+at[m].name+']');"
+            "}"
+            "}"
             "return (typeof window.__pwn)+'|'+leaks.join(',');"
             "})();"
         )
@@ -237,6 +245,199 @@ def run_hostile_document_check(app, tmp: Path, settings_path: Path) -> None:
 
     # Connected before present(): FINISHED can arrive in an early main-loop
     # turn, and a missed probe means a stuck matrix.
+    win.webview.connect("load-changed", on_load)
+    win.present()
+
+
+def run_tasklist_no_bullet_check(
+    app, tmp: Path, settings_path: Path, then: Callable[[], None]
+) -> None:
+    """Task items hide bullets; plain siblings (incl. nested) keep theirs."""
+    md = tmp / "tasklist.md"
+    md.write_text(
+        "- [x] done\n- [ ] todo\n- plain\n    - nested plain\n    - [ ] nested task\n",
+        encoding="utf-8",
+    )
+    win = zeile.Viewer(
+        app,
+        md,
+        enable_mermaid=False,
+        debug=False,
+        theme_id="nord",
+        body_font_id="ia-writer",
+        code_font_id="jetbrains-mono",
+        settings_path=settings_path,
+    )
+    state = {"done": False}
+
+    def give_up() -> bool:
+        if not state["done"]:
+            state["done"] = True
+            check("tasklist-no-bullet", False, "WebView never finished loading")
+            then()
+        return GLib.SOURCE_REMOVE
+
+    GLib.timeout_add_seconds(30, give_up)
+
+    def on_load(_webview, event) -> None:
+        if event != WebKit.LoadEvent.FINISHED or state["done"]:
+            return
+        state["done"] = True  # arm once; FINISHED can repeat on re-render
+        GLib.timeout_add(500, probe)
+        return GLib.SOURCE_REMOVE
+
+    def probe() -> bool:
+        js = (
+            "(function(){"
+            "var tasks=document.querySelectorAll('li.task-list-item');"
+            "var plains=document.querySelectorAll("
+            "'ul.task-list > li:not(.task-list-item)');"
+            "var out=[],ok=true;"
+            "if(tasks.length<2||plains.length<2)return 'count';"
+            "for(var i=0;i<tasks.length;i++){"
+            "var t=getComputedStyle(tasks[i]).listStyleType;"
+            "out.push('t:'+t);if(t!=='none')ok=false;"
+            "}"
+            "var bullets={disc:1,circle:1,square:1};"
+            "for(var j=0;j<plains.length;j++){"
+            "var p=getComputedStyle(plains[j]).listStyleType;"
+            "out.push('p:'+p);if(!bullets[p])ok=false;"
+            "}"
+            "return (ok?'ok':'bad')+'|'+out.join(',');"
+            "})();"
+        )
+
+        def probe_cb(value) -> None:
+            try:
+                raw = value.to_string() or ""
+            except Exception as exc:  # noqa: BLE001
+                ok, detail = False, f"probe JS failed: {exc}"
+            else:
+                status, _, detail = raw.partition("|")
+                ok = status == "ok"
+                if not detail:
+                    detail = raw
+            check("tasklist-no-bullet", ok, detail)
+            then()
+
+        evaluated(win.webview, js, probe_cb)
+        return GLib.SOURCE_REMOVE
+
+    win.webview.connect("load-changed", on_load)
+    win.present()
+
+
+def run_overflow_contained_check(
+    app, tmp: Path, settings_path: Path, then: Callable[[], None]
+) -> None:
+    """Wide table + long code must scroll inside, not widen the document."""
+    md = tmp / "overflow.md"
+    cols = 30
+    headers = "| " + " | ".join(f"C{i:02d}" for i in range(cols)) + " |"
+    sep = "| " + " | ".join(["---"] * cols) + " |"
+    row = "| " + " | ".join(f"cell{i:02d}" for i in range(cols)) + " |"
+    code_line = "x" * 500
+    md.write_text(
+        f"# Overflow\n\n{headers}\n{sep}\n{row}\n\n```\n{code_line}\n```\n",
+        encoding="utf-8",
+    )
+    win = zeile.Viewer(
+        app,
+        md,
+        enable_mermaid=False,
+        debug=False,
+        theme_id="nord",
+        body_font_id="ia-writer",
+        code_font_id="jetbrains-mono",
+        settings_path=settings_path,
+    )
+    state = {"done": False, "armed": False, "problems": []}
+    widths = (480, 1280)
+
+    def give_up() -> bool:
+        if not state["done"]:
+            state["done"] = True
+            check("overflow-contained", False, "WebView never finished loading")
+            then()
+        return GLib.SOURCE_REMOVE
+
+    GLib.timeout_add_seconds(30, give_up)
+
+    def finish() -> None:
+        if state["done"]:
+            return
+        state["done"] = True
+        problems = state["problems"]
+        check(
+            "overflow-contained",
+            not problems,
+            "; ".join(problems) if problems else f"ok at {widths}",
+        )
+        then()
+
+    def probe_at(width: int, next_cb: Callable[[], None]) -> None:
+        win.set_default_size(width, 800)
+
+        def after_resize() -> bool:
+            js = (
+                "(function(){"
+                "var de=document.documentElement;"
+                "var docOk=de.scrollWidth<=de.clientWidth;"
+                "function scrollable(el){"
+                "if(!el)return 'missing';"
+                "var ox=getComputedStyle(el).overflowX;"
+                "if(!(ox==='auto'||ox==='scroll'))return 'overflowX='+ox;"
+                "if(el.scrollWidth<=el.clientWidth)"
+                "return 'no-scroll sw='+el.scrollWidth+' cw='+el.clientWidth;"
+                "return 'ok';"
+                "}"
+                "var t=scrollable(document.querySelector('table'));"
+                "var c=scrollable(document.querySelector('pre'));"
+                "return [docOk?'docOk':'docWide',"
+                "de.clientWidth,de.scrollWidth,'table:'+t,'pre:'+c].join('|');"
+                "})();"
+            )
+
+            def probe_cb(value) -> None:
+                try:
+                    raw = value.to_string() or ""
+                except Exception as exc:  # noqa: BLE001
+                    state["problems"].append(f"w={width}: probe JS failed: {exc}")
+                else:
+                    parts = raw.split("|")
+                    if parts[0] != "docOk":
+                        state["problems"].append(f"w={width}: document overflow {raw}")
+                    for part in parts[3:]:
+                        if not part.endswith(":ok"):
+                            state["problems"].append(f"w={width}: {part}")
+                next_cb()
+
+            evaluated(win.webview, js, probe_cb)
+            return GLib.SOURCE_REMOVE
+
+        GLib.timeout_add(400, after_resize)
+
+    def on_load(_webview, event) -> None:
+        if event != WebKit.LoadEvent.FINISHED or state["armed"] or state["done"]:
+            return
+        state["armed"] = True  # FINISHED can repeat on re-render
+
+        def start() -> bool:
+            if state["done"]:
+                return GLib.SOURCE_REMOVE
+
+            def step(i: int) -> None:
+                if i >= len(widths):
+                    finish()
+                    return
+                probe_at(widths[i], lambda: step(i + 1))
+
+            step(0)
+            return GLib.SOURCE_REMOVE
+
+        GLib.timeout_add(500, start)
+        return GLib.SOURCE_REMOVE
+
     win.webview.connect("load-changed", on_load)
     win.present()
 
@@ -608,10 +809,21 @@ def run() -> None:
                                 is_fs and is_unfs,
                                 f"fullscreen={is_fs} restored={is_unfs}",
                             )
-                            # 12. hostile-document-contained owns the quit
-                            # from here on: a second Viewer loads the hostile
-                            # fixture and the app only stops once it reported.
-                            run_hostile_document_check(a, tmp, settings_path)
+                            # 12-14. tasklist / overflow / hostile Viewers
+                            # chain; hostile owns the quit.
+                            run_tasklist_no_bullet_check(
+                                a,
+                                tmp,
+                                settings_path,
+                                lambda: run_overflow_contained_check(
+                                    a,
+                                    tmp,
+                                    settings_path,
+                                    lambda: run_hostile_document_check(
+                                        a, tmp, settings_path
+                                    ),
+                                ),
+                            )
                             return GLib.SOURCE_REMOVE
 
                         GLib.timeout_add(150, check_fs_after_leave)
