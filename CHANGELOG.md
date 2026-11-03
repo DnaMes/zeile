@@ -7,6 +7,14 @@ Versioning: [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- A document that opens with a horizontal rule (`---`) and has another one further down no longer
+  loses everything between the two: only a block of `key: value` lines counts as frontmatter.
+- Raw HTML in a document can no longer put a text, password or file field into the viewer; every
+  input becomes a read-only checkbox, as task lists need. The page's content security policy now
+  also blocks `<base>` and form targets.
+
 ### Changed
 
 - The markdown pipeline, the settings store and the launch plan now live in `documents.py`,

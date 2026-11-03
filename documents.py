@@ -66,11 +66,27 @@ EXTENSION_CONFIGS = {
 # a paragraph of raw "key: value" text, confirmed broken. Anchored to the
 # very start of the document; the closing "---" must be alone on its own
 # line, same shape most static-site generators use.
-_FRONTMATTER_RE = re.compile(r"\A---\n.*?\n---\n?", re.DOTALL)
+_FRONTMATTER_RE = re.compile(r"\A---[ \t]*\n(.*?)\n---[ \t]*(?:\n|\Z)", re.DOTALL)
+# A document may also open with a thematic break ("---") and use another one
+# later; that pair is not frontmatter (#24). Without a YAML parser the block
+# counts as frontmatter only when its first line is a "key:" line and every
+# other non-blank line is a key, a list item, an indented continuation or a
+# comment.
+_YAML_KEY_RE = re.compile(r"[^\s#-][^:]*:(?:\s|$)")
+_YAML_OTHER_RE = re.compile(r"\s|-(?:\s|$)|#")
 
 
 def _strip_frontmatter(text: str) -> str:
-    return _FRONTMATTER_RE.sub("", text, count=1)
+    match = _FRONTMATTER_RE.match(text)
+    if match is None:
+        return text
+    lines = match.group(1).split("\n")
+    if not _YAML_KEY_RE.match(lines[0]):
+        return text
+    for line in lines[1:]:
+        if line.strip() and not (_YAML_KEY_RE.match(line) or _YAML_OTHER_RE.match(line)):
+            return text
+    return text[match.end() :]
 
 
 def _visible_text(text: str) -> str:
@@ -116,11 +132,13 @@ def compute_document_stats(text: str) -> DocumentStats:
 # sanitize_html()) strips <script> tags outright regardless. This CSP layer
 # exists for the non-script vector that needs no script at all -- an
 # `<img src=http://tracker/pixel>` beacon -- which img-src 'self' kills.
+# base-uri and form-action do not fall back to default-src, so they are
+# closed explicitly in case the sanitizer ever lets <base> or <form> through.
 # style-src allows inline <style> since we own all page styling ourselves
 # and inject it as a literal <style> block below.
 _CSP = (
     "default-src 'none'; img-src 'self' data:; font-src 'self' data:; "
-    "style-src 'unsafe-inline'"
+    "style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"
 )
 
 # nh3's own defaults strip `class`/`id` from most tags. Used as-is that
@@ -150,10 +168,16 @@ _ALLOWED_ATTRIBUTES = {
     "li": {"id", "class"},
     "sup": {"id"},
     "a": {"id", "href", "class", "name"},
-    # pymdownx.tasklist checkboxes -- read-only, `disabled` is load-bearing
-    # (without it a click would try to toggle state nothing persists).
-    "input": {"type", "disabled", "checked"},
+    # pymdownx.tasklist checkboxes. `type` and `disabled` are forced by
+    # _FORCED_ATTRIBUTES below, so only `checked` is taken from the document.
+    "input": {"checked"},
 }
+
+# Every <input> that survives becomes a read-only checkbox: a document's raw
+# HTML must not put a text, password or file field into the viewer (#25).
+# `disabled` is load-bearing (without it a click would try to toggle state
+# nothing persists).
+_FORCED_ATTRIBUTES = {"input": {"type": "checkbox", "disabled": ""}}
 
 
 def sanitize_html(body: str) -> str:
@@ -166,7 +190,12 @@ def sanitize_html(body: str) -> str:
     removed here, verified empirically against nh3's actual default+override
     behaviour rather than assumed from its docs.
     """
-    return nh3.clean(body, tags=_ALLOWED_TAGS, attributes=_ALLOWED_ATTRIBUTES)
+    return nh3.clean(
+        body,
+        tags=_ALLOWED_TAGS,
+        attributes=_ALLOWED_ATTRIBUTES,
+        set_tag_attribute_values=_FORCED_ATTRIBUTES,
+    )
 
 
 # Code blocks are <pre>...</pre> (codehilite wraps some in a .codehilite

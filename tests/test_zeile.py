@@ -48,6 +48,34 @@ def test_frontmatter_absent_is_a_no_op():
     assert '<h1 id="hi">Hi' in out
 
 
+def test_leading_thematic_break_is_not_frontmatter():
+    # #24: a document that opens with "---" and has a second "---" later kept
+    # only the text after the second one.
+    doc = "---\n\nIntro text\n\n---\n\nmore"
+    out, _toc, _codes = render_body(doc, enable_mermaid=False, dark=False)
+    assert "Intro text" in out
+    assert "more" in out
+
+
+def test_frontmatter_with_lists_and_comments_is_stripped():
+    doc = "---\ntitle: T\ntags:\n  - a\n- b\n# note\n---\nbody text\n"
+    out, _toc, _codes = render_body(doc, enable_mermaid=False, dark=False)
+    assert "title" not in out
+    assert "body text" in out
+
+
+def test_raw_html_inputs_become_disabled_checkboxes():
+    # #25: a document must not put text, password or file fields into the viewer.
+    out = sanitize_html(
+        '<p><input type="password" placeholder="Password"><input type="file"></p>'
+    )
+    assert "password" not in out
+    assert "file" not in out
+    assert "placeholder" not in out
+    assert out.count('type="checkbox"') == 2
+    assert out.count("disabled") == 2
+
+
 def test_tasklist_renders_as_checkboxes():
     doc = "- [ ] todo\n- [x] done\n"
     out, _toc, _codes = render_body(doc, enable_mermaid=False, dark=False)
@@ -72,8 +100,10 @@ def test_tasklist_html_structure_mixed_and_nested():
         out,
     )
     # Checkboxes stay disabled (read-only); checked and unchecked both present.
-    attrs = re.findall(r'<li class="task-list-item"><input type="checkbox" ([^>]+)>', out)
+    # Attribute order is the sanitizer's, so match each <input> as a whole.
+    attrs = re.findall(r'<li class="task-list-item"><input ([^>]+)>', out)
     assert len(attrs) == 3
+    assert all('type="checkbox"' in a for a in attrs)
     assert all("disabled" in a for a in attrs)
     assert sum("checked" in a for a in attrs) == 1
 
@@ -145,6 +175,12 @@ def test_build_document_has_csp_and_title():
     assert "default-src 'none'" in doc
     assert "<title>my file.md</title>" in doc
     assert "<p>hi</p>" in doc
+
+
+def test_csp_closes_base_uri_and_form_action():
+    doc = build_document("<p>hi</p>", "f.md")
+    assert "base-uri 'none'" in doc
+    assert "form-action 'none'" in doc
 
 
 def test_build_document_embeds_theme_and_font_attrs():
