@@ -137,6 +137,8 @@ jobs:
           name: package-${{ matrix.kind }}
           path: dist/*
           if-no-files-found: error
+          # Only needed until attach-packages has copied them to the release (LEARNINGS 10.1).
+          retention-days: 1
 
   attach-packages:
     name: Attach packages to the release
