@@ -78,7 +78,7 @@ entirely on your machine.
 
 ## Permissions
 
-zeile requests no special permissions. It reads the markdown file you open
+The native build requests no special permissions (the Flatpak build: see below). It reads the markdown file you open
 (and watches it for changes), and — only with `--enable-mermaid` — runs the
 `mmdc` subprocess you installed yourself. It writes nothing except a PDF you
 explicitly choose to export, to the location you choose, and the

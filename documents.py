@@ -69,7 +69,8 @@ EXTENSION_CONFIGS = {
 _FRONTMATTER_RE = re.compile(r"\A---[ \t]*\n(.*?)\n---[ \t]*(?:\n|\Z)", re.DOTALL)
 # A document may also open with a thematic break ("---") and use another one
 # later; that pair is not frontmatter (#24). Without a YAML parser the block
-# counts as frontmatter only when its first line is a "key:" line and every
+# counts as frontmatter only when its first line (after any comments) is a
+# "key:" line and every
 # other non-blank line is a key, a list item, an indented continuation or a
 # comment.
 _YAML_KEY_RE = re.compile(r"[^\s#-][^:]*:(?:\s|$)")
@@ -81,7 +82,9 @@ def _strip_frontmatter(text: str) -> str:
     if match is None:
         return text
     lines = match.group(1).split("\n")
-    if not _YAML_KEY_RE.match(lines[0]):
+    while lines and lines[0].startswith("#"):  # leading YAML comments
+        lines = lines[1:]
+    if not lines or not _YAML_KEY_RE.match(lines[0]):
         return text
     for line in lines[1:]:
         if line.strip() and not (_YAML_KEY_RE.match(line) or _YAML_OTHER_RE.match(line)):

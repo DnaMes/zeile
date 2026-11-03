@@ -58,7 +58,7 @@ def test_leading_thematic_break_is_not_frontmatter():
 
 
 def test_frontmatter_with_lists_and_comments_is_stripped():
-    doc = "---\ntitle: T\ntags:\n  - a\n- b\n# note\n---\nbody text\n"
+    doc = "---\n# generated\ntitle: T\ntags:\n  - a\n- b\n# note\n---\nbody text\n"
     out, _toc, _codes = render_body(doc, enable_mermaid=False, dark=False)
     assert "title" not in out
     assert "body text" in out

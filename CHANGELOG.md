@@ -10,7 +10,8 @@ Versioning: [Semantic Versioning](https://semver.org/).
 ### Fixed
 
 - A document that opens with a horizontal rule (`---`) and has another one further down no longer
-  loses everything between the two: only a block of `key: value` lines counts as frontmatter.
+  loses everything between the two: a block counts as frontmatter only when it starts with a
+  `key:` line and holds nothing but YAML-shaped lines.
 - Raw HTML in a document can no longer put a text, password or file field into the viewer; every
   input becomes a read-only checkbox, as task lists need. The page's content security policy now
   also blocks `<base>` and form targets.
