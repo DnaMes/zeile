@@ -321,6 +321,19 @@ GPL-3.0-or-later. Copyright (c) 2026 erdlabs.
 See also: [CHANGELOG.md](CHANGELOG.md), [PRIVACY.md](PRIVACY.md),
 [SECURITY.md](SECURITY.md).
 
+**Assets and their provenance.** No third-party asset ships in this repository.
+
+| Path | What | Provenance |
+|---|---|---|
+| `assets/zeile.svg` | Application icon, source of truth | Own-made by `scripts/build_icons.py` (2026-10-25): the erdlabs mark from the label's `brand/logo/logo.svg` plus a text-line and caret motif, colours from the label palette. GPL-3.0-or-later. |
+| `icons/hicolor/**` | Installed icon set (`scalable` plus one PNG per size, 16 to 512 px); the 512 px PNG is also the product logo of the launch sequence | Generated from `assets/zeile.svg` by `scripts/build_icons.py`; re-run it after a brand change. GPL-3.0-or-later. |
+| `assets/logo_erdlabs.png` | erdlabs mark in the About dialog and the first-start intro | Copied 2026-09-11 from the label's own generated `brand/logo/icon_xxxhdpi_192.png`; not third-party. GPL-3.0-or-later as a file, subject to the trademark note below. |
+| `assets/style.css` | Rendering stylesheet | Original work for this project. |
+| `assets/themes.css` | Theme and font variables (16 themes) | Original work; colour values transcribed from each theme's published palette (Catppuccin, Solarized, Gruvbox, Nord, Dracula, Rosé Pine, Tokyo Night, GitHub). |
+
+Commits before `8f2f129` contain a vendored `assets/mermaid.min.js` (Mermaid 12.0.0, MIT, notices inside the bundle);
+it was removed when Mermaid moved to the optional external `mmdc` renderer, which is never bundled.
+
 **Trademarks.** The GPL covers the code and the shipped icon files. The names
 "erdlabs" and "zeile" and the erdlabs mark are not licensed for use as the name or
 logo of a modified version: forks should pick their own name and logo.

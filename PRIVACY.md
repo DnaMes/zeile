@@ -84,6 +84,14 @@ zeile requests no special permissions. It reads the markdown file you open
 explicitly choose to export, to the location you choose, and the
 theme/font/width settings file described above.
 
+### Flatpak build
+
+The Flatpak build runs in a sandbox with read-only access to your home folder
+(`--filesystem=home:ro`), so that a document opened from anywhere under it can show
+the images next to it and follow links to its sibling files. It has no network
+access and no write access to your home folder: a PDF export goes only where you
+pick in the save dialog, and settings stay in the app's own sandbox directory.
+
 ## Children
 
 zeile does not collect data from anyone, including children under 13.
