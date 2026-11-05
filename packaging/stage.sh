@@ -12,7 +12,8 @@ readonly APP="$DESTDIR$PREFIX/share/zeile"
 # read_asset() resolves assets relative to zeile.py, so assets/, locale/ and the
 # start-sequence logo (launch_asset_path) must stay next to the script.
 install -d "$APP"
-install -m 644 zeile.py code_lang.py markdown_ext.py mermaid_render.py "$APP/"
+install -m 644 zeile.py documents.py preferences.py launch.py i18n.py view.py webkitgtk_view.py \
+    code_lang.py markdown_ext.py mermaid_render.py "$APP/"
 cp -r assets "$APP/assets"
 install -Dm 644 icons/hicolor/512x512/apps/zeile.png "$APP/icons/hicolor/512x512/apps/zeile.png"
 

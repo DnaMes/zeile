@@ -9,6 +9,9 @@ Versioning: [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- The deb, rpm, Arch and Flatpak packages did not install `documents.py`, `preferences.py`,
+  `launch.py` or `i18n.py`, so the installed app could not start. A test now checks that every
+  top-level module is in the staging lists.
 - A document that opens with a horizontal rule (`---`) and has another one further down no longer
   loses everything between the two: a block counts as frontmatter only when it starts with a
   `key:` line and holds nothing but YAML-shaped lines.
@@ -18,6 +21,10 @@ Versioning: [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- The window now reaches the web view only through `DocumentView` (`view.py`), with WebKitGTK as
+  the Linux backend (`webkitgtk_view.py`), and the rule for what a clicked link may do lives in
+  one tested function, `view.decide()`. Behaviour on Linux is unchanged; this is the groundwork
+  for a Windows and macOS web view (#21).
 - The markdown pipeline, the settings store and the launch plan now live in `documents.py`,
   `preferences.py` and `launch.py`, none of which import a GUI toolkit: the same document a Linux
   WebKitGTK window renders can be driven by a Windows or macOS shell. The Linux shell (`zeile.py`)

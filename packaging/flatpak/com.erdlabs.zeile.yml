@@ -23,7 +23,7 @@ modules:
     buildsystem: simple
     build-commands:
       - install -d /app/share/zeile
-      - install -m 644 zeile.py code_lang.py markdown_ext.py mermaid_render.py /app/share/zeile/
+      - install -m 644 zeile.py documents.py preferences.py launch.py i18n.py view.py webkitgtk_view.py code_lang.py markdown_ext.py mermaid_render.py /app/share/zeile/
       - cp -r assets /app/share/zeile/assets
       - install -Dm 644 icons/hicolor/512x512/apps/zeile.png /app/share/zeile/icons/hicolor/512x512/apps/zeile.png
       - |

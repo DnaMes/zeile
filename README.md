@@ -252,7 +252,13 @@ them to `locale/<lang>/LC_MESSAGES/zeile.mo` if `gettext` is available.
 ## Files
 
 ```
-zeile.py                the app
+zeile.py                the GTK4 shell: window, menus, search, splash
+view.py                  the web view boundary (DocumentView protocol) and the link policy
+webkitgtk_view.py        the Linux DocumentView backend (WebKitGTK 6.0)
+documents.py             platform-neutral markdown pipeline, sanitizer, CSP, table of contents
+preferences.py           settings store and option tables
+launch.py                start-sequence plan
+i18n.py                  gettext lookup shared by the modules above
 markdown_ext.py          mermaid fence extraction + unlabeled-fence language hints (markdown preprocessor)
 code_lang.py             rule-based language detection for untagged code blocks
 mermaid_render.py        mmdc subprocess wrapper, content-hash cache
@@ -289,13 +295,14 @@ a checksumed Linux source archive to the GitHub Release.
 
 - **Linux:** supported. The source release, `install.sh` and Arch `PKGBUILD`
   use the system GTK4/WebKitGTK 6.0 stack.
-- **Windows/macOS:** no native binaries are published yet. PyGObject/GTK4
-  itself is available on both platforms, but this application requires
-  WebKitGTK 6.0; the current packaging sources do not provide a supported
-  Windows or macOS WebKitGTK runtime. A real port needs a platform-specific
-  WebView boundary (Windows WebView2 and macOS WKWebView) before installers
-  can be produced. The release pipeline intentionally publishes no fake
-  cross-platform artifacts.
+- **Windows/macOS:** no native binaries are published yet. WebKitGTK is
+  Linux-only, so a port needs a second web view backend (planned: pywebview on
+  WebView2 and WKWebView). The groundwork is in: the markdown pipeline, the
+  settings and the link policy import no GUI toolkit and run in CI on Windows
+  and macOS, and the window talks to the page only through `DocumentView`
+  (`view.py`), with WebKitGTK as the Linux backend. The second backend, the
+  window shell and the build workflows are not written yet (issue #21). The
+  release pipeline intentionally publishes no fake cross-platform artifacts.
 
 ## Contributing
 

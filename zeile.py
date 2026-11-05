@@ -7,7 +7,8 @@ This file owns everything that is GTK: the window, the header bar, the search
 bar, the settings and theme menu, the splash, printing and the CSS provider.
 The platform-neutral parts -- markdown to HTML, the settings store, the launch
 plan -- live in documents.py, preferences.py and launch.py, so a Windows or
-macOS shell can drive the same core with a different webview.
+macOS shell can drive the same core with a different webview. The page itself is
+reached only through view.DocumentView (backend: webkitgtk_view.py).
 
 A .md file is untrusted content a user double-clicks (install.sh makes this
 the system default handler for text/markdown), so the rendered document runs
@@ -23,7 +24,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import re
 import sys
 from functools import partial
 from pathlib import Path
@@ -32,9 +32,8 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
-gi.require_version("WebKit", "6.0")
 
-from gi.repository import Gdk, Gio, GLib, Gtk, Pango, WebKit  # noqa: E402
+from gi.repository import Gdk, Gio, GLib, Gtk, Pango  # noqa: E402
 
 from documents import (  # noqa: E402
     EXTENSION_CONFIGS,
@@ -72,6 +71,8 @@ from preferences import (  # noqa: E402
     load_settings,
     save_settings,
 )
+from view import Action, Decision, decide  # noqa: E402
+from webkitgtk_view import WebKitGtkView  # noqa: E402
 
 APP_ID = "com.erdlabs.zeile"
 __version__ = "0.5.0"
@@ -340,35 +341,20 @@ class Viewer(Gtk.ApplicationWindow):
             "gtk-application-prefer-dark-theme"
         )
 
-        # Ephemeral session: no cookie jar, no HTTP cache persisted to disk.
-        # decide-policy below is what actually stops any request from being
-        # made in the first place for anything but the local document's tree.
-        session = WebKit.NetworkSession.new_ephemeral()
-        self.webview = WebKit.WebView(network_session=session)
-        settings = self.webview.get_settings()
-        settings.set_enable_javascript(True)
-        # False here, not set_enable_javascript(False): this is the setting
-        # that actually blocks a document's own <script>/onerror=, verified
-        # empirically (window.* set by an injected <script> stayed
-        # undefined). enable_javascript stays True so the app's own
-        # evaluate_javascript() calls (scroll position, future TOC-jump)
-        # keep working -- they never evaluate anything sourced from the
-        # document itself.
-        settings.set_enable_javascript_markup(False)
-        settings.set_enable_html5_local_storage(False)
-        settings.set_enable_html5_database(False)
-        settings.set_enable_developer_extras(debug)
-
-        self.webview.connect("decide-policy", self._on_decide_policy)
-        self.webview.connect("load-changed", self._on_load_changed)
-        self.webview.connect("mouse-target-changed", self._on_mouse_target_changed)
-        self.find_controller = self.webview.get_find_controller()
+        # The page lives behind view.DocumentView; WebKitGTK is the Linux backend.
+        # `webview` stays as the native widget for the GTK layout and the tests.
+        self.view = WebKitGtkView(debug=debug)
+        self.webview = self.view.widget
+        self.view.on_navigation = self._on_navigation
+        self.view.on_load_finished = self._on_load_finished
+        self.view.on_hover_link = self._on_hover_link
+        self.view.on_find_result = self._on_find_result
 
         # Restore persisted zoom, and follow system light/dark flips when in
         # "Auto" (the Mermaid palette bakes the theme in, so it needs a
         # re-render, not just a CSS flip).
         try:
-            self.webview.set_zoom_level(float(self._persisted["zoom"]))
+            self.view.zoom = float(self._persisted["zoom"])
         except ValueError:
             pass
         Gtk.Settings.get_default().connect(
@@ -477,20 +463,11 @@ class Viewer(Gtk.ApplicationWindow):
 
         self.search_entry = Gtk.SearchEntry()
         self.search_entry.connect("search-changed", self._on_search_changed)
-        self.search_entry.connect(
-            "next-match", lambda *_: self.find_controller.search_next()
-        )
-        self.search_entry.connect(
-            "previous-match", lambda *_: self.find_controller.search_previous()
-        )
+        self.search_entry.connect("next-match", lambda *_: self.view.find_next())
+        self.search_entry.connect("previous-match", lambda *_: self.view.find_previous())
         self.search_entry.connect("stop-search", lambda *_: self._close_search())
         # Live match count next to the entry (WebKitGTK has no "current
         # match index", only the total -- still answers "are there any?").
-        # failed-to-find-text is the reliable "zero matches" signal;
-        # counted-matches does not fire on all builds, so found-text
-        # (which fires on search()) carries the count.
-        self.find_controller.connect("found-text", self._on_found_text)
-        self.find_controller.connect("failed-to-find-text", self._on_failed_to_find)
         self._match_label = Gtk.Label()
         self._match_label.add_css_class("dim-label")
         self._match_label.set_margin_end(6)
@@ -663,7 +640,7 @@ class Viewer(Gtk.ApplicationWindow):
                 "window_w": str(self.get_width()),
                 "window_h": str(self.get_height()),
                 "window_maximized": "true" if self.is_maximized() else "false",
-                "zoom": str(round(self.webview.get_zoom_level(), 3)),
+                "zoom": str(round(self.view.zoom, 3)),
             }
         )
         save_settings(current, path=self.settings_path)
@@ -714,7 +691,7 @@ class Viewer(Gtk.ApplicationWindow):
             "if(anchor){window.scrollBy(0,anchor.getBoundingClientRect().top-top);}"
             "})();"
         )
-        self.webview.evaluate_javascript(anchored, -1, None, None, None, None, None)
+        self.view.run_js(anchored)
 
     def _on_theme_dropdown_changed(
         self, theme_ids: list[str], dropdown: Gtk.DropDown, *_pspec
@@ -787,61 +764,33 @@ class Viewer(Gtk.ApplicationWindow):
         self._apply_theme_and_font_attrs()
         self._persist_settings()
 
-    def _on_decide_policy(
-        self,
-        _webview: WebKit.WebView,
-        decision: WebKit.PolicyDecision,
-        decision_type: WebKit.PolicyDecisionType,
-    ) -> bool:
-        """Only allow file:// navigation under the open document's directory.
+    def _on_navigation(self, uri: str) -> Decision:
+        """Act on a link click; the view loads it only if the decision is LOAD.
 
-        A local .md/.markdown link re-enters our own renderer via
-        navigate_to() instead of letting WebKit load it directly (which
-        would dump raw markdown source with no way back -- confirmed broken
-        before this). A local image still loads in the WebView directly.
-        Everything else -- other local files such as .html or .svg (they
-        would bypass the CSP), http(s), any other scheme, or a file:// path
-        outside the document's directory tree --
-        is handed to the system's default opener. Combined with the
-        ephemeral NetworkSession above, this is what actually makes "no
-        network access" true rather than aspirational.
+        The policy itself is view.decide(): only file:// navigation under the open
+        document's directory loads in the view, a local .md/.markdown link re-enters
+        our own renderer via navigate_to() (WebKit would dump the raw source with no
+        way back), and everything else -- other local files such as .html or .svg
+        (they would bypass the CSP), http(s), any other scheme, a path outside the
+        document's tree -- goes to the system's default opener. With the ephemeral
+        session in the backend, this is what makes "no network access" true rather
+        than aspirational.
         """
-        if decision_type != WebKit.PolicyDecisionType.NAVIGATION_ACTION:
-            decision.use()
-            return True
-
-        uri = decision.get_navigation_action().get_request().get_uri()
-        gfile = Gio.File.new_for_uri(uri)
-        local_path = gfile.get_path()
-        scheme = (gfile.get_uri_scheme() or "").lower()
-        if scheme == "zeile-copy":
+        decision = decide(uri, self.path)
+        if decision.action is Action.COPY:
             # Copy-button click (see enhance_code_blocks): the link is pure
             # HTML navigation -- document JavaScript stays structurally off.
-            decision.ignore()
-            self._copy_code_block(uri)
-            return True
-        if scheme == "file" and local_path is not None:
-            target = Path(local_path).resolve()
-            action = classify_local_target(target, self.path)
-            if action == "navigate":
-                decision.ignore()
-                # Deferred: re-entering load_html synchronously from
-                # inside the policy callback is a documented-fragile
-                # WebKitGTK pattern known to break ("check this first" in
-                # the security notes).
-                GLib.idle_add(self.navigate_to, target)
-                return True
-            if action == "load":
-                decision.use()
-                return True
+            self._copy_code_block(decision.copy_index)
+        elif decision.action is Action.NAVIGATE:
+            # Deferred: re-entering load_html synchronously from inside the
+            # policy callback is a documented-fragile WebKitGTK pattern known
+            # to break ("check this first" in the security notes).
+            GLib.idle_add(self.navigate_to, decision.target)
+        elif decision.action is Action.EXTERNAL:
+            Gio.AppInfo.launch_default_for_uri(uri)
+        return decision
 
-        decision.ignore()
-        Gio.AppInfo.launch_default_for_uri(uri)
-        return True
-
-    _COPY_URI_RE = re.compile(r"zeile-copy://(\d+)")
-
-    def _copy_code_block(self, uri: str) -> None:
+    def _copy_code_block(self, index: int | None) -> None:
         """Put code block N's plain text on the system clipboard.
 
         Index comes from our own injected href; a hostile document
@@ -849,10 +798,8 @@ class Viewer(Gtk.ApplicationWindow):
         that already exists in that same document, and an out-of-range
         index is a silent no-op.
         """
-        match = self._COPY_URI_RE.fullmatch(uri)
-        if match is None:
+        if index is None:
             return
-        index = int(match.group(1))
         if not 0 <= index < len(self._code_texts):
             return
         display = Gdk.Display.get_default()
@@ -879,7 +826,7 @@ class Viewer(Gtk.ApplicationWindow):
             + ");if(el){el.classList.add('copied');"
             "window.setTimeout(function(){el.classList.remove('copied');},1400);}})();"
         )
-        self.webview.evaluate_javascript(js, -1, None, None, None, None, None)
+        self.view.run_js(js)
 
     def navigate_to(self, path: Path, *, record_history: bool = True) -> None:
         """Switch the currently displayed document, without opening a new window."""
@@ -913,20 +860,20 @@ class Viewer(Gtk.ApplicationWindow):
     def _on_search_changed(self, entry: Gtk.SearchEntry) -> None:
         text = entry.get_text()
         if not text:
-            self.find_controller.search_finish()
+            self.view.find_finish()
             self._match_label.set_text("")
             return
-        options = WebKit.FindOptions.CASE_INSENSITIVE | WebKit.FindOptions.WRAP_AROUND
-        self.find_controller.search(text, options, 1000)
+        self.view.find(text)
 
-    def _on_found_text(self, _controller: WebKit.FindController, match_count: int) -> None:
-        self._match_label.set_text(_n("%d match", "%d matches", match_count) % match_count)
-
-    def _on_failed_to_find(self, _controller: WebKit.FindController) -> None:
-        self._match_label.set_text(_("No matches"))
+    def _on_find_result(self, match_count: int) -> None:
+        if match_count == 0:
+            self._match_label.set_text(_("No matches"))
+        else:
+            text = _n("%d match", "%d matches", match_count) % match_count
+            self._match_label.set_text(text)
 
     def _close_search(self) -> None:
-        self.find_controller.search_finish()
+        self.view.find_finish()
         self._match_label.set_text("")
         self.search_bar.set_search_mode(False)
 
@@ -936,28 +883,20 @@ class Viewer(Gtk.ApplicationWindow):
         if active:
             self.search_entry.grab_focus()
         else:
-            self.find_controller.search_finish()
+            self.view.find_finish()
             self._match_label.set_text("")
         return True
 
-    def _on_load_changed(self, _webview: WebKit.WebView, event: WebKit.LoadEvent) -> None:
-        if event != WebKit.LoadEvent.FINISHED:
-            return
+    def _on_load_finished(self) -> None:
         if self._pending_restore_scroll:
             self._pending_restore_scroll = False
             # Value embedded as a validated Python int -- no JS-side state,
             # clamped to the new document height (it may have shrunk).
             y = max(0, self._scroll_to_restore)
-            self.webview.evaluate_javascript(
+            self.view.run_js(
                 f"window.scrollTo(0, Math.min({y}, "
                 "Math.max(0, document.documentElement.scrollHeight "
-                "- window.innerHeight)));",
-                -1,
-                None,
-                None,
-                None,
-                None,
-                None,
+                "- window.innerHeight)));"
             )
 
     def _populate_toc(self, *_args) -> bool:
@@ -1024,14 +963,8 @@ class Viewer(Gtk.ApplicationWindow):
         return query in heading_text.lower()
 
     def _scroll_to_heading(self, heading_id: str) -> None:
-        self.webview.evaluate_javascript(
-            f"document.getElementById({json.dumps(heading_id)}).scrollIntoView();",
-            -1,
-            None,
-            None,
-            None,
-            None,
-            None,
+        self.view.run_js(
+            f"document.getElementById({json.dumps(heading_id)}).scrollIntoView();"
         )
 
     def _on_toc_filter_activate(self, _entry: Gtk.SearchEntry) -> None:
@@ -1130,8 +1063,7 @@ class Viewer(Gtk.ApplicationWindow):
 
     def _print_dialog(self) -> bool:
         """Interactive Ctrl+P: the OS print dialog, printer/copies/etc."""
-        op = WebKit.PrintOperation.new(self.webview)
-        op.run_dialog(self)
+        self.view.print_dialog(self)
         return True
 
     def _export_pdf(self) -> None:
@@ -1149,12 +1081,7 @@ class Viewer(Gtk.ApplicationWindow):
             gfile = dialog.save_finish(result)
         except GLib.Error:
             return  # user cancelled
-        settings = Gtk.PrintSettings()
-        settings.set("output-uri", gfile.get_uri())
-        settings.set("output-file-format", "pdf")
-        op = WebKit.PrintOperation.new(self.webview)
-        op.set_print_settings(settings)
-        op.print_()
+        self.view.export_pdf(gfile.get_uri())
 
     def _add_shortcuts(self) -> None:
         controller = Gtk.ShortcutController()
@@ -1166,7 +1093,7 @@ class Viewer(Gtk.ApplicationWindow):
             ("<Control>plus", lambda *_: self._zoom(0.1)),
             ("<Control>equal", lambda *_: self._zoom(0.1)),
             ("<Control>minus", lambda *_: self._zoom(-0.1)),
-            ("<Control>0", lambda *_: self.webview.set_zoom_level(1.0)),
+            ("<Control>0", lambda *_: setattr(self.view, "zoom", 1.0)),
             ("<Control>f", lambda *_: self._toggle_search()),
             ("<Alt>Left", lambda *_: self.go_back()),
             ("<Alt>Right", lambda *_: self.go_forward()),
@@ -1277,11 +1204,10 @@ class Viewer(Gtk.ApplicationWindow):
             return
         self._shortcut_overlay = None
         overlay.destroy()
-        self.webview.grab_focus()
+        self.view.grab_focus()
 
     def _zoom(self, delta: float) -> bool:
-        level = min(3.0, max(0.4, self.webview.get_zoom_level() + delta))
-        self.webview.set_zoom_level(level)
+        self.view.zoom = min(3.0, max(0.4, self.view.zoom + delta))
         return True
 
     def _toggle_fullscreen(self) -> bool:
@@ -1299,19 +1225,12 @@ class Viewer(Gtk.ApplicationWindow):
             return uri[len(current_uri) :]
         return uri
 
-    def _on_mouse_target_changed(
-        self,
-        _webview: WebKit.WebView,
-        hit_test_result: WebKit.HitTestResult,
-        _modifiers: int,
-    ) -> None:
-        if hit_test_result.context_is_link():
-            uri = hit_test_result.get_link_uri()
-            if uri:
-                self._link_preview_label.set_text(self._format_preview_uri(uri))
-                self._link_preview_revealer.set_reveal_child(True)
-                return
-        self._link_preview_revealer.set_reveal_child(False)
+    def _on_hover_link(self, uri: str | None) -> None:
+        if uri:
+            self._link_preview_label.set_text(self._format_preview_uri(uri))
+            self._link_preview_revealer.set_reveal_child(True)
+        else:
+            self._link_preview_revealer.set_reveal_child(False)
 
     def _sync_theme_with_gtk(self) -> None:
         if self.theme_id == "auto":
@@ -1331,12 +1250,8 @@ class Viewer(Gtk.ApplicationWindow):
         the actual load_html must wait for that callback, not race it.
         """
 
-        def _got_scroll(src: WebKit.WebView, result: Gio.AsyncResult, _u) -> None:
-            try:
-                raw = src.evaluate_javascript_finish(result).to_string() or "0"
-                self._scroll_to_restore = int(float(raw))
-            except Exception:
-                self._scroll_to_restore = 0
+        def _got_scroll(scroll_y: int) -> None:
+            self._scroll_to_restore = scroll_y
             # Re-read the desktop dark preference on every render: for the
             # "Auto" theme it decides the Mermaid palette, and the system
             # preference can flip mid-session. Explicit themes override it
@@ -1361,14 +1276,12 @@ class Viewer(Gtk.ApplicationWindow):
             self._toc_flat = flatten_toc(toc_tokens)
             self._code_texts = code_texts
             self._pending_restore_scroll = True
-            self.webview.load_html(html_doc, self.path.as_uri())
+            self.view.load_html(html_doc, self.path.as_uri())
             self._sync_theme_with_gtk()
             if self.toc_popover.get_visible():
                 self._populate_toc()
 
-        self.webview.evaluate_javascript(
-            "window.scrollY | 0", -1, None, None, None, _got_scroll, None
-        )
+        self.view.get_scroll_y(_got_scroll)
         return True
 
     def _watch(self) -> None:

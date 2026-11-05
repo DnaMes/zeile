@@ -17,7 +17,7 @@ import re
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-CORE = ("documents.py", "preferences.py", "launch.py", "i18n.py")
+CORE = ("documents.py", "preferences.py", "launch.py", "i18n.py", "view.py")
 GUI_ONLY = re.compile(r"^\s*(?:import|from)\s+(gi|webview)\b", re.MULTILINE)
 
 
@@ -36,7 +36,7 @@ def test_core_imports_without_a_display() -> None:
     import sys
 
     code = (
-        "import sys, documents, preferences, launch, i18n, markdown_ext;"
+        "import sys, documents, preferences, launch, i18n, markdown_ext, view;"
         "assert 'gi' not in sys.modules, 'the core pulled in gi'"
     )
     result = subprocess.run(

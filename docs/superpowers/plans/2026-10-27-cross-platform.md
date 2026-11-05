@@ -115,10 +115,10 @@ Run: `pytest tests/test_core_isolation.py -v` — Expected: FAIL, `FileNotFoundE
 - Consumes: `documents.classify_local_target`.
 - Produces: `view.View` protocol with `show_document(html: str) -> None`, `set_title(text: str) -> None`, `run_script(js: str) -> None`, `show_error(message: str) -> None`, `quit() -> None`; `view.NavigationDecision` (`load`, `navigate`, `external`, `ignore`); `view.decide(uri: str, document: Path) -> NavigationDecision`.
 
-- [ ] **Step 1: Write `tests/test_view_policy.py`** pinning the five decisions (current file, other local `.md`, local image, remote URL, `zeile-copy://`, `javascript:`).
-- [ ] **Step 2: Implement `view.decide`** and make `zeile.py`'s policy handler delegate to it; the GTK handler keeps only the GTK part.
-- [ ] **Step 3: Run the suite**, expect the existing GUI tests still green (the policy moved, the behaviour did not).
-- [ ] **Step 4: Commit** — `refactor: move the navigation policy behind a tested boundary`.
+- [x] **Step 1: Write `tests/test_view_policy.py`** pinning the five decisions (current file, other local `.md`, local image, remote URL, `zeile-copy://`, `javascript:`).
+- [x] **Step 2: Implement `view.decide`** and make `zeile.py`'s policy handler delegate to it; the GTK handler keeps only the GTK part.
+- [x] **Step 3: Run the suite**, expect the existing GUI tests still green (the policy moved, the behaviour did not).
+- [x] **Step 4: Commit** — `refactor: move the navigation policy behind a tested boundary`.
 
 ### Task 4: The Windows/macOS shell
 

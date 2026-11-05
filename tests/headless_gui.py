@@ -752,9 +752,9 @@ def run() -> None:
                     # (WebKit's own found-text does not fire reliably in a
                     # headless compositor -- same caveat as counted-matches;
                     # the handler is what the real signal calls).
-                    win._on_found_text(win.find_controller, 3)
+                    win.view.on_find_result(3)
                     three = win._match_label.get_text()
-                    win._on_failed_to_find(win.find_controller)
+                    win.view.on_find_result(0)
                     none_txt = win._match_label.get_text()
                     win._close_search()
                     closed = win._match_label.get_text()
@@ -818,37 +818,18 @@ def run() -> None:
                         zeile.launch_asset_path = real_asset_path
 
                     # 9. link-preview overlay
-                    class MockHitTest:
-                        def __init__(self, is_link: bool, uri: str = ""):
-                            self._is_link = is_link
-                            self._uri = uri
-
-                        def context_is_link(self) -> bool:
-                            return self._is_link
-
-                        def get_link_uri(self) -> str:
-                            return self._uri
-
                     init_hidden = not win._link_preview_revealer.get_reveal_child()
-                    win._on_mouse_target_changed(
-                        win.webview,
-                        MockHitTest(True, "https://erdlabs.com"),
-                        0,
-                    )
+                    win.view.on_hover_link("https://erdlabs.com")
                     hover_shown = (
                         win._link_preview_revealer.get_reveal_child()
                         and win._link_preview_label.get_text() == "https://erdlabs.com"
                     )
-                    win._on_mouse_target_changed(
-                        win.webview,
-                        MockHitTest(True, win.path.as_uri() + "#heading-anchor"),
-                        0,
-                    )
+                    win.view.on_hover_link(win.path.as_uri() + "#heading-anchor")
                     anchor_shown = (
                         win._link_preview_revealer.get_reveal_child()
                         and win._link_preview_label.get_text() == "#heading-anchor"
                     )
-                    win._on_mouse_target_changed(win.webview, MockHitTest(False), 0)
+                    win.view.on_hover_link(None)
                     unhover_hidden = not win._link_preview_revealer.get_reveal_child()
                     check(
                         "link-preview",

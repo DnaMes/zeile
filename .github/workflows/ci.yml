@@ -75,6 +75,7 @@ jobs:
           tests/test_markdown_ext.py
           tests/test_mermaid_render.py
           tests/test_core_isolation.py
+          tests/test_view_policy.py
 
   distro:
     name: distro (${{ matrix.image }})
