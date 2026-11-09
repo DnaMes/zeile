@@ -23,12 +23,11 @@
     <p>
       A markdown file is treated as untrusted content: document JavaScript is disabled,
       the HTML is sanitized, nothing is stored and there is no network access.
-      No advertising, no tracking, no analytics.
     </p>
     <p xml:lang="de">
       Eine Markdown-Datei gilt als unvertrauenswürdiger Inhalt: Dokument-JavaScript ist
       deaktiviert, das HTML wird bereinigt, nichts wird gespeichert und es gibt keinen
-      Netzwerkzugriff. Keine Werbung, kein Tracking, keine Analyse.
+      Netzwerkzugriff.
     </p>
     <ul>
       <li>20 themes plus an automatic light/dark mode</li>

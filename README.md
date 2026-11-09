@@ -5,8 +5,6 @@ A small GTK4 markdown viewer for Linux, with Mermaid diagram support.
 [![CI](https://github.com/DnaMes/zeile/actions/workflows/ci.yml/badge.svg)](https://github.com/DnaMes/zeile/actions/workflows/ci.yml)
 ![Licence: GPL-3.0-or-later](https://img.shields.io/badge/licence-GPL--3.0--or--later-blue)
 
-> **No advertising. No tracking. No analytics. No unnecessary permissions.**
-
 <p align="center">
   <img src="docs/screenshots/github-light.png" alt="zeile with the GitHub Light theme" width="49%">
   <img src="docs/screenshots/github-dark.png" alt="zeile with the GitHub Dark theme" width="49%">
@@ -126,7 +124,7 @@ one `Alt+Left` away.
   the document (BRAND.md §7). Any key or click skips the whole sequence; with
   GTK animations off the frames show without fades.
   The version number appears only in the About dialog (header-bar help button).
-  No sound, no network, no tracking.
+  No sound, no network.
 - Body and code font pickers with graceful fallback stacks: Inter, Atkinson
   Hyperlegible, iA Writer Quattro, Noto Serif, IBM Plex Sans; JetBrains Mono,
   iA Writer Mono, Fira Code, Cascadia Code. Fonts are used if installed and
