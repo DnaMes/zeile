@@ -1,12 +1,12 @@
-# Copilot Instructions: {{PROJECT_NAME}}
+# Copilot Instructions: zeile
 
 ## Projekt
 
-{{DESCRIPTION}}
+TODO: Beschreibung
 
 ## Stack
 
-{{STACK}}
+TODO: Stack
 
 ## Regeln
 
