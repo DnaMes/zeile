@@ -9,6 +9,7 @@ Versioning: [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- The README screenshots no longer print the "No advertising, no tracking" slogan (BRAND.md section 2).
 - The deb, rpm, Arch and Flatpak packages did not install `documents.py`, `preferences.py`,
   `launch.py` or `i18n.py`, so the installed app could not start. A test now checks that every
   top-level module is in the staging lists.

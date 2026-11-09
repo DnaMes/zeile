@@ -47,7 +47,6 @@ def greet(name: str) -> str:
 | Themes  | 20     |
 | Network | none   |
 
-- [x] No advertising, no tracking
 - [x] German and English
 """
 
