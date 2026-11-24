@@ -5,8 +5,13 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 version="$(sed -n 's/^version = "\(.*\)"/\1/p' pyproject.toml)"
-ARCHIVE="${ZEILE_TAG_ARCHIVE:-/tmp/zeile-v${version}.tar.gz}"
-python3 scripts/verify_packaging_pins.py --archive "$ARCHIVE"
+# Optional offline pin: ZEILE_TAG_ARCHIVE=/path/to/vX.Y.Z.tar.gz
+# Without it, verify_packaging_pins.py downloads the tag archive itself.
+if [[ -n "${ZEILE_TAG_ARCHIVE:-}" ]]; then
+  python3 scripts/verify_packaging_pins.py --archive "$ZEILE_TAG_ARCHIVE"
+else
+  python3 scripts/verify_packaging_pins.py
+fi
 
 WORK="$(mktemp -d)"
 readonly WORK

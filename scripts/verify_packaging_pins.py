@@ -93,7 +93,16 @@ def _sha256_file(path: Path) -> str:
 def _download_tag_archive(version: str, dest: Path) -> None:
     url = TAG_ARCHIVE_URL.format(version=version)
     with urllib.request.urlopen(url, timeout=120) as resp:
-        dest.write_bytes(resp.read())
+        data = resp.read()
+    # Refuse to follow a symlink at dest (predictable /tmp races).
+    if dest.exists() or dest.is_symlink():
+        dest.unlink()
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    fd = os.open(dest, flags, 0o600)
+    try:
+        os.write(fd, data)
+    finally:
+        os.close(fd)
 
 
 def main() -> int:
@@ -128,31 +137,39 @@ def main() -> int:
         )
         return 1
 
+    owned_temp: Path | None = None
     archive = args.archive
-    if archive is None:
-        archive = Path(f"/tmp/zeile-v{version}.tar.gz")
-        print(f"downloading {expected_url} ...")
-        _download_tag_archive(version, archive)
-    elif not archive.is_file():
-        print(f"missing archive: {archive}", file=sys.stderr)
-        return 1
-
-    measured = _sha256_file(archive)
-    pinned = distinct.pop()
     try:
-        _assert_archive_contains(archive, version, _flathub_install_paths())
-    except ValueError as exc:
-        print(exc, file=sys.stderr)
-        return 1
-    if measured != pinned:
-        print(
-            f"tag archive sha256 mismatch: measured {measured}, pinned {pinned}",
-            file=sys.stderr,
-        )
-        return 1
+        if archive is None:
+            fd, name = tempfile.mkstemp(prefix=f"zeile-v{version}-", suffix=".tar.gz")
+            os.close(fd)
+            owned_temp = Path(name)
+            archive = owned_temp
+            print(f"downloading {expected_url} ...")
+            _download_tag_archive(version, archive)
+        elif not archive.is_file():
+            print(f"missing archive: {archive}", file=sys.stderr)
+            return 1
 
-    print(f"packaging pins OK for v{version} ({pinned})")
-    return 0
+        measured = _sha256_file(archive)
+        pinned = distinct.pop()
+        try:
+            _assert_archive_contains(archive, version, _flathub_install_paths())
+        except ValueError as exc:
+            print(exc, file=sys.stderr)
+            return 1
+        if measured != pinned:
+            print(
+                f"tag archive sha256 mismatch: measured {measured}, pinned {pinned}",
+                file=sys.stderr,
+            )
+            return 1
+
+        print(f"packaging pins OK for v{version} ({pinned})")
+        return 0
+    finally:
+        if owned_temp is not None:
+            owned_temp.unlink(missing_ok=True)
 
 
 if __name__ == "__main__":
