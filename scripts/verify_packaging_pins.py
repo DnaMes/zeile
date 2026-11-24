@@ -146,6 +146,7 @@ def main() -> int:
             fd, name = tempfile.mkstemp(prefix=f"zeile-v{version}-", suffix=".tar.gz")
             os.close(fd)
             owned_temp = Path(name)
+            owned_temp.unlink()  # path reserved; _download recreates with O_EXCL
             archive = owned_temp
             print(f"downloading {expected_url} ...")
             _download_tag_archive(version, archive)
