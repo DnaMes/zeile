@@ -1,0 +1,50 @@
+# Flathub submission manifest (pinned release archive). Copy this file and
+# packaging/flatpak/python-deps.json into a Flathub PR branch.
+# Local iterative builds use com.erdlabs.zeile.yml (dir source) instead.
+app-id: com.erdlabs.zeile
+runtime: org.gnome.Platform
+runtime-version: "50"
+sdk: org.gnome.Sdk
+command: zeile
+finish-args:
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --share=ipc
+  - --device=dri
+  # Read-only home so a document can show the images next to it and follow links
+  # to its sibling files. No network, no write access.
+  - --filesystem=home:ro
+modules:
+  - python-deps.json
+  - name: zeile
+    buildsystem: simple
+    build-commands:
+      - install -d /app/share/zeile
+      # Must match the tagged source tree (v0.5.0 is monolithic zeile.py + helpers).
+      - install -m 644 zeile.py code_lang.py markdown_ext.py mermaid_render.py /app/share/zeile/
+      - cp -r assets /app/share/zeile/assets
+      - install -Dm 644 icons/hicolor/512x512/apps/zeile.png /app/share/zeile/icons/hicolor/512x512/apps/zeile.png
+      - |
+        for po in po/*.po; do
+          lang="$(basename "$po" .po)"
+          install -d "/app/share/zeile/locale/$lang/LC_MESSAGES"
+          msgfmt "$po" -o "/app/share/zeile/locale/$lang/LC_MESSAGES/zeile.mo"
+        done
+      - install -Dm 755 zeile-launcher.sh /app/bin/zeile
+      - install -Dm 644 packaging/flatpak/com.erdlabs.zeile.desktop /app/share/applications/com.erdlabs.zeile.desktop
+      - install -Dm 644 packaging/flatpak/com.erdlabs.zeile.metainfo.xml /app/share/metainfo/com.erdlabs.zeile.metainfo.xml
+      - install -Dm 644 icons/hicolor/scalable/apps/zeile.svg /app/share/icons/hicolor/scalable/apps/com.erdlabs.zeile.svg
+      - |
+        for size in 16 24 32 48 64 128 256 512; do
+          install -Dm 644 "icons/hicolor/${size}x${size}/apps/zeile.png" \
+            "/app/share/icons/hicolor/${size}x${size}/apps/com.erdlabs.zeile.png"
+        done
+    sources:
+      - type: archive
+        url: https://github.com/DnaMes/zeile/archive/refs/tags/v0.5.0.tar.gz
+        sha256: f132c0eb3e8072dcf07c8b99a33fd85cd1e6657bad974469d13c56474bd2faaa
+        strip-components: 1
+      - type: script
+        dest-filename: zeile-launcher.sh
+        commands:
+          - exec python3 /app/share/zeile/zeile.py "$@"
