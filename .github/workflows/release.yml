@@ -15,7 +15,7 @@ permissions:
 jobs:
   validate-and-package:
     name: Validate and package Linux source release
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["self-hosted","linux","x64","homelab"]') }}
     timeout-minutes: 15
     steps:
       - name: Check out tagged source
@@ -102,7 +102,7 @@ jobs:
   packages:
     name: Build ${{ matrix.kind }} package
     needs: validate-and-package
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["self-hosted","linux","x64","homelab"]') }}
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -143,7 +143,7 @@ jobs:
   attach-packages:
     name: Attach packages to the release
     needs: packages
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["self-hosted","linux","x64","homelab"]') }}
     timeout-minutes: 10
     steps:
       - name: Download the built packages
